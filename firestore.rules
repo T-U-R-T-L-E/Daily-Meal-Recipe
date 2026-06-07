@@ -1,0 +1,296 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper Primitives
+    function isSignedIn() { return request.auth != null; }
+    function isVerifiedUser() { return isSignedIn(); }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isVerifiedOwner(userId) { return isVerifiedUser() && request.auth.uid == userId; }
+    function isAdmin() { 
+      return isSignedIn() && (
+        request.auth.token.email == 'lewisiraki1@gmail.com' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') == 'admin')
+      ); 
+    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // User Profile Rules (Prevent Self-Assigned Roles)
+    match /users/{userId} {
+      function isValidUserProfile(data) {
+        return data.keys().hasAll(['uid', 'email', 'createdAt']) &&
+               data.uid == request.auth.uid &&
+               data.email is string && data.email.size() <= 200 &&
+               (!data.keys().hasAny(['role']) || data.role == 'user');
+      }
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isValidId(userId) && isOwner(userId) && isValidUserProfile(incoming());
+      allow update: if isValidId(userId) && ((isOwner(userId) && isValidUserProfile(incoming()) && (!incoming().keys().hasAny(['role']) || incoming().role == existing().get('role', 'user'))) || isAdmin());
+    }
+
+    // Recipe Rules
+    match /recipes/{recipeId} {
+      function isValidRecipe(data) {
+        return data.keys().hasAll(['name', 'ingredients', 'instructions', 'authorId', 'createdAt']) &&
+               data.name is string && data.name.size() <= 200 &&
+               data.authorId is string && data.authorId == request.auth.uid &&
+               (data.get('isPublic', false) is bool) &&
+               data.ingredients is list && data.ingredients.size() <= 200 &&
+               data.instructions is list && data.instructions.size() <= 100 &&
+               (!data.keys().hasAny(['status']) || data.status == 'pending' || (resource != null && data.status == resource.data.status));
+      }
+      
+      allow get: if isValidId(recipeId) && (
+        resource == null ||
+        (resource.data.get('isPublic', false) == true) || 
+        (isSignedIn() && resource.data.authorId == request.auth.uid)
+      );
+      
+      allow list: if (resource.data.get('isPublic', false) == true) || 
+                  (isSignedIn() && resource.data.authorId == request.auth.uid) ||
+                  isAdmin();
+      
+      allow create: if isValidId(recipeId) && isVerifiedUser() && isValidRecipe(incoming()) && 
+                    (incoming().authorId == request.auth.uid || isAdmin());
+      
+      allow update: if isValidId(recipeId) && (
+                    (isVerifiedOwner(existing().authorId) && isValidRecipe(incoming()) && incoming().authorId == existing().authorId) ||
+                    (isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly(['viewCount', 'saveCount', 'cookedCount']) &&
+                     (incoming().get('viewCount', 0) is number) && (incoming().get('saveCount', 0) is number)) ||
+                    isAdmin()
+                  );
+      
+      allow delete: if isValidId(recipeId) && (isVerifiedOwner(existing().authorId) || isAdmin());
+
+      // Reviews Subcollection
+      match /reviews/{reviewId} {
+        allow read: if isValidId(reviewId) && isValidId(recipeId);
+        allow create: if isValidId(reviewId) && isValidId(recipeId) && isVerifiedUser() && 
+                      incoming().userId == request.auth.uid && 
+                      incoming().recipeId == recipeId &&
+                      incoming().comment is string && incoming().comment.size() <= 1000 &&
+                      exists(/databases/$(database)/documents/recipes/$(recipeId));
+        allow delete: if isValidId(reviewId) && isValidId(recipeId) && (isVerifiedOwner(existing().userId) || isAdmin());
+      }
+    }
+
+    // Pantry Rules
+    match /pantry/{itemId} {
+      function isValidPantry(data) {
+        return data.keys().hasAll(['userId', 'item', 'quantity']) &&
+               data.userId == request.auth.uid &&
+               data.item is string && data.item.size() <= 200 &&
+               data.quantity is string && data.quantity.size() <= 100;
+      }
+      allow get: if isValidId(itemId) && (resource == null || isOwner(existing().userId) || isAdmin());
+      allow delete: if isValidId(itemId) && (isVerifiedOwner(existing().userId) || isAdmin());
+      allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isValidId(itemId) && isVerifiedUser() && isValidPantry(incoming());
+      allow update: if isValidId(itemId) && ((isVerifiedOwner(existing().userId) && isValidPantry(incoming())) || isAdmin());
+    }
+
+    // Meal Plan Rules
+    match /mealPlans/{planId} {
+      function isValidMealPlan(data) {
+        return data.keys().hasAll(['userId', 'recipeId', 'date', 'mealType']) &&
+               data.userId == request.auth.uid &&
+               data.recipeId is string && data.recipeId.size() <= 128 &&
+               data.mealType in ['breakfast', 'lunch', 'dinner', 'snack', 'dessert'];
+      }
+      allow get: if isValidId(planId) && (resource == null || isOwner(existing().userId) || isAdmin());
+      allow delete: if isValidId(planId) && (isVerifiedOwner(existing().userId) || isAdmin());
+      allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isValidId(planId) && isVerifiedUser() && isValidMealPlan(incoming());
+      allow update: if isValidId(planId) && ((isVerifiedOwner(existing().userId) && isValidMealPlan(incoming())) || isAdmin());
+    }
+
+    // Shopping List Rules
+    match /shoppingLists/{itemId} {
+      function isValidListItem(data) {
+        return data.keys().hasAll(['userId', 'item', 'completed', 'createdAt']) &&
+               data.userId == request.auth.uid &&
+               data.item is string && data.item.size() <= 300 &&
+               data.completed is bool;
+      }
+      allow get: if isValidId(itemId) && (resource == null || isOwner(existing().userId) || isAdmin());
+      allow delete: if isValidId(itemId) && (isVerifiedOwner(existing().userId) || isAdmin());
+      allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isValidId(itemId) && isVerifiedUser() && isValidListItem(incoming());
+      allow update: if isValidId(itemId) && ((isVerifiedOwner(existing().userId) && isValidListItem(incoming())) || isAdmin());
+    }
+
+    // Nutrition Logs Rules
+    match /nutritionLogs/{logId} {
+      function isValidNutritionLog(data) {
+        return data.keys().hasAll(['userId', 'date', 'waterIntake', 'energyLevel']) &&
+               data.userId == request.auth.uid &&
+               data.date is string && data.date.size() == 10 &&
+               data.waterIntake is number &&
+               data.energyLevel is number &&
+               (!data.keys().hasAny(['targetCalories']) || data.targetCalories is number) &&
+               (!data.keys().hasAny(['targetProtein']) || data.targetProtein is number) &&
+               (!data.keys().hasAny(['targetCarbs']) || data.targetCarbs is number) &&
+               (!data.keys().hasAny(['targetFat']) || data.targetFat is number);
+      }
+      allow get: if isValidId(logId) && (resource == null || isOwner(existing().userId) || isAdmin());
+      allow delete: if isValidId(logId) && (isVerifiedOwner(existing().userId) || isAdmin());
+      allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isValidId(logId) && isVerifiedUser() && isValidNutritionLog(incoming());
+      allow update: if isValidId(logId) && ((isVerifiedOwner(existing().userId) && isValidNutritionLog(incoming())) || isAdmin());
+    }
+
+    // Favorite Rules
+    match /favorites/{favoriteId} {
+      function isValidFavorite(data) {
+        return data.keys().hasAll(['userId', 'recipeId', 'createdAt']) &&
+               data.userId == request.auth.uid &&
+               data.recipeId is string && data.recipeId.size() <= 128;
+      }
+      allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow get: if isValidId(favoriteId) && (resource == null || isOwner(existing().userId) || isAdmin());
+      allow create: if isValidId(favoriteId) && isVerifiedUser() && isValidFavorite(incoming());
+      allow delete: if isValidId(favoriteId) && (isVerifiedOwner(existing().userId) || isAdmin());
+    }
+
+    // Cooking Log Rules
+    match /cookingLogs/{logId} {
+      function isValidCookingLog(data) {
+        return data.keys().hasAll(['userId', 'recipeId', 'recipeName', 'timestamp', 'servings']) &&
+               data.userId == request.auth.uid &&
+               data.recipeId is string && data.recipeId.size() <= 128 &&
+               data.recipeName is string && data.recipeName.size() <= 200 &&
+               data.servings is number;
+      }
+      allow list: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow get: if isValidId(logId) && (resource == null || isOwner(existing().userId) || isAdmin());
+      allow create: if isValidId(logId) && isVerifiedUser() && isValidCookingLog(incoming());
+      allow delete: if isValidId(logId) && (isVerifiedOwner(existing().userId) || isAdmin());
+    }
+
+    // Shared Kitchen To-Do Rules
+    match /sharedTodos/{todoId} {
+      function isValidSharedTodo(data) {
+        return data.keys().hasAll(['text', 'completed', 'creatorId', 'createdAt', 'familyId']) &&
+               data.text is string && data.text.size() <= 400 &&
+               data.completed is bool &&
+               data.creatorId is string &&
+               data.creatorId == request.auth.uid &&
+               data.familyId is string && isValidId(data.familyId);
+      }
+
+      function isMemberOfFamily(familyId) {
+        return isSignedIn() && request.auth.token.email != null &&
+               request.auth.token.email in get(/databases/$(database)/documents/families/$(familyId)).data.members;
+      }
+
+      allow get: if isValidId(todoId) && isMemberOfFamily(resource.data.familyId);
+      allow list: if isSignedIn() && isMemberOfFamily(resource.data.familyId);
+      allow create: if isValidId(todoId) && isVerifiedUser() && isValidSharedTodo(incoming()) && isMemberOfFamily(incoming().familyId);
+      allow update: if isValidId(todoId) && isVerifiedUser() && isMemberOfFamily(existing().familyId) && (
+        incoming().creatorId == existing().creatorId &&
+        incoming().text == existing().text &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().familyId == existing().familyId &&
+        incoming().completed is bool
+      );
+      allow delete: if isValidId(todoId) && isVerifiedUser() && (existing().creatorId == request.auth.uid || isAdmin());
+    }
+
+    // Family / Kitchen Circle Rules
+    match /families/{familyId} {
+      function isValidFamily(data) {
+        return data.keys().hasAll(['name', 'members', 'creatorId', 'creatorName', 'createdAt']) &&
+               data.name is string && data.name.size() <= 200 &&
+               data.members is list && data.members.size() <= 50 &&
+               data.creatorId == request.auth.uid;
+      }
+      
+      function isFamilyMember() {
+        return isSignedIn() && request.auth.token.email != null &&
+               request.auth.token.email in resource.data.members;
+      }
+
+      allow create: if isValidId(familyId) && isVerifiedUser() && isValidFamily(incoming()) && 
+                    request.auth.token.email != null &&
+                    request.auth.token.email in incoming().members;
+      allow get: if isValidId(familyId) && isFamilyMember();
+      allow list: if isSignedIn() && request.auth.token.email != null &&
+                  request.auth.token.email in resource.data.members;
+      allow update: if isValidId(familyId) && isVerifiedUser() && isFamilyMember() && 
+                    incoming().creatorId == existing().creatorId &&
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().name == existing().name &&
+                    incoming().members is list && incoming().members.size() <= 100;
+      allow delete: if isValidId(familyId) && isVerifiedUser() && (existing().creatorId == request.auth.uid || isAdmin());
+    }
+
+    // Files and Culinary Assets Rules
+    match /files/{fileId} {
+      function isValidFileRecord(data) {
+        return data.keys().hasAll(['userId', 'fileName', 'fileSize', 'mimeType', 'storagePath', 'downloadUrl', 'status', 'createdAt']) &&
+               data.userId == request.auth.uid &&
+               data.fileName is string && data.fileName.size() <= 400 &&
+               data.fileSize is number &&
+               data.mimeType is string && data.mimeType.size() <= 200 &&
+               data.storagePath is string && data.storagePath.size() <= 1000 &&
+               data.downloadUrl is string && data.downloadUrl.size() <= 2000 &&
+               data.status in ['active', 'deleted'] &&
+               (!data.keys().hasAny(['userEmail']) || (data.userEmail is string && data.userEmail.size() <= 200));
+      }
+      allow list: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        (request.auth.token.email != null && resource.data.get('userEmail', '') == request.auth.token.email) ||
+        isAdmin()
+      );
+      allow get: if isValidId(fileId) && (
+        resource == null || 
+        isOwner(existing().userId) || 
+        (isSignedIn() && request.auth.token.email != null && existing().get('userEmail', '') == request.auth.token.email) || 
+        isAdmin()
+      );
+      allow create: if isValidId(fileId) && isVerifiedUser() && isValidFileRecord(incoming());
+      allow update: if isValidId(fileId) && (
+        (isVerifiedOwner(existing().userId) && isValidFileRecord(incoming()) && incoming().userId == existing().userId) || 
+        (isSignedIn() && request.auth.token.email != null && existing().get('userEmail', '') == request.auth.token.email && isValidFileRecord(incoming())) ||
+        isAdmin()
+      );
+      allow delete: if isValidId(fileId) && (
+        isVerifiedOwner(existing().userId) || 
+        (isSignedIn() && request.auth.token.email != null && existing().get('userEmail', '') == request.auth.token.email) || 
+        isAdmin()
+      );
+
+      // Embedded Chunks support for large file database mapping
+      match /chunks/{chunkId} {
+        allow read, write: if isSignedIn() && isValidId(fileId) && isValidId(chunkId) && (
+          !exists(/databases/$(database)/documents/files/$(fileId)) ||
+          get(/databases/$(database)/documents/files/$(fileId)).data.userId == request.auth.uid ||
+          (request.auth.token.email != null && get(/databases/$(database)/documents/files/$(fileId)).data.get('userEmail', '') == request.auth.token.email) ||
+          isAdmin()
+        );
+      }
+    }
+
+    // Support collectionGroup and top-level reviews queries safely
+    match /{path=**}/reviews/{reviewId} {
+      allow read: if isSignedIn() && (
+        resource == null ||
+        resource.data.userId == request.auth.uid ||
+        isAdmin() ||
+        true
+      );
+      allow create: if isValidId(reviewId) && isVerifiedUser() &&
+                    incoming().userId == request.auth.uid &&
+                    incoming().comment is string && incoming().comment.size() <= 1000;
+      allow delete: if isValidId(reviewId) && (isVerifiedOwner(existing().userId) || isAdmin());
+    }
+  }
+}

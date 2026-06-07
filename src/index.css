@@ -1,0 +1,288 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap');
+
+@theme {
+  --font-serif: "Cormorant Garamond", serif;
+  --font-sans: "Inter", sans-serif;
+  
+  --color-onyx: var(--bg-onyx, #050505);
+  --color-graphite: var(--bg-graphite, #0A0A0A);
+  --color-coal: var(--bg-coal, #111111);
+  --color-amber-accent: #f59e0b;
+  --color-amber-gold: #d97706;
+  
+  --color-cream: #fbfbf8;
+
+  /* Specific high-fidelity breakpoints targeting iPhone 16, MacBooks, 4K, and 5K displays */
+  --breakpoint-xs: 375px;
+  --breakpoint-xxl: 1440px;
+  --breakpoint-3xl: 1920px;
+  --breakpoint-4xl: 2560px;
+  --breakpoint-5xl: 3840px;
+}
+
+:root {
+  --bg-onyx: #050505;
+  --bg-graphite: #0A0A0A;
+  --bg-coal: #111111;
+}
+
+html.light {
+  --bg-onyx: #f9f9f6;
+  --bg-graphite: #ffffff;
+  --bg-coal: #eceeed;
+}
+
+@layer base {
+  body {
+    @apply bg-onyx text-gray-300 font-sans antialiased selection:bg-amber-accent/20 selection:text-amber-accent;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: none;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+}
+
+/* Elegant and robust Light Mode flat selectors */
+html.light body {
+  color: #2d3748;
+}
+
+html.light h1,
+html.light h2,
+html.light h3,
+html.light h4,
+html.light h5,
+html.light h6 {
+  color: #1a202c !important;
+}
+
+html.light .text-white {
+  color: #111827 !important;
+}
+
+html.light .text-gray-100 {
+  color: #1a202c !important;
+}
+
+html.light .text-gray-200 {
+  color: #242f42 !important;
+}
+
+html.light .text-gray-300 {
+  color: #2d3748 !important;
+}
+
+html.light .text-gray-400 {
+  color: #4a5568 !important;
+}
+
+html.light .text-gray-500 {
+  color: #718096 !important;
+}
+
+/* Slashed transparent colors */
+html.light .text-white\/20 {
+  color: rgba(0, 0, 0, 0.35) !important;
+}
+
+html.light .text-white\/30 {
+  color: rgba(0, 0, 0, 0.45) !important;
+}
+
+html.light .text-white\/40 {
+  color: rgba(0, 0, 0, 0.55) !important;
+}
+
+html.light .text-white\/50 {
+  color: rgba(0, 0, 0, 0.65) !important;
+}
+
+html.light .text-white\/60 {
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+
+html.light .text-white\/70 {
+  color: rgba(0, 0, 0, 0.75) !important;
+}
+
+html.light .text-white\/80 {
+  color: rgba(0, 0, 0, 0.85) !important;
+}
+
+html.light .text-white\/90 {
+  color: rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Border overrides */
+html.light .border-white\/5 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+html.light .border-white\/10 {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+html.light .border-white\/15 {
+  border-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+html.light .border-white\/20 {
+  border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+html.light .border-white\/30 {
+  border-color: rgba(0, 0, 0, 0.25) !important;
+}
+
+/* BG layers overrides */
+html.light .bg-white\/5 {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+html.light .bg-white\/10 {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+html.light .bg-white\/[0.01] {
+  background-color: rgba(0, 0, 0, 0.01) !important;
+}
+
+html.light .bg-black\/40 {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+}
+
+html.light .bg-onyx\/50 {
+  background-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Better UX Skeleton & Shimmer Styles for Light and Dark mode */
+.shimmer-bar {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+html.light .shimmer-bar {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+.shimmer-wave {
+  background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent) !important;
+}
+
+html.light .shimmer-wave {
+  background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent) !important;
+}
+
+.shimmer-box {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+}
+
+html.light .shimmer-box {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+.text-skeleton-muted {
+  color: rgba(255, 255, 255, 0.05) !important;
+}
+
+html.light .text-skeleton-muted {
+  color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.text-skeleton-icon {
+  color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html.light .text-skeleton-icon {
+  color: rgba(0, 0, 0, 0.15) !important;
+}
+
+html.light .prose {
+  --tw-prose-body: #2d3748;
+  --tw-prose-headings: #111827;
+  --tw-prose-lead: #4a5568;
+  --tw-prose-links: #f59e0b;
+  --tw-prose-bold: #111827;
+  --tw-prose-counters: #718096;
+  --tw-prose-bullets: #cbd5e1;
+  --tw-prose-hr: #e2e8f0;
+  --tw-prose-quotes: #1f2937;
+  --tw-prose-quote-borders: #e2e8f0;
+  --tw-prose-captions: #64748b;
+  --tw-prose-code: #0f172a;
+  --tw-prose-pre-code: #f1f5f9;
+  --tw-prose-pre-bg: #1e293b;
+  --tw-prose-th: #111827;
+  --tw-prose-td: #334155;
+}
+
+/* Ensure inputs, forms and select dropdown text remains fully visible */
+html.light input,
+html.light select,
+html.light textarea {
+  color: #1a202c !important;
+  background-color: rgba(0, 0, 0, 0.02) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #718096 !important;
+}
+
+html.light select option {
+  background-color: #ffffff !important;
+  color: #1a202c !important;
+}
+  
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-white font-serif tracking-tight;
+  }
+
+  /* Sleek Minimalist Custom Scrollbars for Desktop App & desktop browsing */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 9999px;
+    transition: background-color 0.2s ease;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(245, 158, 11, 0.4);
+  }
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+.markdown-body {
+  @apply prose prose-invert max-w-none prose-amber;
+}
+
+/* Enable smooth snap & scrolling utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* App touch feedback enhancements */
+.tap-feedback:active {
+  transform: scale(0.97);
+  opacity: 0.85;
+}
+
+

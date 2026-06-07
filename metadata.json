@@ -1,0 +1,6 @@
+{
+  "name": "Daily Meal Recipe",
+  "description": "An interactive smart meal planner, generator, and visual scanner application equipped with an intelligent, multi-layer error-handling UX, failure recovery, and background operations.",
+  "requestFramePermissions": ["microphone", "camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Premium Amber Gradient -->
+    <linearGradient id="amberGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="50%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+    
+    <!-- Sophisticated Glow -->
+    <filter id="subtleGlow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#f59e0b" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- Deep Onyx Circular Base for PWA App Icon and App Stores -->
+  <rect width="512" height="512" rx="112" fill="#050505" />
+  
+  <!-- Subtle gold frame border -->
+  <rect x="24" y="24" width="464" height="464" rx="88" fill="none" stroke="url(#amberGold)" stroke-width="2" opacity="0.15" />
+
+  <!-- Dynamic Golden Cloche (Dome) with Fork & Spoon details -->
+  <g filter="url(#subtleGlow)" transform="translate(0, 0)">
+    <!-- Food Dome / Cloche handle -->
+    <path d="M 236,150 C 236,135 276,135 276,150 Z" fill="url(#amberGold)" />
+    
+    <!-- Dome body -->
+    <path d="M 140,290 C 140,170 372,170 372,290 Z" fill="url(#amberGold)" />
+    
+    <!-- Serving Platter Plate -->
+    <rect x="110" y="306" width="292" height="16" rx="8" fill="url(#amberGold)" />
+    
+    <!-- Decorative Steam Swirls (Abstract aroma trails) -->
+    <path d="M 220,110 C 215,90 225,85 220,70" stroke="url(#amberGold)" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.6" />
+    <path d="M 256,105 C 251,80 261,75 256,60" stroke="url(#amberGold)" stroke-width="5" stroke-linecap="round" fill="none" opacity="0.8" />
+    <path d="M 292,110 C 287,90 297,85 292,70" stroke="url(#amberGold)" stroke-width="4" stroke-linecap="round" fill="none" opacity="0.6" />
+
+    <!-- Sleek cutlery silhouette cut-out or emblem inside plate -->
+    <circle cx="256" cy="370" r="28" fill="none" stroke="url(#amberGold)" stroke-width="3" />
+    
+    <!-- Minimal fork & spoon intersecting in the center bottom area -->
+    <path d="M 248,355 L 248,385 M 242,355 L 242,375 M 254,355 L 254,375" stroke="url(#amberGold)" stroke-width="2.5" stroke-linecap="round" />
+    <path d="M 264,360 C 264,350 274,350 274,360 L 274,385" stroke="url(#amberGold)" stroke-width="2.5" stroke-linecap="round" fill="none" />
+  </g>
+</svg>

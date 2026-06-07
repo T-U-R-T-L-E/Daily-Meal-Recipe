@@ -1,0 +1,257 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account and preferences",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "createdAt"]
+    },
+    "Recipe": {
+      "title": "Recipe",
+      "description": "Culinary recipe details",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "prepTime": { "type": "string" },
+        "cookTime": { "type": "string" },
+        "restTime": { "type": "string" },
+        "difficulty": { "enum": ["Beginner", "Intermediate", "Expert", "Professional"] },
+        "ingredients": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "item": { "type": "string" },
+              "amount": { "type": "string" },
+              "baseAmount": { "type": "number" }
+            }
+          }
+        },
+        "instructions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "category": { 
+          "type": "string",
+          "enum": ["Breakfast", "Lunch", "Dinner", "Snack", "Dessert"],
+          "description": "Common meal categories for filtering"
+        },
+        "cuisine": { "type": "string" },
+        "dietaryTags": { "type": "array", "items": { "type": "string" } },
+        "nutrition": {
+          "type": "object",
+          "properties": {
+            "calories": { "type": "number" },
+            "protein": { "type": "number" },
+            "carbs": { "type": "number" },
+            "fat": { "type": "number" }
+          }
+        },
+        "authorId": { "type": "string" },
+        "isPublic": { "type": "boolean" },
+        "viewCount": { "type": "number" },
+        "saveCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Extended user preferences",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "dietaryPreferences": { "type": "array", "items": { "type": "string" } },
+        "allergies": { "type": "array", "items": { "type": "string" } },
+        "skillLevel": { "type": "string" },
+        "streaks": { "type": "number" },
+        "badges": { "type": "array", "items": { "type": "string" } },
+        "subscription": {
+          "type": "object",
+          "properties": {
+            "status": { "enum": ["active", "trial", "expired", "none"] },
+            "trialEndDate": { "type": "string", "format": "date-time" },
+            "subscribedDate": { "type": "string", "format": "date-time" }
+          }
+        }
+      }
+    },
+    "Reviews": {
+      "title": "Review",
+      "description": "User ratings and comments",
+      "type": "object",
+      "properties": {
+        "recipeId": { "type": "string" },
+        "userId": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Pantry": {
+      "title": "Pantry Item",
+      "description": "Ingredient in user pantry",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "item": { "type": "string" },
+        "quantity": { "type": "string" },
+        "expiryDate": { "type": "string", "format": "date" }
+      }
+    },
+    "Favorite": {
+      "title": "Favorite",
+      "description": "Favorited recipe",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "recipeId": { "type": "string" },
+        "recipeName": { "type": "string" },
+        "recipeImage": { "type": "string" },
+        "category": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "recipeId", "createdAt"]
+    },
+    "MealPlan": {
+      "title": "Meal Plan",
+      "description": "Planned meal for a user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "recipeId": { "type": "string" },
+        "recipeName": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "mealType": { "enum": ["breakfast", "lunch", "dinner", "snack", "dessert"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "date", "mealType"]
+    },
+    "CookingLog": {
+      "title": "Cooking Log",
+      "description": "Record of a cooked recipe",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "recipeId": { "type": "string" },
+        "recipeName": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "servings": { "type": "number" }
+      }
+    },
+    "SharedTodo": {
+      "title": "Shared Kitchen To-Do",
+      "description": "Collaborative kitchen and cooking tasks shared among users inside a family",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "creatorId": { "type": "string" },
+        "creatorName": { "type": "string" },
+        "creatorPhoto": { "type": "string" },
+        "assignedTo": { "type": "string" },
+        "assignedName": { "type": "string" },
+        "category": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "completedBy": { "type": "string" },
+        "completedByName": { "type": "string" },
+        "familyId": { "type": "string" }
+      },
+      "required": ["text", "completed", "creatorId", "createdAt", "familyId"]
+    },
+    "Family": {
+      "title": "Family Kitchen Circle",
+      "description": "A group of family members sharing a culinary hub and collaborative chores",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "members": { "type": "array", "items": { "type": "string" } },
+        "creatorId": { "type": "string" },
+        "creatorName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "members", "creatorId"]
+    },
+    "FileRecord": {
+      "title": "File Record",
+      "description": "A synced file record stored in Firebase Storage and tracked in Firestore",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "fileName": { "type": "string" },
+        "fileSize": { "type": "number" },
+        "mimeType": { "type": "string" },
+        "storagePath": { "type": "string" },
+        "downloadUrl": { "type": "string" },
+        "status": { "enum": ["active", "deleted"] },
+        "downloadCount": { "type": "number" },
+        "hasChunks": { "type": "boolean" },
+        "totalChunks": { "type": "number" },
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "action": { "enum": ["upload", "download", "delete"] },
+              "timestamp": { "type": "string", "format": "date-time" },
+              "details": { "type": "string" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "fileName", "fileSize", "mimeType", "storagePath", "downloadUrl", "status", "createdAt"]
+    },
+    "FileChunk": {
+      "title": "File Chunk",
+      "description": "A segment of an uploaded file stored to Firestore database layout",
+      "type": "object",
+      "properties": {
+        "fileId": { "type": "string" },
+        "chunkIndex": { "type": "number" },
+        "data": { "type": "string" }
+      },
+      "required": ["fileId", "chunkIndex", "data"]
+    },
+    "NutritionLog": {
+      "title": "Nutrition Log",
+      "description": "User's daily water, energy levels, and macro targets",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "waterIntake": { "type": "number" },
+        "energyLevel": { "type": "number" },
+        "targetCalories": { "type": "number" },
+        "targetProtein": { "type": "number" },
+        "targetCarbs": { "type": "number" },
+        "targetFat": { "type": "number" },
+        "notes": { "type": "string" }
+      },
+      "required": ["userId", "date", "waterIntake", "energyLevel"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": { "schema": "UserProfile", "description": "User data" },
+    "/recipes/{recipeId}": { "schema": "Recipe", "description": "Library" },
+    "/recipes/{recipeId}/reviews/{reviewId}": { "schema": "Reviews", "description": "Review subcollection" },
+    "/mealPlans/{planId}": { "schema": "MealPlan", "description": "Planner" },
+    "/shoppingLists/{itemId}": { "schema": "ShoppingListItem", "description": "Shopping" },
+    "/pantry/{itemId}": { "schema": "Pantry", "description": "Pantry contents" },
+    "/favorites/{favoriteId}": { "schema": "Favorite", "description": "User favorites" },
+    "/cookingLogs/{logId}": { "schema": "CookingLog", "description": "User cooking history" },
+    "/sharedTodos/{todoId}": { "schema": "SharedTodo", "description": "Shared kitchen and culinary tasks and chores" },
+    "/families/{familyId}": { "schema": "Family", "description": "A group of family members sharing a culinary hub and collaborative chores" },
+    "/files/{fileId}": { "schema": "FileRecord", "description": "Uploaded, synced culinary/gourmet assets, recipes, and documents" },
+    "/files/{fileId}/chunks/{chunkId}": { "schema": "FileChunk", "description": "A portion of file binary represented as base64 in Firestore" },
+    "/nutritionLogs/{logId}": { "schema": "NutritionLog", "description": "Daily food, hydration, and energy journal" }
+  }
+}
