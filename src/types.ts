@@ -36,6 +36,7 @@ export interface Recipe {
   averageRating: number;
   servings: number;
   healthAdvice?: string;
+  isFallback?: boolean;
 }
 
 export interface Achievement {

@@ -4,6 +4,7 @@ import { signIn, signOut } from '../../lib/firebase';
 import { 
   ChefHat, 
   Search, 
+  Plus,
   Calendar, 
   ShoppingBag, 
   Sparkles, 
@@ -47,10 +48,10 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
     { name: 'Generator', path: '/generate', icon: Sparkles, auth: true },
     { name: 'Pantry', path: '/pantry', icon: ShoppingBag, auth: true },
     { name: 'Planner', path: '/planner', icon: Calendar, auth: true },
-    { name: 'Nutrition Log', path: '/nutrition', icon: Activity, auth: true },
     { name: 'Shopping', path: '/shopping', icon: ShoppingBag, auth: true },
     { name: 'Family Hub', path: '/shared-todos', icon: ClipboardList, auth: true },
     { name: 'Gourmet Vault', path: '/files', icon: Database, auth: true },
+    { name: 'Submit Recipe', path: '/submit-recipe', icon: Plus, auth: true },
   ];
 
   if (user?.email === 'lewisiraki1@gmail.com') {
@@ -69,10 +70,10 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
   // Mobile "More" sheet items
   const mobileMoreTabs = [
     { name: 'Meal Planner', path: '/planner', icon: Calendar },
-    { name: 'Nutrition Log', path: '/nutrition', icon: Activity },
     { name: 'Shopping List', path: '/shopping', icon: ShoppingBag },
     { name: 'Family Hub', path: '/shared-todos', icon: ClipboardList },
     { name: 'Gourmet Vault', path: '/files', icon: Database },
+    { name: 'Submit Recipe', path: '/submit-recipe', icon: Plus },
     { name: 'My Profile', path: '/profile', icon: User },
     { name: 'Subscription', path: '/subscription', icon: CreditCard },
   ];
@@ -90,8 +91,13 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
           {/* Top Header Row */}
           <div className="h-20 flex items-center justify-between border-b border-white/5">
             <Link to="/" className="flex items-center gap-3">
-              <div className="bg-amber-accent p-2.5 rounded-2xl shadow-lg shadow-amber-accent/20">
-                <ChefHat className="w-5 h-5 text-black" />
+              <div className="shrink-0 w-10 h-10 flex items-center justify-center overflow-hidden rounded-2xl">
+                <img
+                  src="https://plain-eeur-prod-public.komododecks.com/202606/11/W44EwPiBLuI73qacWwCj/image.png"
+                  alt="Daily Meal Logo"
+                  className="w-full h-full object-cover rounded-xl"
+                  referrerPolicy="no-referrer"
+                />
               </div>
               <div className="flex flex-col">
                 <span className="font-serif text-2xl font-bold tracking-tight text-white leading-none">Daily Meal Recipe</span>
@@ -144,8 +150,8 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
           </div>
 
           {/* Tab Navigation Row */}
-          <div className="h-14 flex items-center justify-center overflow-x-auto no-scrollbar">
-            <div className="flex items-center gap-10">
+          <div className="h-14 flex items-center justify-start xl:justify-center overflow-x-auto no-scrollbar px-4 xl:px-0">
+            <div className="flex items-center gap-4 lg:gap-8 xl:gap-10 min-w-max">
               {navItems.map((item) => {
                 if (item.auth && !user) return null;
                 const isActive = location.pathname === item.path;
@@ -179,8 +185,13 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
       {/* 2. MOBILE TOP FLOATING HEADER (Optimized for Mobile Browsers & Native Apps) */}
       <header className="md:hidden bg-graphite/90 border-b border-white/5 sticky top-0 z-40 backdrop-blur-md px-6 py-5.5 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
-          <div className="bg-amber-accent p-1.5 rounded-xl">
-            <ChefHat className="w-4 h-4 text-black" />
+          <div className="shrink-0 w-8 h-8 flex items-center justify-center overflow-hidden rounded-xl">
+            <img
+              src="https://plain-eeur-prod-public.komododecks.com/202606/11/W44EwPiBLuI73qacWwCj/image.png"
+              alt="Daily Meal Logo"
+              className="w-full h-full object-cover rounded-lg"
+              referrerPolicy="no-referrer"
+            />
           </div>
           <div className="flex flex-col">
             <span className="font-serif text-lg font-bold text-white leading-none">Daily Meal Recipe</span>

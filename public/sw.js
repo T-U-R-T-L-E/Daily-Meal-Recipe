@@ -1,11 +1,9 @@
 // Service Worker for Daily Meal Recipe PWA installation
-const CACHE_NAME = 'daily-meal-v2';
+const CACHE_NAME = 'daily-meal-v5-force-refresh';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/manifest.json',
-  '/logo.svg',
-  '/logo.png'
+  '/manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
@@ -56,8 +54,13 @@ self.addEventListener('fetch', (event) => {
   // Replaces the blank page with our cached index.html so react routing can render routes offline
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(() => {
-        return caches.match('/index.html') || caches.match('/');
+      fetch(event.request).catch(async () => {
+        const cached = await caches.match('/index.html') || await caches.match('/');
+        if (cached) return cached;
+        return new Response("You are offline. Please connect to the internet to access this page.", {
+          status: 503,
+          headers: { 'Content-Type': 'text/html; charset=utf-8' }
+        });
       })
     );
     return;
@@ -90,12 +93,14 @@ self.addEventListener('fetch', (event) => {
             });
           }
           return networkResponse;
-        }).catch(() => {
+        }).catch(async () => {
           // If totally offline and static request fails, try matching index.html if html is required
           const acceptHeader = event.request.headers.get('accept') || '';
           if (acceptHeader.includes('text/html')) {
-            return caches.match('/index.html');
+            const cachedHtml = await caches.match('/index.html');
+            if (cachedHtml) return cachedHtml;
           }
+          return new Response("Offline resource unavailable", { status: 408 });
         });
       })
     );

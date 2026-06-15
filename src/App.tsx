@@ -27,7 +27,7 @@ import FilesHub from './pages/FilesHub';
 import ComplianceHub from './pages/ComplianceHub';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
-import Nutrition from './pages/Nutrition';
+import SubmitRecipe from './pages/SubmitRecipe';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
@@ -223,16 +223,6 @@ function AppContent() {
               } 
             />
             <Route 
-              path="/nutrition" 
-              element={
-                user ? (
-                  <SubscriptionGuard>
-                    <Nutrition />
-                  </SubscriptionGuard>
-                ) : <Navigate to="/" />
-              } 
-            />
-            <Route 
               path="/shopping" 
               element={
                 user ? (
@@ -275,6 +265,16 @@ function AppContent() {
             <Route path="/profile" element={user ? <Profile /> : <Navigate to="/" />} />
             <Route path="/subscription" element={user ? <Subscription /> : <Navigate to="/" />} />
             <Route path="/recipe/:id" element={<RecipeDetails />} />
+            <Route 
+              path="/submit-recipe" 
+              element={
+                user ? (
+                  <SubscriptionGuard>
+                    <SubmitRecipe />
+                  </SubscriptionGuard>
+                ) : <Navigate to="/" />
+              } 
+            />
             <Route path="/guided/:id" element={<GuidedCooking />} />
             <Route path="/leaderboard" element={user ? <Leaderboard /> : <Navigate to="/" />} />
             <Route path="/admin" element={user && user.email === 'lewisiraki1@gmail.com' ? <Admin /> : <Navigate to="/" />} />

@@ -231,7 +231,7 @@ export default function RecipeDetails() {
 
   const addToPlanner = () => {
     if (!recipe) return;
-    navigate('/meal-planner', { 
+    navigate('/planner', { 
       state: { 
         addRecipe: {
           id: recipe.id,
@@ -273,6 +273,29 @@ export default function RecipeDetails() {
       handleFirestoreError(error, OperationType.UPDATE, 'users/cookingLogs');
     } finally {
       setIsCooking(false);
+    }
+  };
+
+  const handleShareRecipe = async () => {
+    if (!recipe) return;
+
+    const shareData = {
+      title: recipe.name,
+      text: recipe.description || `Check out this amazing ${recipe.name} recipe on Daily Meal Recipe!`,
+      url: window.location.href,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.warn('Native web share failed, opening share card:', err);
+          setIsShareOpen(true);
+        }
+      }
+    } else {
+      setIsShareOpen(true);
     }
   };
 
@@ -326,9 +349,12 @@ export default function RecipeDetails() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-start">
         <div className="space-y-12">
           <div className="space-y-8">
-            <h1 className="font-serif text-7xl md:text-8xl font-light tracking-tight text-white leading-[0.8]">
+            <motion.h1
+              layoutId={`recipe-title-${recipe.id}`}
+              className="font-serif text-7xl md:text-8xl font-light tracking-tight text-white leading-[0.8]"
+            >
               {recipe.name}
-            </h1>
+            </motion.h1>
             <p className="text-xl text-gray-400 font-light italic leading-relaxed max-w-xl">
               {recipe.description}
             </p>
@@ -568,7 +594,7 @@ export default function RecipeDetails() {
               Save Offline
             </button>
             <button 
-              onClick={() => setIsShareOpen(true)}
+              onClick={handleShareRecipe}
               className="flex-1 px-6 py-3 bg-graphite border border-white/10 text-white rounded-full text-[9px] font-bold uppercase tracking-[0.2em] hover:border-amber-accent transition-all flex items-center justify-center gap-2"
             >
               <Share2 className="w-3 h-3 text-amber-accent" />
@@ -639,6 +665,7 @@ export default function RecipeDetails() {
         <div className="space-y-8">
           <div className="rounded-[48px] border border-white/5 overflow-hidden shadow-2xl relative group h-[500px]">
              <motion.img 
+              layoutId={`recipe-img-${recipe.id}`}
               style={{ y }}
               src={recipe.imageUrl || `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=1000`}
               className="w-full h-[120%] object-cover md:grayscale md:group-hover:grayscale-0 transition-all duration-1000 scale-105 group-hover:scale-100 absolute top-[-10%]"
@@ -647,7 +674,7 @@ export default function RecipeDetails() {
               referrerPolicy="no-referrer"
               onError={(e) => {
                 e.currentTarget.onerror = null;
-                e.currentTarget.src = "https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&q=80&w=1000";
+                e.currentTarget.src = `https://images.unsplash.com/featured/1200x800/?food,${encodeURIComponent(recipe.category || recipe.name)}`;
               }}
              />
              <div className="absolute inset-0 bg-gradient-to-t from-onyx/40 to-transparent pointer-events-none" />

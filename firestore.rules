@@ -279,6 +279,19 @@ service cloud.firestore {
       }
     }
 
+    // Search Suggestions Rules (Read/Write client-side with secure increment constraints)
+    match /search_suggestions/{suggestionId} {
+      function isValidSearchSuggestion(data) {
+        return data.keys().hasAll(['text', 'count']) &&
+               data.text is string && data.text.size() <= 100 &&
+               data.count is number;
+      }
+      allow read: if isSignedIn();
+      allow create: if isValidId(suggestionId) && isVerifiedUser() && isValidSearchSuggestion(incoming()) && (incoming().get('count', 0) == 1 || incoming().get('count', 0) == 0);
+      allow update: if isValidId(suggestionId) && isVerifiedUser() && isValidSearchSuggestion(incoming()) && 
+                    (incoming().count == existing().count + 1 || incoming().count == existing().count);
+    }
+
     // Support collectionGroup and top-level reviews queries safely
     match /{path=**}/reviews/{reviewId} {
       allow read: if isSignedIn() && (

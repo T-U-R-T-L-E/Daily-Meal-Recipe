@@ -237,6 +237,18 @@
         "notes": { "type": "string" }
       },
       "required": ["userId", "date", "waterIntake", "energyLevel"]
+    },
+    "SearchSuggestion": {
+      "title": "Search Suggestion",
+      "description": "Stored user search terms for auto-suggestions",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "count": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["text", "count"]
     }
   },
   "firestore": {
@@ -252,6 +264,7 @@
     "/families/{familyId}": { "schema": "Family", "description": "A group of family members sharing a culinary hub and collaborative chores" },
     "/files/{fileId}": { "schema": "FileRecord", "description": "Uploaded, synced culinary/gourmet assets, recipes, and documents" },
     "/files/{fileId}/chunks/{chunkId}": { "schema": "FileChunk", "description": "A portion of file binary represented as base64 in Firestore" },
-    "/nutritionLogs/{logId}": { "schema": "NutritionLog", "description": "Daily food, hydration, and energy journal" }
+    "/nutritionLogs/{logId}": { "schema": "NutritionLog", "description": "Daily food, hydration, and energy journal" },
+    "/search_suggestions/{suggestionId}": { "schema": "SearchSuggestion", "description": "Global list of searched queries and counts" }
   }
 }

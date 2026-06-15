@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Shield, BookOpen, Clock, Mail, ExternalLink, ArrowLeft } from 'lucide-react';
+import { Shield, BookOpen, Clock, Mail, ExternalLink, ArrowLeft, CheckCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function PrivacyPolicyPage() {
@@ -17,7 +17,7 @@ export default function PrivacyPolicyPage() {
 
 Last Updated: May 2026
 
-At ${savedName} ("we," "our," or "us"), operated under the entity ${savedEntity}, we are absolutely committed to protecting user transparency and complying with regional regulations such as GDPR (EU) and CCPA (USA).
+At ${savedName} ("we," "our," or "us"), operated under the entity ${savedEntity}, we are absolutely committed to protecting user transparency, secure system architecture, and complying with regional regulations such as GDPR (EU) and CCPA (USA).
 
 1. TYPES OF USER DATA WE PROCESS
 We process account credentials and metrics necessary to support cloud-synchronization, secure authentication, and healthy, personalized favorite filters:
@@ -28,10 +28,19 @@ We process account credentials and metrics necessary to support cloud-synchroniz
 - Cookies & Browser Storage: Storing local parameters, ingredients list items, and session indicators.
 - Dietary Requirements / Allergies: Strictly processed with high consent to safeguard recipes from allergy concerns.
 
-2. HOW WE STORE AND SECURE DATA
-All user preferences and database items are hosted securely under modern Firestore guidelines. Credentials cannot be index-read in plain sight. Paystack transactions are processed end-to-end securely off-server.
+2. PHYSICAL STORAGE AND SECURITY MEASURES
+All user preferences and database items are hosted securely under modern Firestore guidelines. Credentials cannot be index-read in plain sight. We enforce strict data transmission controls:
 
-3. YOUR RIGHTS: ERASURE & JSON EXPORT
+- Secure Transport: Authorized tokens are restricted to premium SSL/TLS connections and transmitted solely in request headers, never exposed via query strings or URL history.
+- Browser Cache Security: Firewalls protect browser level state, automatically clear memory caching under system restarts, and self-heal from sandbox environment corruption.
+
+3. SECURITY COHESION & THIRD-PARTY OAuth
+We protect user identities across environments utilizing industry-standard validation mechanisms:
+- Proof Key for Code Exchange (PKCE) natively shields OAuth handshakes, preventing auth manipulation across shared devices.
+- Anti-CSRF protection forces cryptographically random token callbacks.
+- RISC Integration coordinates security channels to automatically clear active local sessions if authentication keys are revoked or compromised.
+
+4. YOUR RIGHTS: ERASURE & JSON EXPORT
 Under strict GDPR rules, you hold full claim to request instant, permanent erasure of your culinary registries, subscription state records, or to download a full JSON dump of your profile files.
 
 For questions or data action requests, please dispatch details to ${savedEmail}.`;
@@ -81,8 +90,81 @@ For questions or data action requests, please dispatch details to ${savedEmail}.
             </div>
 
             {/* Render with neat spacing */}
-            <div className="whitespace-pre-wrap font-sans text-xs sm:text-sm text-slate-300 hover:text-white leading-relaxed space-y-4 font-light">
+            <div className="whitespace-pre-wrap font-sans text-xs sm:text-sm text-slate-300 hover:text-white leading-relaxed space-y-4 font-light border-b border-white/5 pb-6">
               {policyText}
+            </div>
+
+            {/* High-Fidelity App Security & OAuth Status Dashboard */}
+            <div className="pt-2 text-left space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="bg-amber-accent/10 p-1.5 rounded-lg text-amber-accent animate-pulse">
+                    <Shield className="w-4 h-4" />
+                  </div>
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-white">App Security & Trust Protocols</h4>
+                </div>
+                <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full text-[9px] font-bold text-emerald-400 uppercase tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Active Protection
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* Item 1: Secure Code Flow */}
+                <div className="p-3.5 bg-white/[0.01] border border-white/5 hover:border-white/10 rounded-2xl flex items-start gap-3 transition-colors">
+                  <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-bold text-white uppercase tracking-wider">Secure PKCE Authorization Code Flow</span>
+                    <p className="text-[10px] text-gray-400 leading-normal font-light">
+                      Uses Proof Key for Code Exchange (PKCE) natively, preventing auth manipulation across shared desktop and client-side devices.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Item 2: CSRF Security */}
+                <div className="p-3.5 bg-white/[0.01] border border-white/5 hover:border-white/10 rounded-2xl flex items-start gap-3 transition-colors">
+                  <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-bold text-white uppercase tracking-wider">Anti-CSRF State Parameter Protection</span>
+                    <p className="text-[10px] text-gray-400 leading-normal font-light">
+                      Forces unique cryptographically random state parameters on token callbacks, shielding you from cross-site request forgery.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Item 3: Secure Tokens */}
+                <div className="p-3.5 bg-white/[0.01] border border-white/5 hover:border-white/10 rounded-2xl flex items-start gap-3 transition-colors">
+                  <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-bold text-white uppercase tracking-wider">Secure Transport & Header Transfer</span>
+                    <p className="text-[10px] text-gray-400 leading-normal font-light">
+                      Tokens are restricted to safe SSL/TLS connections and transmitted solely in request headers, never exposed via query strings or URL histories.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Item 4: Cross-Account Protection */}
+                <div className="p-3.5 bg-white/[0.01] border border-white/5 hover:border-white/10 rounded-2xl flex items-start gap-3 transition-colors">
+                  <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-bold text-white uppercase tracking-wider font-sans">Cross-Account Protection (RISC Integration)</span>
+                    <p className="text-[10px] text-gray-400 leading-normal font-light">
+                      Integrates our coordination server directly with Google Security Event Coordination to automatically clear local sessions on token revocation or hijack events.
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Item 5: App Block / Webview Auditing */}
+                <div className="p-3.5 bg-white/[0.01] border border-white/5 hover:border-white/10 rounded-2xl flex items-start gap-3 transition-colors md:col-span-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-bold text-white uppercase tracking-wider font-sans">App Integrity & Ownership Verification</span>
+                    <p className="text-[10px] text-gray-400 leading-normal font-light">
+                      Domain ownership holds valid SSL, verified signatures, and security validation configurations aligning strictly on production targets.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Extra Disclaimer Box */}

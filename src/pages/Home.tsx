@@ -260,7 +260,7 @@ export default function Home() {
                   loading="eager"
                   onError={(e) => {
                      e.currentTarget.onerror = null;
-                     e.currentTarget.src = "https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&q=80&w=1000";
+                     e.currentTarget.src = `https://images.unsplash.com/featured/1200x800/?food,${encodeURIComponent(recipeOfTheDay.category || recipeOfTheDay.name)}`;
                   }}
                 />
                 {/* Solid overlay mask instead of complex neon-blue gradient */}

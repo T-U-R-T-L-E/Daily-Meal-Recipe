@@ -383,6 +383,10 @@ export default function Generator() {
                src={recipe.imageUrl || "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1200"} 
                className="w-full h-full object-cover opacity-60 mix-blend-overlay md:grayscale md:group-hover:grayscale-0 transition-all duration-700"
                alt={recipe.name}
+               onError={(e) => {
+                 e.currentTarget.onerror = null;
+                 e.currentTarget.src = `https://images.unsplash.com/featured/1200x800/?food,${encodeURIComponent(recipe.category || recipe.name)}`;
+               }}
              />
              <div className="absolute inset-0 bg-gradient-to-t from-onyx via-onyx/40 to-transparent" />
              

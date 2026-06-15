@@ -93,7 +93,8 @@ export default function RecipeCard({ recipe, index, activeTags = [] }: Props) {
             <ChefHat className="w-8 h-8 text-amber-accent/20 animate-spin" />
           </div>
         )}
-        <img
+        <motion.img
+          layoutId={`recipe-img-${recipe.id}`}
           src={imageSrc}
           alt={recipe.name}
           loading="lazy"
@@ -101,7 +102,7 @@ export default function RecipeCard({ recipe, index, activeTags = [] }: Props) {
           onLoad={() => setImgLoading(false)}
           onError={() => {
             console.warn(`Fallback image triggered for: ${recipe.name}`);
-            setImageSrc("https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&q=60&w=600");
+            setImageSrc(`https://images.unsplash.com/featured/600x800/?food,${encodeURIComponent(recipe.category || recipe.name)}`);
             setImgLoading(false);
           }}
           className={cn(
@@ -125,9 +126,12 @@ export default function RecipeCard({ recipe, index, activeTags = [] }: Props) {
                {recipe.category && <span className="text-[8px] px-2 py-0.5 bg-white/5 border border-white/10 rounded-full text-white/40 uppercase font-bold tracking-widest">{recipe.category}</span>}
                {recipe.cuisine && <span className="text-[8px] px-2 py-0.5 bg-amber-accent/10 border border-amber-accent/20 rounded-full text-amber-accent uppercase font-bold tracking-widest">{recipe.cuisine}</span>}
             </div>
-            <h3 className="font-serif text-2xl font-light text-white group-hover:text-amber-accent transition-colors mt-1.5">
+            <motion.h3
+              layoutId={`recipe-title-${recipe.id}`}
+              className="font-serif text-2xl font-light text-white group-hover:text-amber-accent transition-colors mt-1.5"
+            >
               {recipe.name}
-            </h3>
+            </motion.h3>
 
             {/* Health & Diet Warning Indicators */}
             {warnings.length > 0 && (

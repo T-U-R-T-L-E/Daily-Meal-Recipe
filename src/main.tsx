@@ -83,3 +83,51 @@ if ('serviceWorker' in navigator) {
     });
   });
 }
+
+// Self-healing handler for browser-level IndexedDB corruption or clearing site data failures
+if (typeof window !== 'undefined') {
+  const healIndexedDb = (errorMessage: string): boolean => {
+    const isCorruptionError = 
+      errorMessage.includes('refusing to open IndexedDB') || 
+      errorMessage.includes('potential corruption of the IndexedDB') ||
+      errorMessage.includes('lastClosedDbVersion') ||
+      errorMessage.includes('IndexedDB database data');
+      
+    if (isCorruptionError) {
+      console.warn("[Self-Healing] Detected corrupt browser IndexedDB partition. Purging caches and rebuilding database structure...");
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+        if (window.indexedDB) {
+          const fsDbName = "firestore/[DEFAULT]/confident-monument-s6tp2/ai-studio-6beb5136-c069-4cf3-85bb-75cf12bb6163";
+          window.indexedDB.deleteDatabase(fsDbName);
+          window.indexedDB.deleteDatabase("firebase-auth-storage");
+        }
+      } catch (e) {
+        console.error("IndexedDB healing failure", e);
+      }
+      setTimeout(() => {
+        window.location.reload();
+      }, 300);
+      return true;
+    }
+    return false;
+  };
+
+  window.addEventListener('error', (event: ErrorEvent) => {
+    const msg = event.message || (event.error && event.error.message) || '';
+    if (healIndexedDb(msg)) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }, true);
+
+  window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
+    const error = event.reason;
+    const msg = error ? (error.message || String(error)) : '';
+    if (healIndexedDb(msg)) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }, true);
+}
