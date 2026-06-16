@@ -122,7 +122,7 @@ export function useAuth() {
                 isProfileComplete: false, // Default is false for Google first-time login auto profile creation
                 subscription: {
                   status: 'trial',
-                  trialEndDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+                  trialEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
                 }
               };
               

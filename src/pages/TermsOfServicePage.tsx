@@ -22,8 +22,10 @@ Welcome to ${savedName}! This Agreement governs your legal usage of the meal org
 1. GENERAL USE & REGISTRATION OBLIGATIONS
 To create an account, you must hold correct authorization. Accessing our APIs, token authorization workflows, or Google/Apple identities requires strict compliance with our platform configurations. You agree to protect your culinary credentials and refrain from automated database queries, recipe scraping, tampering with Proof Key for Code Exchange (PKCE) keys, spoofing callback parameters, or executing script injections.
 
-2. SUB-REGISTRATION & TRANSACTIONS
-Access to pro recipe generation is billed on a recurring sub-basis. Cancelations must be submitted securely before renew timings.
+2. SUB-REGISTRATION, BILLING & REFUND POLICY
+Access to pro recipe generation is billed on a recurring subscription basis. Cancellations must be submitted securely before renewal timings.
+
+Refunds & Guarantee: We provide a 14-day hassle-free money-back guarantee for first-time subscription activations. If you are unsatisfied with Daily Meal Recipe Plus, you can request a full refund of your transaction within 14 days of purchase. After 14 days, all renewal charges and fees are non-refundable. Any breaches of platform stability or security immediately void any refund eligibility.
 
 3. PLATFORM STABILITY & SECURITY COMPLIANCE
 We employ state-of-the-art security mechanisms to shield user credentials:

@@ -242,8 +242,10 @@ As a condition of your account creation, you agree strictly to refrain from:
 - Uploading malicious files or binary proxies.
 Violations of platform security will result in an immediate unconditional ban without notice or refund.
 
-2. FEES AND FINANCIAL TERMS
-Some features of ${appName} are categorized as Plus components. Subscription rates, trial limits, and renewal dates are disclosed before activation. Paid modules are contractually billed in advance and are non-refundable except as required under statutory legislation.
+2. FEES, SUBSCRIPTIONS & REFUND POLICY
+Some features of ${appName} are categorized as Plus components. Subscription rates, trial limits, and renewal dates are disclosed before activation. Paid modules are contractually billed in advance.
+
+Refunds & Guarantee: We offer a 14-day hassle-free refund policy for first-time premium subscription upgrades. You can receive a full refund of your payment if requested within 14 days of upgrade. After 14 days, fees are non-refundable. Refund requests must be sent to the support legal desk. Accounts found in violation of security or Decorum guidelines are entirely ineligible for refunds.
 
 3. PHYSICAL ALLERGEN WARNING & LIMITATION OF LIABILITY
 Our meal planners, visual food scanners, and AI chefs act solely as advisory cooking guides. We cannot and do not guarantee the completeness or safety of allergy filtering. It is your absolute responsibility to check raw ingredients and prepare items safely. ${legalEntity} accepts no liability for foodborne illnesses, physical discomforts, or injury resulting from using our kitchen tools.

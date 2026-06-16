@@ -45,7 +45,7 @@ export default function Subscription() {
     loadProfile();
   }, [user]);
 
-  // Option 1: Start 3-Month Free Trial immediately
+  // Option 1: Start 1-Month Free Trial immediately
   const handleStartTrial = async () => {
     if (!user || !profile) return;
     setProcessing(true);
@@ -53,9 +53,9 @@ export default function Subscription() {
     setTrialSuccessMsg(null);
 
     try {
-      // Set trial end date to 90 days from now (3 months)
+      // Set trial end date to 30 days from now (1 month)
       const trialEndDate = new Date();
-      trialEndDate.setDate(trialEndDate.getDate() + 90);
+      trialEndDate.setDate(trialEndDate.getDate() + 30);
 
       const trialSubscription = {
         status: 'trial',
@@ -72,7 +72,7 @@ export default function Subscription() {
         subscription: trialSubscription as any
       });
 
-      setTrialSuccessMsg("Fantastic choice! Your 3-month free trial of Plus is now active!");
+      setTrialSuccessMsg("Fantastic choice! Your 1-month free trial of Plus is now active!");
     } catch (err: any) {
       const friendlyVal = handleError(err, {
         componentName: 'Subscription',
@@ -132,7 +132,7 @@ export default function Subscription() {
             const updatedSubscription = {
               status: 'active',
               subscribedDate: new Date().toISOString(),
-              trialEndDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+              trialEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
             };
 
             await updateDoc(doc(db, 'users', user.uid), {
@@ -144,7 +144,7 @@ export default function Subscription() {
               subscription: updatedSubscription as any
             });
 
-            setTrialSuccessMsg("Wonderful! Payment verified. Your Plus subscription is now active with 3 months free trial!");
+            setTrialSuccessMsg("🎉 Subscription Active! Payment verified successfully. Welcome to Daily Meal Recipe Plus — your digital kitchen is now fully upgraded with unlimited saves and pro tools!");
           } else {
             const friendlyVal = handleError(
               result.error || "Payment validation check failed. The gateway rejected the secure signature.",
@@ -286,7 +286,7 @@ export default function Subscription() {
                 <span className="text-5xl font-light text-white">$5</span>
                 <span className="text-white/40 text-sm italic">/ per month</span>
               </div>
-              <p className="text-amber-accent text-xs font-bold uppercase tracking-widest">3 Months Free Trial Included</p>
+              <p className="text-amber-accent text-xs font-bold uppercase tracking-widest">1-Month Free Trial Included</p>
             </div>
 
             <div className="pt-8 border-t border-white/5 space-y-6">
@@ -307,7 +307,7 @@ export default function Subscription() {
                 </div>
               ) : isTrial ? (
                 <div className="p-6 bg-white/5 rounded-2xl border border-white/10 text-center space-y-3">
-                  <p className="text-amber-accent text-xs font-bold uppercase tracking-widest">3-Month Free Trial Active</p>
+                  <p className="text-amber-accent text-xs font-bold uppercase tracking-widest">1-Month Free Trial Active</p>
                   <p className="text-white text-base font-serif italic">{trialDaysLeft} days remaining</p>
                   <p className="text-white/40 text-[10px] italic">Enjoy full access! After trial ends, subscription is $5/month.</p>
                   
@@ -335,7 +335,7 @@ export default function Subscription() {
                       </span>
                     ) : (
                       <>
-                        Start 3-Month Free Trial
+                        Start 1-Month Free Trial
                         <Sparkles className="w-4 h-4" />
                       </>
                     )}
@@ -354,6 +354,37 @@ export default function Subscription() {
                   >
                     Subscribe with Card ($5/mo)
                   </button>
+
+                  <div className="text-[10px] text-white/40 text-center leading-normal pt-2 font-sans font-light select-none">
+                    By making a payment, you agree to our{' '}
+                    <a 
+                      href="/terms" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="text-amber-accent hover:underline font-semibold"
+                    >
+                      Terms of Service
+                    </a>
+                    ,{' '}
+                    <a 
+                      href="/privacy" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="text-amber-accent hover:underline font-semibold"
+                    >
+                      Privacy Policy
+                    </a>
+                    , and our{' '}
+                    <a 
+                      href="/refund-policy" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="text-amber-accent hover:underline font-semibold"
+                    >
+                      14-Day Refund Policy
+                    </a>
+                    .
+                  </div>
 
                   {processing && (
                     <motion.p
@@ -377,10 +408,17 @@ export default function Subscription() {
         </div>
       </div>
 
-      <div className="pt-20 border-t border-white/5 text-center space-y-4">
+      <div className="pt-20 border-t border-white/5 text-center space-y-4 font-sans">
         <p className="text-white/20 text-xs italic">
           Everything in Daily Meal Recipe is tied to your unique email address: <span className="text-white/40">{user?.email}</span>
         </p>
+        <div className="text-[10px] text-white/20 flex flex-wrap justify-center gap-x-4 gap-y-1 uppercase tracking-widest font-bold">
+          <a href="/terms" target="_blank" rel="noopener noreferrer" className="hover:text-amber-accent transition-colors">Terms of Service</a>
+          <span>•</span>
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-amber-accent transition-colors">Privacy Policy</a>
+          <span>•</span>
+          <a href="/refund-policy" target="_blank" rel="noopener noreferrer" className="hover:text-amber-accent transition-colors">Refund Policy</a>
+        </div>
         <p className="text-white/15 text-[10px] uppercase tracking-[0.2em] font-medium leading-relaxed">
           Secure payment processing • Cancel anytime • Premium Support: <a href="mailto:info@dailymealrecipe.online" className="text-amber-accent/80 hover:text-amber-accent transition-colors underline decoration-dotted font-bold">info@dailymealrecipe.online</a>
         </p>

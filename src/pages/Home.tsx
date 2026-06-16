@@ -445,12 +445,42 @@ export default function Home() {
       </section>
 
       {/* Brand Footer with Support / Enquiry details */}
-      <footer className="w-full py-12 border-t border-white/5 text-center px-1 sm:px-6 mt-16 pb-6 md:pb-6">
-        <div className="max-w-7xl xxl:max-w-[1400px] 3xl:max-w-[1800px] 4xl:max-w-[2400px] 5xl:max-w-[3200px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
-          <p className="text-[10px] uppercase font-bold tracking-[0.2em] text-white/30">
-            &copy; {new Date().getFullYear()} <span className="text-white/60">dailymealrecipe.online</span>. All Rights Reserved.
-          </p>
-          <div className="flex items-center gap-2">
+      <footer className="w-full py-12 border-t border-white/5 text-center px-4 sm:px-6 mt-16 pb-6 md:pb-6 font-sans">
+        <div className="max-w-7xl xxl:max-w-[1400px] 3xl:max-w-[1800px] 4xl:max-w-[2400px] 5xl:max-w-[3200px] mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex flex-col items-center md:items-start gap-2">
+            <p className="text-[10px] uppercase font-bold tracking-[0.2em] text-white/30">
+              &copy; {new Date().getFullYear()} <span className="text-white/60">dailymealrecipe.online</span>. All Rights Reserved.
+            </p>
+            <div className="text-[10px] text-white/40 flex flex-wrap justify-center md:justify-start gap-x-4 gap-y-1 mt-1">
+              <a 
+                href="/terms" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="hover:text-amber-accent hover:underline transition-colors font-semibold"
+              >
+                Terms of Service
+              </a>
+              <span className="text-white/10">•</span>
+              <a 
+                href="/privacy" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="hover:text-amber-accent hover:underline transition-colors font-semibold"
+              >
+                Privacy Policy
+              </a>
+              <span className="text-white/10">•</span>
+              <a 
+                href="/refund-policy" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="hover:text-amber-accent hover:underline transition-colors font-semibold"
+              >
+                Refund Policy
+              </a>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 font-sans">
             <span className="text-[9px] uppercase tracking-widest font-bold text-white/20">Support & Enquiries:</span>
             <a 
               href="mailto:info@dailymealrecipe.online" 

@@ -27,6 +27,7 @@ import FilesHub from './pages/FilesHub';
 import ComplianceHub from './pages/ComplianceHub';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
+import RefundPolicyPage from './pages/RefundPolicyPage';
 import SubmitRecipe from './pages/SubmitRecipe';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -169,7 +170,7 @@ function AppContent() {
     return <BrandedSplash />;
   }
 
-  const isPublicPath = location.pathname === '/privacy' || location.pathname === '/terms';
+  const isPublicPath = location.pathname === '/privacy' || location.pathname === '/terms' || location.pathname === '/refund-policy';
 
   if (!user && !isPublicPath) {
     return (
@@ -281,6 +282,7 @@ function AppContent() {
             <Route path="/compliance" element={user && user.email === 'lewisiraki1@gmail.com' ? <ComplianceHub /> : <Navigate to="/" />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/terms" element={<TermsOfServicePage />} />
+            <Route path="/refund-policy" element={<RefundPolicyPage />} />
             <Route 
               path="/scanner" 
               element={

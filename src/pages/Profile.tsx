@@ -63,7 +63,7 @@ export default function Profile() {
             createdAt: new Date().toISOString(),
             subscription: {
               status: 'trial',
-              trialEndDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+              trialEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
             }
           };
           await setDoc(doc(db, 'users', user.uid), defaultProfile);
@@ -908,23 +908,34 @@ export default function Profile() {
                 </div>
 
                 <div className="py-2 text-center">
-                  <p className="text-[11px] text-gray-400 leading-relaxed">
+                  <p className="text-[11px] text-gray-400 leading-relaxed font-sans">
                     Review our{' '}
-                    <Link
-                      to="/terms"
+                    <a
+                      href="/terms"
                       target="_blank"
+                      rel="noopener noreferrer"
                       className="text-amber-accent hover:underline font-bold inline cursor-pointer"
                     >
                       Terms of Service
-                    </Link>
-                    {' '}and{' '}
-                    <Link
-                      to="/privacy"
+                    </a>
+                    ,{' '}
+                    <a
+                      href="/privacy"
                       target="_blank"
+                      rel="noopener noreferrer"
                       className="text-amber-accent hover:underline font-bold inline cursor-pointer"
                     >
                       Privacy Policy
-                    </Link>
+                    </a>
+                    , and{' '}
+                    <a
+                      href="/refund-policy"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-amber-accent hover:underline font-bold inline cursor-pointer"
+                    >
+                      Refund Policy
+                    </a>
                     .
                   </p>
                 </div>

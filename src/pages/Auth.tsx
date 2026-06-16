@@ -315,7 +315,7 @@ export default function Auth() {
           isProfileComplete: true,
           subscription: {
             status: 'trial',
-            trialEndDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+            trialEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           }
         };
 
@@ -543,7 +543,7 @@ export default function Auth() {
           isProfileComplete: false,
           subscription: {
             status: 'trial',
-            trialEndDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+            trialEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           }
         };
         await setDoc(doc(db, 'users', firebaseUser.uid), userProfile);
@@ -614,7 +614,7 @@ export default function Auth() {
           isProfileComplete: false,
           subscription: {
             status: 'trial',
-            trialEndDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+            trialEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           }
         };
         await setDoc(doc(db, 'users', firebaseUser.uid), userProfile);
@@ -1185,23 +1185,34 @@ export default function Auth() {
                     onChange={(e) => setAcceptedTerms(e.target.checked)}
                     className="w-4.5 h-4.5 accent-amber-accent shrink-0 mt-0.5 rounded border-white/10 bg-white/5 cursor-pointer"
                   />
-                  <label htmlFor="terms-checkbox" className="text-[11px] text-gray-400 leading-relaxed cursor-pointer">
+                  <label htmlFor="terms-checkbox" className="text-[11px] text-gray-400 leading-relaxed cursor-pointer font-sans">
                     I acknowledge and agree to the{' '}
-                    <Link
-                      to="/terms"
+                    <a
+                      href="/terms"
                       target="_blank"
-                      className="text-amber-accent hover:underline font-bold inline cursor-pointer"
+                      rel="noopener noreferrer"
+                      className="text-amber-accent hover:underline font-bold inline cursor-pointer text-[11px]"
                     >
                       Terms of Service
-                    </Link>
-                    {' '}and{' '}
-                    <Link
-                      to="/privacy"
+                    </a>
+                    ,{' '}
+                    <a
+                      href="/privacy"
                       target="_blank"
-                      className="text-amber-accent hover:underline font-bold inline cursor-pointer"
+                      rel="noopener noreferrer"
+                      className="text-amber-accent hover:underline font-bold inline cursor-pointer text-[11px]"
                     >
                       Privacy Policy
-                    </Link>
+                    </a>
+                    , and{' '}
+                    <a
+                      href="/refund-policy"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-amber-accent hover:underline font-bold inline cursor-pointer text-[11px]"
+                    >
+                      Refund Policy
+                    </a>
                     .
                   </label>
                 </motion.div>
@@ -1357,17 +1368,22 @@ export default function Auth() {
                       Daily Meal Recipe is a digital meal planning, recipe generation, pantry tracking, and grocery organization platform. Users may access pro elements (Plus features) as part of a promotional or paid subscription structure.
                     </p>
 
-                    <h4 className="text-white font-serif italic text-lg border-b border-white/5 pb-2">3. User Obligations & Security Compliance</h4>
+                    <h4 className="text-white font-serif italic text-lg border-b border-white/5 pb-2">3. Subscription billing & Refund Policy</h4>
+                    <p>
+                      Premium upgrades to Daily Meal Recipe Plus are automatically billed on a monthly or yearly cycle. We provide a 14-day hassle-free money-back guarantee on your initial purchase. If you are unsatisfied, contact us within 14 days of your purchase for a full refund. Beyond 14 days, all renewal charges are non-refundable. Security violations or scraping activity invalidates eligibility for refunds.
+                    </p>
+
+                    <h4 className="text-white font-serif italic text-lg border-b border-white/5 pb-2">4. User Obligations & Security Compliance</h4>
                     <p>
                       You are solely responsible for protecting your credentials. Accessing our APIs or Google/Apple logins requires strict compliance; you agree to refrain from automated database queries, tampering with Proof Key for Code Exchange (PKCE) states, or bypassing CSRF protections. Bypassing state security results in permanent account suspension.
                     </p>
 
-                    <h4 className="text-white font-serif italic text-lg border-b border-white/5 pb-2">4. Disclaimers & Allergy Warning</h4>
+                    <h4 className="text-white font-serif italic text-lg border-b border-white/5 pb-2">5. Disclaimers & Allergy Warning</h4>
                     <p>
                       Daily Meal Recipe generates menu suggestions through language intelligence. However, we DO NOT guarantee accurate determination of ingredients or absolute safety from allergens. All dietary ingredients must be checked manually.
                     </p>
 
-                    <h4 className="text-white font-serif italic text-lg border-b border-white/5 pb-2">5. Support Contacts</h4>
+                    <h4 className="text-white font-serif italic text-lg border-b border-white/5 pb-2">6. Support Contacts</h4>
                     <p>
                       For legal questions, support, or termination of accounts, please contact us directly via email at:{' '}
                       <a href="mailto:info@dailymealrecipe.online" className="text-amber-accent underline font-bold">
