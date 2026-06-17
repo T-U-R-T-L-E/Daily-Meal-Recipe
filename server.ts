@@ -1,6 +1,5 @@
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import dotenv from "dotenv";
 import http from "http";
@@ -2677,57 +2676,67 @@ app.delete("/api/files/delete", (req, res) => {
 
 // Vite middleware setup
 async function setupVite() {
-  // Ensure PWA local directories and assets fallback inside public/
-  const iconsDir = path.join(process.cwd(), 'public', 'icons');
-  if (!fs.existsSync(iconsDir)) {
-    fs.mkdirSync(iconsDir, { recursive: true });
-  }
+  try {
+    // Ensure PWA local directories and assets fallback inside public/
+    const iconsDir = path.join(process.cwd(), 'public', 'icons');
+    if (!fs.existsSync(iconsDir)) {
+      fs.mkdirSync(iconsDir, { recursive: true });
+    }
 
-  const logoSourcePath = path.join(process.cwd(), 'public', 'logo.png');
-  const targetIcons = [
-    'apple-touch-icon.png',
-    'screenshot-mobile.png',
-    'screenshot-desktop.png',
-    'icon-192.png',
-    'icon-512.png',
-  ];
+    const logoSourcePath = path.join(process.cwd(), 'public', 'logo.png');
+    const targetIcons = [
+      'apple-touch-icon.png',
+      'screenshot-mobile.png',
+      'screenshot-desktop.png',
+      'icon-192.png',
+      'icon-512.png',
+    ];
 
-  if (fs.existsSync(logoSourcePath)) {
-    for (const iconName of targetIcons) {
-      const targetPath = path.join(iconsDir, iconName);
-      if (!fs.existsSync(targetPath)) {
-        try {
-          fs.copyFileSync(logoSourcePath, targetPath);
-          console.log(`[PWA Boost] Created dynamic fallback icon /public/icons/${iconName}`);
-        } catch (copyErr) {
-          console.warn(`[PWA Boost] Failed to create ${iconName}:`, copyErr);
+    if (fs.existsSync(logoSourcePath)) {
+      for (const iconName of targetIcons) {
+        const targetPath = path.join(iconsDir, iconName);
+        if (!fs.existsSync(targetPath)) {
+          try {
+            fs.copyFileSync(logoSourcePath, targetPath);
+            console.log(`[PWA Boost] Created dynamic fallback icon /public/icons/${iconName}`);
+          } catch (copyErr) {
+            console.warn(`[PWA Boost] Failed to create ${iconName}:`, copyErr);
+          }
         }
       }
     }
-  }
 
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+    const isProd = process.env.NODE_ENV === "production" || fs.existsSync(path.join(distPath, 'index.html'));
+
+    if (!isProd) {
+      console.log("Starting in DEVELOPMENT mode (Vite Middleware)...");
+      const { createServer: createViteServer } = await import("vite");
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } else {
+      console.log("Starting in PRODUCTION mode (Express Static Service)...");
+      app.use(express.static(distPath));
+      app.get('*', (req, res) => {
+        res.sendFile(path.join(distPath, 'index.html'));
+      });
+    }
+
+    const server = app.listen(PORT, "0.0.0.0", () => {
+      console.log(`SavorAI Server running at http://localhost:${PORT}`);
     });
+
+    // Enforce HTTP connection timeout rules to safeguard against socket exhaustion and slow client attacks
+    server.keepAliveTimeout = 61000;  // 61 seconds (slightly higher than proxy/loadbalancers to preserve reuse)
+    server.headersTimeout = 62000;    // 62 seconds (prevents header stall attacks)
+    server.requestTimeout = 25000;    // 25 seconds (limits maximum processing time per client request)
+  } catch (err) {
+    console.error("Critical failure during setupVite/server startup:", err);
+    process.exit(1);
   }
-
-  const server = app.listen(PORT, "0.0.0.0", () => {
-    console.log(`SavorAI Server running at http://localhost:${PORT}`);
-  });
-
-  // Enforce HTTP connection timeout rules to safeguard against socket exhaustion and slow client attacks
-  server.keepAliveTimeout = 61000;  // 61 seconds (slightly higher than proxy/loadbalancers to preserve reuse)
-  server.headersTimeout = 62000;    // 62 seconds (prevents header stall attacks)
-  server.requestTimeout = 25000;    // 25 seconds (limits maximum processing time per client request)
 }
 
 setupVite();
