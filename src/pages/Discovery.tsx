@@ -37,6 +37,11 @@ export default function Discovery() {
   const [isConsentOpen, setIsConsentOpen] = useState(false);
   const [pendingSearchArgs, setPendingSearchArgs] = useState<{e?: any, overrideTerm?: string} | null>(null);
   const [aiResults, setAiResults] = useState<Recipe[]>([]);
+  const [pendingReveal, setPendingReveal] = useState<{
+    type: 'ai' | 'surprise';
+    mode: 'overwrite' | 'append';
+    items: Recipe[];
+  } | null>(null);
   const [isAISearching, setIsAISearching] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -271,7 +276,8 @@ export default function Discovery() {
       
       // If cached already, use cache
       if (clientSearchCache[queryStr]) {
-        setAiResults(clientSearchCache[queryStr]);
+        setAiResults([]);
+        setPendingReveal({ type: 'ai', mode: 'overwrite', items: clientSearchCache[queryStr] });
         sessionStorage.setItem('ai_search_results', JSON.stringify(clientSearchCache[queryStr]));
         return;
       }
@@ -303,7 +309,8 @@ export default function Discovery() {
         }));
         
         clientSearchCache[queryStr] = formatted;
-        setAiResults(formatted);
+        setAiResults([]);
+        setPendingReveal({ type: 'ai', mode: 'overwrite', items: formatted });
         sessionStorage.setItem('ai_search_results', JSON.stringify(formatted));
         
         // Scroll to results
@@ -331,6 +338,40 @@ export default function Discovery() {
       }
     }
   }, [searchParams, userProfile]);
+
+  useEffect(() => {
+    if (!pendingReveal || pendingReveal.items.length === 0) return;
+
+    const timer = setTimeout(() => {
+      const nextItem = pendingReveal.items[0];
+      const remainingItems = pendingReveal.items.slice(1);
+
+      if (pendingReveal.type === 'ai') {
+        setAiResults((prev) => {
+          if (prev.some(r => r.id === nextItem.id)) return prev;
+          return [...prev, nextItem];
+        });
+      } else {
+        setSurpriseResults((prev) => {
+          const current = prev || [];
+          if (current.some(r => r.id === nextItem.id)) return current;
+          return [...current, nextItem];
+        });
+      }
+
+      if (remainingItems.length > 0) {
+        setPendingReveal({
+          type: pendingReveal.type,
+          mode: pendingReveal.mode,
+          items: remainingItems,
+        });
+      } else {
+        setPendingReveal(null);
+      }
+    }, 400); // 400ms automatic interval per recipe item
+
+    return () => clearTimeout(timer);
+  }, [pendingReveal]);
 
   useEffect(() => {
     async function loadRecipes() {
@@ -544,7 +585,8 @@ export default function Discovery() {
           cookingTime: r.cookTime || '30 min',
           isPublic: true
         })).slice(0, 7);
-        setSurpriseResults(formatted);
+        setSurpriseResults([]);
+        setPendingReveal({ type: 'surprise', mode: 'overwrite', items: formatted });
         const el = document.getElementById('results-target');
         if (el) el.scrollIntoView({ behavior: 'smooth' });
       } catch (error) {
@@ -560,7 +602,8 @@ export default function Discovery() {
       // Add a slight flicker effect to show it's working
       const shuffled = [...recipes].sort(() => 0.5 - Math.random());
       const selected = shuffled.slice(0, Math.min(7, shuffled.length));
-      setSurpriseResults(selected);
+      setSurpriseResults([]);
+      setPendingReveal({ type: 'surprise', mode: 'overwrite', items: selected });
       setSearchTerm('');
       setCategory('All');
       setOfflineOnly(false);
@@ -639,7 +682,8 @@ export default function Discovery() {
         
         // 2. Populate Client-side Cache
         clientSearchCache[queryStr] = formatted;
-        setAiResults(formatted);
+        setAiResults([]);
+        setPendingReveal({ type: 'ai', mode: 'overwrite', items: formatted });
         sessionStorage.setItem('ai_search_results', JSON.stringify(formatted));
       } catch (error) {
         console.error("AI Search failed:", error);
@@ -698,7 +742,7 @@ export default function Discovery() {
 
       if (uniqueNewResults.length > 0) {
         const newResults = [...aiResults, ...uniqueNewResults];
-        setAiResults(newResults);
+        setPendingReveal({ type: 'ai', mode: 'append', items: uniqueNewResults });
         sessionStorage.setItem('ai_search_results', JSON.stringify(newResults));
       }
     } catch (error) {
@@ -1343,7 +1387,7 @@ export default function Discovery() {
             <RecipeCardSkeleton key={i} />
           ))}
         </div>
-      ) : (currentDisplay.length > 0) ? (
+      ) : (currentDisplay.length > 0 || pendingReveal !== null) ? (
         <div className="space-y-12">
           {searchMode === 'world' && currentDisplay.some(r => r.isFallback) && (
             <motion.div 

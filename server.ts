@@ -1231,6 +1231,78 @@ const FALLBACK_RECIPES = [
       { text: "Serve beautiful flaky cod loins immediately with the pan lemon butter sauce spooned on top.", tips: "Delicious paired with steamed asparagus or wild rice." }
     ],
     nutrition: { calories: 240, protein: 30, carbs: 2, fat: 12, fiber: 0, sugar: 0, sodium: 490 }
+  },
+  {
+    id: "golden-garlic-egg-fried-rice",
+    name: "Golden Garlic Egg Fried Rice",
+    description: "Classic Chinese wok-tossed jasmine rice infused with aromatic toasted garlic, scrambled organic eggs, and farm-fresh green scallions.",
+    category: "Lunch",
+    cuisine: "Chinese",
+    prepTime: "5 mins",
+    cookTime: "8 mins",
+    restTime: "1 min",
+    difficulty: "Easy",
+    servings: 2,
+    imageUrl: "https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&q=80&w=1000",
+    videoUrl: "https://www.youtube.com/results?search_query=garlic+egg+fried+rice+tutorial",
+    healthAdvice: "An energetic carbohydrate resource, outstanding for restoration after exercise. Use brown jasmine rice for an elevated fiber percentage.",
+    ingredients: [
+      { item: "Chilled Kept Jasmine Rice", amount: "300", unit: "g", baseAmount: 300 },
+      { item: "Organic Eggs", amount: "3", unit: "pcs", baseAmount: 150 },
+      { item: "Fresh Garlic Cloves", amount: "4", unit: "cloves", baseAmount: 15 },
+      { item: "Garden Scallions (Green Onions)", amount: "3", unit: "stems", baseAmount: 30 },
+      { item: "Toasted Sesame Oil", amount: "10", unit: "ml", baseAmount: 10 },
+      { item: "Light Soy Sauce", amount: "15", unit: "ml", baseAmount: 15 }
+    ],
+    instructions: [
+      { text: "Break up clumped grains of cold, leftover jasmine rice gently with damp clean fingers.", tips: "Cold day-old rice is dryer and produces premium single grains without turning mushy." },
+      { text: "Finely chop garlic cloves and separate green scallions into white and green sections.", tips: "Store green leaf slices for final dressing, white parts for wok sautéing." },
+      { text: "Whisk organic eggs in a small bowl with a tiny pinch of salt until fully combined.", tips: "Beat vigorously to aerate the eggs so they puff up nicely in the wok." },
+      { text: "Heat sesame oil in a wok or heavy cast skillet on extremely high heat until shimmering.", tips: "Wok heat is critical to achieve the authentic 'wok hei' smokiness." },
+      { text: "Pour the whisked egg mixture into the center of the wok, stir-frying until 80% soft scrambled, then set aside.", tips: "Do not overcook; the eggs will cook more later with the rice." },
+      { text: "Add more cooking oil as needed; stir-fry minced garlic and scallion whites for 30 seconds until golden.", tips: "Take care not to let tiny garlic mince burn." },
+      { text: "Dump the jasmine rice into the wok, pressing down with a spatula to disperse rice heat evenly.", tips: "Flipping often prevents bottom scorching while letting single grains sear." },
+      { text: "Pour soy sauce around the outer edges of the hot pan, tossing to coat the rice evenly.", tips: "Searing soy sauce on the hot steel generates superior caramelized umami." },
+      { text: "Fold the scrambled eggs and scallion greens back into the cooked rice, mixing thoroughly.", tips: "Toss vigorously for 1 minute on high heat." },
+      { text: "Portion into clean bowls. Serve hot, garnished with remaining garden green scallion slices.", tips: "Pair with a crisp chili oil or roasted sesame seeds for an extra kick." }
+    ],
+    nutrition: { calories: 390, protein: 14, carbs: 55, fat: 12, fiber: 2, sugar: 1, sodium: 580 }
+  },
+  {
+    id: "creamy-parmesan-wild-mushroom-risotto",
+    name: "Creamy Parmesan Wild Mushroom Risotto",
+    description: "Rich, velvety Italian Arborio rice cooked slowly in savory broth, folded with pan-seared wild cremini mushrooms and aged Parmigiano-Reggiano.",
+    category: "Dinner",
+    cuisine: "Italian",
+    prepTime: "10 mins",
+    cookTime: "25 mins",
+    restTime: "2 mins",
+    difficulty: "Medium",
+    servings: 2,
+    imageUrl: "https://images.unsplash.com/photo-1476124369491-e7addf5db371?auto=format&fit=crop&q=80&w=1000",
+    videoUrl: "https://www.youtube.com/results?search_query=mushroom+risotto+tutorial",
+    healthAdvice: "Provides high levels of B-vitamins and selenium from mushrooms, with slow-releasing energy from premium starches.",
+    ingredients: [
+      { item: "Arborio Risotto Rice", amount: "150", unit: "g", baseAmount: 150 },
+      { item: "Wild Cremini Mushroms", amount: "150", unit: "g", baseAmount: 150 },
+      { item: "Organic Vegetable Broth", amount: "600", unit: "ml", baseAmount: 600 },
+      { item: "Dry White Wine", amount: "50", unit: "ml", baseAmount: 50 },
+      { item: "Fresh Shallot", amount: "1", unit: "pc", baseAmount: 40 },
+      { item: "Aged Parmigiano-Reggiano", amount: "40", unit: "g", baseAmount: 40 }
+    ],
+    instructions: [
+      { text: "Warm up vegetable broth in a small saucepan over low heat. Keep it barely simmering.", tips: "Adding cold broth to cooking rice temperature shocks grains and halts starch release." },
+      { text: "Wipe wild cremini mushrooms with a dry brush and slice them to medium thickness.", tips: "Do not wash mushrooms in pools of water; they act like sponges and won't sear." },
+      { text: "Heat olive oil in your risotto pan; cook mushroom slices until nicely browned, then remove.", tips: "Sear on high heat to lock in earth-like sweet mushroom flavors." },
+      { text: "Sauté finely diced shallots in the remaining pan oil until translucent and soft.", tips: "Shallots provide a far sweeter baseline than standard white onions." },
+      { text: "Add the Arborio rice, stirring to toast grains for 2 minutes until outer edges look clear.", tips: "Toasting seals the outer starch shell so risotto maintains clean texture bites." },
+      { text: "Pour in dry white wine, letting it bubble on high heat until absorbed entirely.", tips: "Wine acidity cuts down rich cheese fatty assets beautifully." },
+      { text: "Pour in one ladle of hot simmering broth, stirring continuously on medium-low heat.", tips: "Constant stirring releases kernel starches, creating natural creamy sauces." },
+      { text: "Wait for the rice to absorb broth before pouring next ladle. Repeat for 18 minutes.", tips: "Maintain a steady low simmer so rice cooks uniformly." },
+      { text: "Stir in seared mushroom slices, freshly grated Parmesan cheese, and 10g cold butter.", tips: "Vigorously beat the risotto off-burner to make the sauce creamy." },
+      { text: "Spoon into shallow dishes immediately. Texture should pour slowly like hot lava.", tips: "Risotto should not stand like a thick, dry clump on a plate." }
+    ],
+    nutrition: { calories: 410, protein: 12, carbs: 58, fat: 14, fiber: 3, sugar: 2, sodium: 512 }
   }
 ];
 
@@ -1243,7 +1315,9 @@ const OFFLINE_RECIPE_TAGS_MAP: Record<string, string[]> = {
   "avocado-sourdough-toast-with-egg": ["avocado", "toast", "bread", "sourdough", "egg", "poached", "breakfast", "brunch", "american", "healthy"],
   "artisanal-mediterranean-quinoa-bowl": ["quinoa", "bowl", "buddha", "salad", "cucumber", "tomato", "olive", "feta", "cheese", "mediterranean", "lunch", "vegan", "vegetarian", "healthy"],
   "classic-tuscan-garlic-butter-steak": ["steak", "beef", "ribeye", "meat", "red meat", "garlic", "butter", "rosemary", "italian", "dinner", "tuscan"],
-  "rustic-italian-tomato-herb-pasta": ["pasta", "spaghetti", "tomato", "sauce", "basil", "garlic", "italian", "dinner", "carb", "vegetarian"]
+  "rustic-italian-tomato-herb-pasta": ["pasta", "spaghetti", "tomato", "sauce", "basil", "garlic", "italian", "dinner", "carb", "vegetarian"],
+  "golden-garlic-egg-fried-rice": ["rice", "fried rice", "egg", "egg fried rice", "chinese", "wok", "scallion", "garlic", "lunch"],
+  "creamy-parmesan-wild-mushroom-risotto": ["rice", "risotto", "mushroom", "creamy", "parmesan", "italian", "dinner", "arborio"]
 };
 
 // Resilient matching cost-free scoring function for precise offline queries
@@ -1535,6 +1609,20 @@ app.post("/api/ai/generate-recipe", async (req, res) => {
     parsedRecipe.authorName = "Discovery AI";
     parsedRecipe.isPublic = true;
     parsedRecipe.status = "approved";
+
+    // Ensure image URL is valid, active, and contains no template placeholders
+    let validatedImageUrl = "";
+    if (typeof parsedRecipe.imageUrl === "string" && parsedRecipe.imageUrl.trim().startsWith("http") && !parsedRecipe.imageUrl.includes("[") && !parsedRecipe.imageUrl.includes("]") && !parsedRecipe.imageUrl.includes("UNIQUE-ID")) {
+      validatedImageUrl = parsedRecipe.imageUrl.trim();
+    }
+    
+    if (!validatedImageUrl) {
+      // Dynamic fallback on Unsplash using recipe name, category, or cuisine style to guarantee beautiful dishes
+      const searchTags = [parsedRecipe.name, parsedRecipe.category, parsedRecipe.cuisine, "food", "dish", "recipe"].filter(Boolean).map(t => String(t));
+      const randTag = searchTags[0] || "food";
+      validatedImageUrl = `https://images.unsplash.com/featured/800x1000/?food,dish,${encodeURIComponent(randTag.substring(0, 40))}`;
+    }
+    parsedRecipe.imageUrl = validatedImageUrl;
     
     if (adminDb) {
       try {
@@ -1864,7 +1952,80 @@ app.post("/api/ai/search-recipes", async (req, res) => {
     ].join(",") : "";
     const searchDocId = normKey + (ctxHash ? "-" + normalizeSearchKey(ctxHash) : "");
 
-    // Bypassed Cloud Database cache read lookup for World Search so it always performs a live online search across the internet
+    // Database Cache & Sharing Engine: Check if a similar person has already generated/viewed these or if matching recipes exist in Firestore
+    if (adminDb) {
+      try {
+        // 1. Exact Search Cache lookup
+        const searchSnap = await adminDb.collection("searches").doc(searchDocId).get();
+        if (searchSnap.exists) {
+          const searchData = searchSnap.data();
+          const recipeIdsResult = searchData?.recipeIds || [];
+          if (Array.isArray(recipeIdsResult) && recipeIdsResult.length > 0) {
+            console.log(`[Sharing Engine] Found cached search index for "${searchDocId}". Fetching ${recipeIdsResult.length} matching recipes.`);
+            
+            const recipesPromises = recipeIdsResult.slice(0, 7).map(async (rid: string) => {
+              const recipeDoc = await adminDb.collection("recipes").doc(rid).get();
+              if (recipeDoc.exists) {
+                const rData = recipeDoc.data();
+                return { ...rData, id: recipeDoc.id };
+              }
+              return null;
+            });
+            const fetchedRecipesRaw = await Promise.all(recipesPromises);
+            const fetchedRecipes = fetchedRecipesRaw.filter(r => r !== null);
+            
+            if (fetchedRecipes.length >= 3) {
+              console.log(`[Sharing Engine] Successfully served ${fetchedRecipes.length} shared recipes to user.`);
+              return res.json(fetchedRecipes);
+            }
+          }
+        }
+
+        // 2. Fuzzy/Keyword Database Sieve to share existing recipes matching the query
+        console.log(`[Sharing Engine] Scanning existing public recipes in Firestore for context match: "${searchQuery}"`);
+        const recipesSnap = await adminDb.collection("recipes")
+          .where("isPublic", "==", true)
+          .where("status", "==", "approved")
+          .limit(150)
+          .get();
+          
+        if (!recipesSnap.empty) {
+          const allRecipes = recipesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          const scored = allRecipes.map((r: any) => {
+            const score = computeSearchScore(r, searchQuery, userContext);
+            return { r, score };
+          });
+          
+          // Filter by high relevance score (score >= 35 is highly relevant, e.g. name or tag match)
+          const matches = scored
+            .filter((item: any) => item.score >= 35)
+            .sort((a: any, b: any) => b.score - a.score)
+            .map((item: any) => item.r);
+
+          if (matches.length >= 5) {
+            const returnedMatches = matches.slice(0, 7);
+            const matchedIds = returnedMatches.map((r: any) => r.id);
+            console.log(`[Sharing Engine] Found ${returnedMatches.length} high-relevance existing recipes in Firestore matching "${searchQuery}". Saving query mapping.`);
+            
+            // Map searchDocId to matching IDs so next search is an instant cache hit
+            try {
+              await adminDb.collection("searches").doc(searchDocId).set({
+                recipeIds: matchedIds,
+                searchKey: normKey,
+                query: rawQuery,
+                createdAt: FieldValue.serverTimestamp()
+              });
+            } catch (indexErr) {
+              console.error("[Sharing Engine] Failed to save search-recipes index mapping:", indexErr);
+            }
+            
+            return res.json(returnedMatches);
+          }
+        }
+      } catch (cacheErr) {
+        console.error("[Sharing Engine] Failed reading from database cache:", cacheErr);
+      }
+    }
 
     const specialInstructions = buildUserContextInstructions(userContext);
     const excludePrompt = (exclude && exclude.length > 0) 
@@ -1872,13 +2033,19 @@ app.post("/api/ai/search-recipes", async (req, res) => {
       : "";
 
     let generatedList: any[] = [];
+    let isWebSearchSuccessful = false;
+    let fallbackCause = "";
+
     try {
+      console.log(`[Search Engine] Attempt 1: Invoking Gemini API with active Google Search Grounding for "${searchQuery}"...`);
       const response = await generateContentWithRetry({
         model: "gemini-3.5-flash",
         contents: [{ role: "user", parts: [{ text: `Perform an active live online search across the web/internet, culinary portals, and chef blogs real-time for EXACTLY 5 professional, high-quality, and creative recipes related specifically to: "${searchQuery}". ${excludePrompt}
         Analyze and compile all grounding search results dynamically, compile everything under that search topic, and finally display them as a list of detailed recipe objects in our application format.
         ${specialInstructions}
         
+        STRICT RELEVANCE REQUIREMENT: Each and every one of the 5 returned recipes MUST explicitly and significantly feature "${searchQuery}" as a core, primary ingredient, or be a classic recipe of that dish. If "${searchQuery}" is a single key food ingredient (like 'rice', 'chicken', 'pasta', 'beef', etc.), the user is looking specifically for recipes where that ingredient is the focal point and primary star of the dish. Do NOT return unrelated meals or dishes that do not feature "${searchQuery}" in their main ingredients list.
+
         IMPORTANT: Prioritize using common, popular, and easy-to-find ingredients. 
         Avoid rare, obscure, or hard-to-source ingredients that the average person might not have heard of or cannot easily buy at a standard local grocery store.
 
@@ -1887,76 +2054,142 @@ app.post("/api/ai/search-recipes", async (req, res) => {
         instructions (array of objects with 'text' and optional 'tips' specifically for beginners) - For each recipe, you MUST provide EXACTLY 8 to 15 sequential instruction steps. Make each step detailed, easy to understand, and well structured., 
         and nutrition (object with calories, protein, carbs, fat, fiber, sugar, sodium).
         
-        For the main imageUrl, YOU MUST provide a DIFFERENT, REAL Unsplash ID for every recipe (e.g. https://images.unsplash.com/photo-[UNIQUE-ID]?auto=format&fit=crop&q=80&w=1000). Ensure they are distinct and related to the dish.
+        For the main imageUrl, YOU MUST provide a DIFFERENT, REAL Unsplash ID for every recipe (e.g. Look up a real id or use a realistic pattern like https://images.unsplash.com/photo-[UNIQUE-ID]?auto=format&fit=crop&q=80&w=1000). Ensure they are distinct and related to the dish. Do NOT use fake template strings like "photo-[UNIQUE-ID]" literally in the output.
         For the videoUrl field, provide a YouTube search query URL for a tutorial on any dish, formatted as: https://www.youtube.com/results?search_query=[dish-name]+tutorial.
-        Ensure they are realistic, high-quality, and distinct from any excluded recipes. Strictly use English.` }]}],
+        Ensure they are realistic, high-quality, and distinct from any excluded recipes. Strictly use English.
+        
+        FORMAT RULE: You MUST return the output AS A VALID JSON ARRAY. Enclose the JSON array between standard markdown blocks (\`\`\`json and \`\`\`). No text content outside of the JSON block.` }]}],
         config: {
           tools: [{ googleSearch: {} }],
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                name: { type: Type.STRING },
-                description: { type: Type.STRING },
-                category: { type: Type.STRING },
-                cuisine: { type: Type.STRING },
-                prepTime: { type: Type.STRING },
-                cookTime: { type: Type.STRING },
-                difficulty: { type: Type.STRING },
-                servings: { type: Type.NUMBER },
-                imageUrl: { type: Type.STRING },
-                videoUrl: { type: Type.STRING },
-                healthAdvice: { type: Type.STRING, description: "Detailed clinical/dietary advice mapping this specific recipe back to the user's focus options, preferences, constraints, or goals." },
-                ingredients: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      item: { type: Type.STRING },
-                      amount: { type: Type.STRING },
-                      unit: { type: Type.STRING },
-                      baseAmount: { type: Type.NUMBER }
-                    }
-                  }
-                },
-                instructions: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      text: { type: Type.STRING },
-                      imageUrl: { type: Type.STRING },
-                      tips: { type: Type.STRING }
-                    },
-                    required: ["text"]
-                  }
-                },
-                nutrition: {
-                  type: Type.OBJECT,
-                  properties: {
-                    calories: { type: Type.NUMBER },
-                    protein: { type: Type.NUMBER },
-                    carbs: { type: Type.NUMBER },
-                    fat: { type: Type.NUMBER },
-                    fiber: { type: Type.NUMBER },
-                    sugar: { type: Type.NUMBER },
-                    sodium: { type: Type.NUMBER }
-                  }
-                }
-              },
-              required: ["name", "description", "ingredients", "instructions", "nutrition", "healthAdvice"]
-            }
-          }
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
         }
       });
 
       const listText = response.text || "[]";
-      generatedList = JSON.parse(listText);
-    } catch (aiErr: any) {
-      console.log(`[Resilience Engine] Expected Gemini API limit or rate limit encountered (${aiErr?.status || "RESOURCE_EXHAUSTED"}). Performing high-fidelity matching on fallback recipe indexes.`);
+      let jsonContent = listText.trim();
+      if (jsonContent.includes("```json")) {
+        const start = jsonContent.indexOf("```json") + 7;
+        const end = jsonContent.lastIndexOf("```");
+        jsonContent = jsonContent.substring(start, end).trim();
+      } else if (jsonContent.includes("```")) {
+        const start = jsonContent.indexOf("```") + 3;
+        const end = jsonContent.lastIndexOf("```");
+        jsonContent = jsonContent.substring(start, end).trim();
+      }
+      
+      const parsed = JSON.parse(jsonContent);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        generatedList = parsed;
+        isWebSearchSuccessful = true;
+        console.log(`[Search Engine] Attempt 1 (Google Search Grounding) succeeded with ${parsed.length} recipes.`);
+      } else {
+        throw new Error("Parsed content is not a non-empty array");
+      }
+    } catch (err: any) {
+      const errMessage = err?.message || String(err);
+      console.warn(`[Search Engine] Attempt 1 (Google Search Grounding) failed: ${errMessage}. Trying Attempt 2 (standard dynamic recipe generator code model)...`);
+      fallbackCause = errMessage;
+    }
+
+    // Attempt 2: Standard Gemini model generation (without search grounding) but WITH strict JSON Schema
+    if (!isWebSearchSuccessful) {
+      try {
+        console.log(`[Search Engine] Attempt 2: Calling standard dynamic Gemini model generation for "${searchQuery}" with rigid Schema safety...`);
+        const response2 = await generateContentWithRetry({
+          model: "gemini-3.5-flash",
+          contents: [{ role: "user", parts: [{ text: `Generate EXACTLY 5 professional, high-quality, and creative culinary recipes related specifically to: "${searchQuery}". ${excludePrompt}
+          Ensure they match the user context and preferences below.
+          ${specialInstructions}
+          
+          STRICT RELEVANCE REQUIREMENT: Each and every one of the 5 returned recipes MUST explicitly and significantly feature "${searchQuery}" as a core, primary ingredient, or be a classic recipe of that dish. If "${searchQuery}" is a single key food ingredient (like 'rice', 'chicken', 'pasta', 'beef', etc.), the user is looking specifically for recipes where that ingredient is the focal point and primary star of the dish. Do NOT return unrelated meals or dishes that do not feature "${searchQuery}" in their main ingredients list.
+
+          For each recipe, include: name, description, category, cuisine, prepTime, cookTime, difficulty, servings, imageUrl,
+          ingredients (with amount and item), 
+          instructions (array of objects with 'text' and optional 'tips' specifically for beginners) - For each recipe, you MUST provide EXACTLY 8 to 15 sequential instruction steps. Make each step detailed, easy to understand, and well structured., 
+          and nutrition (object with calories, protein, carbs, fat, fiber, sugar, sodium).
+          
+          For the main imageUrl, YOU MUST provide a DIFFERENT, REAL Unsplash ID for every recipe (e.g. Look up a real id or use a realistic pattern like https://images.unsplash.com/photo-[UNIQUE-ID]?auto=format&fit=crop&q=80&w=1000). Ensure they are distinct and related to the dish. Do NOT use fake template strings like "photo-[UNIQUE-ID]" literally in the output.
+          For the videoUrl field, provide a YouTube search query URL for a tutorial on any dish, formatted as: https://www.youtube.com/results?search_query=[dish-name]+tutorial.` }]}],
+          config: {
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  name: { type: Type.STRING },
+                  description: { type: Type.STRING },
+                  category: { type: Type.STRING },
+                  cuisine: { type: Type.STRING },
+                  prepTime: { type: Type.STRING },
+                  cookTime: { type: Type.STRING },
+                  difficulty: { type: Type.STRING },
+                  servings: { type: Type.NUMBER },
+                  imageUrl: { type: Type.STRING },
+                  videoUrl: { type: Type.STRING },
+                  healthAdvice: { type: Type.STRING, description: "Detailed clinical/dietary advice mapping this specific recipe back to the user's focus options, preferences, constraints, or goals." },
+                  ingredients: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        item: { type: Type.STRING },
+                        amount: { type: Type.STRING },
+                        unit: { type: Type.STRING },
+                        baseAmount: { type: Type.NUMBER }
+                      }
+                    }
+                  },
+                  instructions: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        text: { type: Type.STRING },
+                        imageUrl: { type: Type.STRING },
+                        tips: { type: Type.STRING }
+                      },
+                      required: ["text"]
+                    }
+                  },
+                  nutrition: {
+                    type: Type.OBJECT,
+                    properties: {
+                      calories: { type: Type.NUMBER },
+                      protein: { type: Type.NUMBER },
+                      carbs: { type: Type.NUMBER },
+                      fat: { type: Type.NUMBER },
+                      fiber: { type: Type.NUMBER },
+                      sugar: { type: Type.NUMBER },
+                      sodium: { type: Type.NUMBER }
+                    }
+                  }
+                },
+                required: ["name", "description", "ingredients", "instructions", "nutrition", "healthAdvice"]
+              }
+            }
+          }
+        });
+
+        const listText = response2.text || "[]";
+        const parsed = JSON.parse(listText);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          generatedList = parsed;
+          isWebSearchSuccessful = true;
+          console.log(`[Search Engine] Attempt 2 (Dynamic Generation) succeeded with ${parsed.length} recipes.`);
+        } else {
+          throw new Error("Parsed content of Attempt 2 is not a non-empty array");
+        }
+      } catch (err2: any) {
+        console.error(`[Search Engine] Attempt 2 (Dynamic Generation) failed as well: ${err2?.message || String(err2)}. Proceeding to Offline Fallback Search Index.`);
+        fallbackCause = err2?.message || String(err2);
+      }
+    }
+
+    // Step 3: Offline Resilience fallback if both attempts failed
+    if (!isWebSearchSuccessful || generatedList.length === 0) {
+      console.log(`[Resilience Engine] Active generator failed. Loading gourmet companion catalog for search Query: "${searchQuery}"`);
       generatedList = getFallbackSearchRecipes(searchQuery, exclude || [], userContext).map((r: any) => ({ ...r, isFallback: true }));
     }
     const parsedRecipes: any[] = [];
@@ -1990,6 +2223,20 @@ app.post("/api/ai/search-recipes", async (req, res) => {
       item.authorName = "Discovery AI";
       item.isPublic = true;
       item.status = "approved";
+
+      // Ensure image URL is valid, active, and contains no template placeholders
+      let validatedImageUrl = "";
+      if (typeof item.imageUrl === "string" && item.imageUrl.trim().startsWith("http") && !item.imageUrl.includes("[") && !item.imageUrl.includes("]") && !item.imageUrl.includes("UNIQUE-ID")) {
+        validatedImageUrl = item.imageUrl.trim();
+      }
+      
+      if (!validatedImageUrl) {
+        // Dynamic fallback on Unsplash using name, category, or cuisine to guarantee beautiful dishes
+        const searchTags = [recipeName, item.category, item.cuisine, "food", "dish", "recipe"].filter(Boolean).map(t => String(t));
+        const randTag = searchTags[0] || "food";
+        validatedImageUrl = `https://images.unsplash.com/featured/800x1000/?food,dish,${encodeURIComponent(randTag.substring(0, 40))}`;
+      }
+      item.imageUrl = validatedImageUrl;
 
       if (adminDb) {
         try {

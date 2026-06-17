@@ -17,8 +17,8 @@ export async function faultTolerantFetch(
   options?: FaultTolerantFetchOptions
 ): Promise<Response> {
   const {
-    timeoutMs = 20000, // 20s connection limit protection
-    maxRetries = 3,
+    timeoutMs = 60000, // 60s for real-time culinary search grounding and AI scanner models
+    maxRetries = 2, // reduced to avoid double-slamming the server if it's genuinely failing
     initialDelayMs = 800,
     ...fetchInit
   } = options || {};
