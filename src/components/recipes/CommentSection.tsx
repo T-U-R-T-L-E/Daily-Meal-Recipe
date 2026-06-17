@@ -28,10 +28,12 @@ export default function CommentSection({ recipeId }: CommentSectionProps) {
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [rating, setRating] = useState<number>(5);
+  const [hoverRating, setHoverRating] = useState<number | null>(null);
 
   useEffect(() => {
     async function loadComments() {
-      if (recipeId.startsWith('ai-')) {
+      if (!recipeId) {
         setLoading(false);
         return;
       }
@@ -65,11 +67,6 @@ export default function CommentSection({ recipeId }: CommentSectionProps) {
       alert("Invalid input: Comments must be between 1 and 2000 characters.");
       return;
     }
-    
-    if (recipeId.startsWith('ai-')) {
-      alert("Please 'Save to Collection' or 'Import' this discovery recipe first to start a community conversation!");
-      return;
-    }
 
     setSubmitting(true);
     try {
@@ -81,6 +78,7 @@ export default function CommentSection({ recipeId }: CommentSectionProps) {
         userName: sanitizedUserName,
         userPhoto: user.photoURL,
         comment: sanitizedComment,
+        rating: rating,
         createdAt: serverTimestamp(),
         recipeId
       };
@@ -95,11 +93,28 @@ export default function CommentSection({ recipeId }: CommentSectionProps) {
       } as any, ...comments]);
       
       setNewComment('');
+      setRating(5); // Reset rating to 5 after successful submission
       
-      // Bonus: Increment interaction/view count as it's a social touchpoint
+      // Increment interaction/view count
       await updateDoc(doc(db, 'recipes', recipeId), {
         saveCount: increment(1)
-      });
+      }).catch(e => console.warn("Could not increment interaction count:", e));
+
+      // Recalculate average rating of the recipe and update the recipe doc
+      try {
+        const reviewsSnap = await getDocs(collection(db, 'recipes', recipeId, 'reviews'));
+        const reviewsData = reviewsSnap.docs.map(doc => doc.data());
+        const validRatings = reviewsData.filter(r => typeof r.rating === 'number' && r.rating > 0);
+        const count = validRatings.length;
+        const avg = count > 0 ? (validRatings.reduce((sum, r) => sum + (r.rating || 0), 0) / count) : 0;
+        
+        await updateDoc(doc(db, 'recipes', recipeId), {
+          ratingsCount: count,
+          averageRating: avg
+        });
+      } catch (calcErr) {
+        console.warn("Failed to update recipe average rating:", calcErr);
+      }
       
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, `recipes/${recipeId}/reviews`);
@@ -118,26 +133,55 @@ export default function CommentSection({ recipeId }: CommentSectionProps) {
       </div>
 
       {user ? (
-        <form onSubmit={handleSubmit} className="relative">
-          <textarea
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Share a tip or variation..."
-            className="w-full bg-graphite border border-white/5 rounded-[32px] p-8 text-white font-light italic focus:outline-none focus:border-amber-accent/50 transition-all min-h-[150px] resize-none pr-24 shadow-inner"
-          />
-          <button
-            type="submit"
-            disabled={!newComment.trim() || submitting}
-            className="absolute bottom-6 right-6 p-4 bg-amber-accent text-black rounded-2xl hover:bg-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-amber-accent/10"
-          >
-            {submitting ? (
-              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex items-center gap-3 bg-graphite border border-white/5 rounded-2xl px-6 py-4 w-fit">
+            <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Select Rating:</span>
+            <div className="flex gap-1 border-r border-white/10 pr-3">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setRating(star)}
+                  onMouseEnter={() => setHoverRating(star)}
+                  onMouseLeave={() => setHoverRating(null)}
+                  className="hover:scale-110 active:scale-95 transition-transform cursor-pointer animate-pulse"
+                >
+                  <Star
+                    className={`w-5 h-5 transition-colors ${
+                      star <= (hoverRating ?? rating)
+                        ? "text-amber-500 fill-amber-500"
+                        : "text-white/10"
+                    }`}
+                  />
+                </button>
+              ))}
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-accent min-w-[80px] text-center">
+              {rating === 5 ? 'Excellent' : rating === 4 ? 'Very Good' : rating === 3 ? 'Good' : rating === 2 ? 'Fair' : 'Poor'}
+            </span>
+          </div>
+
+          <div className="relative">
+            <textarea
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Share a tip or variation..."
+              className="w-full bg-graphite border border-white/5 rounded-[32px] p-8 text-white font-light italic focus:outline-none focus:border-amber-accent/50 transition-all min-h-[150px] resize-none pr-24 shadow-inner"
+            />
+            <button
+              type="submit"
+              disabled={!newComment.trim() || submitting}
+              className="absolute bottom-6 right-6 p-4 bg-amber-accent text-black rounded-2xl hover:bg-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-amber-accent/10"
+            >
+              {submitting ? (
+                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
+                  <Send className="w-5 h-5" />
+                </motion.div>
+              ) : (
                 <Send className="w-5 h-5" />
-              </motion.div>
-            ) : (
-              <Send className="w-5 h-5" />
-            )}
-          </button>
+              )}
+            </button>
+          </div>
         </form>
       ) : (
         <div className="p-8 bg-onyx rounded-3xl border border-white/5 text-center">
@@ -189,6 +233,17 @@ export default function CommentSection({ recipeId }: CommentSectionProps) {
                       </p>
                     </div>
                   </div>
+
+                  {comment.rating !== undefined && comment.rating > 0 && (
+                    <div className="flex gap-0.5 bg-white/5 border border-white/15 px-3 py-1.5 rounded-full">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star 
+                          key={i} 
+                          className={`w-3.5 h-3.5 ${i < comment.rating! ? 'text-amber-500 fill-amber-500' : 'text-white/10'}`} 
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <p className="text-gray-400 font-light italic leading-relaxed">
                   "{comment.comment}"

@@ -53,9 +53,9 @@ export default function Subscription() {
     setTrialSuccessMsg(null);
 
     try {
-      // Set trial end date to 30 days from now (1 month)
+      // Set trial end date to 14 days from now (2 weeks)
       const trialEndDate = new Date();
-      trialEndDate.setDate(trialEndDate.getDate() + 30);
+      trialEndDate.setDate(trialEndDate.getDate() + 14);
 
       const trialSubscription = {
         status: 'trial',
@@ -72,7 +72,7 @@ export default function Subscription() {
         subscription: trialSubscription as any
       });
 
-      setTrialSuccessMsg("Fantastic choice! Your 1-month free trial of Plus is now active!");
+      setTrialSuccessMsg("Fantastic choice! Your 2-week free trial of Plus is now active!");
     } catch (err: any) {
       const friendlyVal = handleError(err, {
         componentName: 'Subscription',
@@ -132,7 +132,7 @@ export default function Subscription() {
             const updatedSubscription = {
               status: 'active',
               subscribedDate: new Date().toISOString(),
-              trialEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+              trialEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
             };
 
             await updateDoc(doc(db, 'users', user.uid), {
@@ -228,9 +228,10 @@ export default function Subscription() {
 
   const isSubscribed = profile?.subscription?.status === 'active';
   const isTrial = profile?.subscription?.status === 'trial';
-  const trialDaysLeft = profile?.subscription?.trialEndDate 
+  const rawDaysLeft = profile?.subscription?.trialEndDate 
     ? Math.max(0, Math.ceil((new Date(profile.subscription.trialEndDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : 0;
+  const trialDaysLeft = Math.min(14, rawDaysLeft);
 
   return (
     <div className="max-w-5xl mx-auto space-y-20 py-12">
@@ -286,7 +287,7 @@ export default function Subscription() {
                 <span className="text-5xl font-light text-white">$5</span>
                 <span className="text-white/40 text-sm italic">/ per month</span>
               </div>
-              <p className="text-amber-accent text-xs font-bold uppercase tracking-widest">1-Month Free Trial Included</p>
+              <p className="text-amber-accent text-xs font-bold uppercase tracking-widest">2-Week Free Trial Included</p>
             </div>
 
             <div className="pt-8 border-t border-white/5 space-y-6">
@@ -307,7 +308,7 @@ export default function Subscription() {
                 </div>
               ) : isTrial ? (
                 <div className="p-6 bg-white/5 rounded-2xl border border-white/10 text-center space-y-3">
-                  <p className="text-amber-accent text-xs font-bold uppercase tracking-widest">1-Month Free Trial Active</p>
+                  <p className="text-amber-accent text-xs font-bold uppercase tracking-widest">2-Week Free Trial Active</p>
                   <p className="text-white text-base font-serif italic">{trialDaysLeft} days remaining</p>
                   <p className="text-white/40 text-[10px] italic">Enjoy full access! After trial ends, subscription is $5/month.</p>
                   
@@ -335,7 +336,7 @@ export default function Subscription() {
                       </span>
                     ) : (
                       <>
-                        Start 1-Month Free Trial
+                        Start 2-Week Free Trial
                         <Sparkles className="w-4 h-4" />
                       </>
                     )}

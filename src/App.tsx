@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './lib/useAuth';
 import Navbar from './components/layout/Navbar';
+import Footer from './components/layout/Footer';
 import Home from './pages/Home';
 import Discovery from './pages/Discovery';
 import Generator from './pages/Generator';
@@ -28,8 +29,8 @@ import ComplianceHub from './pages/ComplianceHub';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import RefundPolicyPage from './pages/RefundPolicyPage';
-import SubmitRecipe from './pages/SubmitRecipe';
 import { motion, AnimatePresence } from 'motion/react';
+import PullToRefresh from './components/layout/PullToRefresh';
 
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from './lib/firebase';
@@ -189,114 +190,107 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-onyx flex flex-col text-gray-300">
-      <Navbar onOpenDownload={() => setIsDownloadOpen(true)} />
-      <main className={`flex-1 w-full max-w-7xl xxl:max-w-[1400px] 3xl:max-w-[1800px] 4xl:max-w-[2400px] 5xl:max-w-[3200px] mx-auto ${location.pathname === '/' ? 'px-1 xs:px-2' : 'px-3 xs:px-4'} sm:px-6 pt-6 pb-20 md:py-12`}>
-        <AnimatePresence mode="wait">
-          <Routes location={location} key={location.pathname}>
-            <Route path="/" element={<Home />} />
-            <Route 
-              path="/discover" 
-              element={
-                <SubscriptionGuard>
-                  <Discovery />
-                </SubscriptionGuard>
-              } 
-            />
-            <Route 
-              path="/generate" 
-              element={
-                user ? (
+    <PullToRefresh>
+      <div className="min-h-screen bg-onyx flex flex-col text-gray-300">
+        <Navbar onOpenDownload={() => setIsDownloadOpen(true)} />
+        <main className={`flex-1 w-full max-w-7xl xxl:max-w-[1400px] 3xl:max-w-[1800px] 4xl:max-w-[2400px] 5xl:max-w-[3200px] mx-auto ${location.pathname === '/' ? 'px-1 xs:px-2' : 'px-3 xs:px-4'} sm:px-6 pt-6 pb-20 md:py-12`}>
+          <AnimatePresence mode="wait">
+            <Routes location={location} key={location.pathname}>
+              <Route path="/" element={<Home />} />
+              <Route 
+                path="/discover" 
+                element={
                   <SubscriptionGuard>
-                    <Generator />
+                    <Discovery />
                   </SubscriptionGuard>
-                ) : <Navigate to="/" />
-              } 
-            />
-            <Route 
-              path="/planner" 
-              element={
-                user ? (
+                } 
+              />
+              <Route 
+                path="/generate" 
+                element={
+                  user ? (
+                    <SubscriptionGuard>
+                      <Generator />
+                    </SubscriptionGuard>
+                  ) : <Navigate to="/" />
+                } 
+              />
+              <Route 
+                path="/planner" 
+                element={
+                  user ? (
+                    <SubscriptionGuard>
+                      <MealPlanner />
+                    </SubscriptionGuard>
+                  ) : <Navigate to="/" />
+                } 
+              />
+              <Route 
+                path="/shopping" 
+                element={
+                  user ? (
+                    <SubscriptionGuard>
+                      <ShoppingList />
+                    </SubscriptionGuard>
+                  ) : <Navigate to="/" />
+                } 
+              />
+              <Route 
+                path="/shared-todos" 
+                element={
+                  user ? (
+                    <SubscriptionGuard>
+                      <SharedTodos />
+                    </SubscriptionGuard>
+                  ) : <Navigate to="/" />
+                } 
+              />
+              <Route 
+                path="/pantry" 
+                element={
+                  user ? (
+                    <SubscriptionGuard>
+                      <Pantry />
+                    </SubscriptionGuard>
+                  ) : <Navigate to="/" />
+                } 
+              />
+              <Route 
+                path="/files" 
+                element={
+                  user ? (
+                    <SubscriptionGuard>
+                      <FilesHub />
+                    </SubscriptionGuard>
+                  ) : <Navigate to="/" />
+                } 
+              />
+              <Route path="/profile" element={user ? <Profile /> : <Navigate to="/" />} />
+              <Route path="/subscription" element={user ? <Subscription /> : <Navigate to="/" />} />
+              <Route path="/recipe/:id" element={<RecipeDetails />} />
+              <Route path="/guided/:id" element={<GuidedCooking />} />
+              <Route path="/leaderboard" element={user ? <Leaderboard /> : <Navigate to="/" />} />
+              <Route path="/admin" element={user && user.email === 'lewisiraki1@gmail.com' ? <Admin /> : <Navigate to="/" />} />
+              <Route path="/compliance" element={user && user.email === 'lewisiraki1@gmail.com' ? <ComplianceHub /> : <Navigate to="/" />} />
+              <Route path="/privacy" element={<PrivacyPolicyPage />} />
+              <Route path="/terms" element={<TermsOfServicePage />} />
+              <Route path="/refund-policy" element={<RefundPolicyPage />} />
+              <Route 
+                path="/scanner" 
+                element={
                   <SubscriptionGuard>
-                    <MealPlanner />
+                    <Scanner />
                   </SubscriptionGuard>
-                ) : <Navigate to="/" />
-              } 
-            />
-            <Route 
-              path="/shopping" 
-              element={
-                user ? (
-                  <SubscriptionGuard>
-                    <ShoppingList />
-                  </SubscriptionGuard>
-                ) : <Navigate to="/" />
-              } 
-            />
-            <Route 
-              path="/shared-todos" 
-              element={
-                user ? (
-                  <SubscriptionGuard>
-                    <SharedTodos />
-                  </SubscriptionGuard>
-                ) : <Navigate to="/" />
-              } 
-            />
-            <Route 
-              path="/pantry" 
-              element={
-                user ? (
-                  <SubscriptionGuard>
-                    <Pantry />
-                  </SubscriptionGuard>
-                ) : <Navigate to="/" />
-              } 
-            />
-            <Route 
-              path="/files" 
-              element={
-                user ? (
-                  <SubscriptionGuard>
-                    <FilesHub />
-                  </SubscriptionGuard>
-                ) : <Navigate to="/" />
-              } 
-            />
-            <Route path="/profile" element={user ? <Profile /> : <Navigate to="/" />} />
-            <Route path="/subscription" element={user ? <Subscription /> : <Navigate to="/" />} />
-            <Route path="/recipe/:id" element={<RecipeDetails />} />
-            <Route 
-              path="/submit-recipe" 
-              element={
-                user ? (
-                  <SubscriptionGuard>
-                    <SubmitRecipe />
-                  </SubscriptionGuard>
-                ) : <Navigate to="/" />
-              } 
-            />
-            <Route path="/guided/:id" element={<GuidedCooking />} />
-            <Route path="/leaderboard" element={user ? <Leaderboard /> : <Navigate to="/" />} />
-            <Route path="/admin" element={user && user.email === 'lewisiraki1@gmail.com' ? <Admin /> : <Navigate to="/" />} />
-            <Route path="/compliance" element={user && user.email === 'lewisiraki1@gmail.com' ? <ComplianceHub /> : <Navigate to="/" />} />
-            <Route path="/privacy" element={<PrivacyPolicyPage />} />
-            <Route path="/terms" element={<TermsOfServicePage />} />
-            <Route path="/refund-policy" element={<RefundPolicyPage />} />
-            <Route 
-              path="/scanner" 
-              element={
-                <SubscriptionGuard>
-                  <Scanner />
-                </SubscriptionGuard>
-              } 
-            />
-          </Routes>
-        </AnimatePresence>
-      </main>
-      <BackgroundJobDeck />
-      <DownloadAppPrompt forceOpen={isDownloadOpen} onCloseForce={() => setIsDownloadOpen(false)} />
-    </div>
+                } 
+              />
+            </Routes>
+          </AnimatePresence>
+        </main>
+        <Footer />
+        <BackgroundJobDeck />
+        <DownloadAppPrompt forceOpen={isDownloadOpen} onCloseForce={() => setIsDownloadOpen(false)} />
+      </div>
+    </PullToRefresh>
   );
 }
 

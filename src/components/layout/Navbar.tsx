@@ -51,7 +51,6 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
     { name: 'Shopping', path: '/shopping', icon: ShoppingBag, auth: true },
     { name: 'Family Hub', path: '/shared-todos', icon: ClipboardList, auth: true },
     { name: 'Gourmet Vault', path: '/files', icon: Database, auth: true },
-    { name: 'Submit Recipe', path: '/submit-recipe', icon: Plus, auth: true },
   ];
 
   if (user?.email === 'lewisiraki1@gmail.com') {
@@ -73,7 +72,6 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
     { name: 'Shopping List', path: '/shopping', icon: ShoppingBag },
     { name: 'Family Hub', path: '/shared-todos', icon: ClipboardList },
     { name: 'Gourmet Vault', path: '/files', icon: Database },
-    { name: 'Submit Recipe', path: '/submit-recipe', icon: Plus },
     { name: 'My Profile', path: '/profile', icon: User },
     { name: 'Subscription', path: '/subscription', icon: CreditCard },
   ];

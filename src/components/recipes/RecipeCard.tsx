@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { Clock, ChefHat, Heart, ArrowUpRight, AlertTriangle } from 'lucide-react';
+import { Clock, ChefHat, Heart, ArrowUpRight, AlertTriangle, Star } from 'lucide-react';
 import { Recipe } from '../../types';
-import { cn } from '../../lib/utils';
+import { cn, cleanRecipeImageUrl, getStableFoodImage } from '../../lib/utils';
 import { useAuth } from '../../lib/useAuth';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { collection, query, where, getDocs, addDoc, deleteDoc, doc, serverTimestamp, onSnapshot } from 'firebase/firestore';
@@ -20,15 +20,15 @@ export default function RecipeCard({ recipe, index, activeTags = [] }: Props) {
   const [isFavorited, setIsFavorited] = useState(false);
   const [favoriteId, setFavoriteId] = useState<string | null>(null);
   const [isToggling, setIsToggling] = useState(false);
-  const [imageSrc, setImageSrc] = useState(recipe.imageUrl || `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=600`);
+  const [imageSrc, setImageSrc] = useState(() => cleanRecipeImageUrl(recipe.imageUrl, recipe.name, recipe.category, recipe.cuisine));
   const [imgLoading, setImgLoading] = useState(true);
 
   const warnings = getRecipeWarnings(recipe, activeTags, profile);
 
   useEffect(() => {
-    setImageSrc(recipe.imageUrl || `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=600`);
+    setImageSrc(cleanRecipeImageUrl(recipe.imageUrl, recipe.name, recipe.category, recipe.cuisine));
     setImgLoading(true);
-  }, [recipe.imageUrl]);
+  }, [recipe.imageUrl, recipe.name, recipe.category, recipe.cuisine]);
 
   useEffect(() => {
     if (!user) return;
@@ -82,9 +82,16 @@ export default function RecipeCard({ recipe, index, activeTags = [] }: Props) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1 }}
+      initial={{ opacity: 0, y: 30, scale: 0.97 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
+      viewport={{ once: true, margin: "-20px" }}
+      transition={{ 
+        type: "spring", 
+        stiffness: 75, 
+        damping: 15, 
+        mass: 0.8,
+        delay: Math.min(index % 3, 5) * 0.08 
+      }}
       className="group bg-graphite rounded-[24px] overflow-hidden border border-white/5 transition-all hover:border-amber-accent/50 hover:shadow-[0_0_40px_rgba(245,158,11,0.1)]"
     >
       <Link to={`/recipe/${recipe.id}`} className="block relative aspect-[4/5] overflow-hidden bg-white/[0.01]">
@@ -102,7 +109,7 @@ export default function RecipeCard({ recipe, index, activeTags = [] }: Props) {
           onLoad={() => setImgLoading(false)}
           onError={() => {
             console.warn(`Fallback image triggered for: ${recipe.name}`);
-            setImageSrc(`https://images.unsplash.com/featured/600x800/?food,${encodeURIComponent(recipe.category || recipe.name)}`);
+            setImageSrc(getStableFoodImage(recipe.name, recipe.category, recipe.cuisine));
             setImgLoading(false);
           }}
           className={cn(
@@ -179,6 +186,13 @@ export default function RecipeCard({ recipe, index, activeTags = [] }: Props) {
               <ChefHat className="w-3 h-3 text-amber-accent" />
               {recipe.difficulty}
             </div>
+            {recipe.ratingsCount !== undefined && recipe.ratingsCount > 0 && (
+              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-amber-accent">
+                <Star className="w-3 h-3 text-amber-500 fill-amber-500 animate-pulse" />
+                <span>{typeof recipe.averageRating === 'number' ? recipe.averageRating.toFixed(1) : '5.0'}</span>
+                <span className="text-white/20">({recipe.ratingsCount})</span>
+              </div>
+            )}
           </div>
           
           <div className="flex items-center gap-3">

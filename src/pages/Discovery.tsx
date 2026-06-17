@@ -4,12 +4,11 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Recipe, UserProfile } from '../types';
 import RecipeCard from '../components/recipes/RecipeCard';
 import { RecipeCardSkeleton } from '../components/recipes/RecipeSkeleton';
-import { Search, Plus, SlidersHorizontal, Sparkles, Zap, Coffee, Utensils, Moon, Candy, IceCream, Globe, Database, Heart, Filter, Clock, Check, ChevronDown, CheckCircle2, X, ChefHat, Mic, MicOff, Image as ImageIcon, Loader2, Flame } from 'lucide-react';
+import { Search, Plus, SlidersHorizontal, Sparkles, Zap, Coffee, Utensils, Moon, Candy, IceCream, Globe, Database, Heart, Filter, Clock, Check, ChevronDown, CheckCircle2, X, ChefHat, Mic, MicOff, Image as ImageIcon, Loader2, Flame, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/useAuth';
 import { faultTolerantFetchJson } from '../lib/api';
-import AIConsentModal from '../components/AIConsentModal';
 
 // Client-side in-memory search query cache to make repetitive searches instantaneous (<1ms)
 const clientSearchCache: Record<string, Recipe[]> = {};
@@ -34,8 +33,6 @@ export default function Discovery() {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [isConsentOpen, setIsConsentOpen] = useState(false);
-  const [pendingSearchArgs, setPendingSearchArgs] = useState<{e?: any, overrideTerm?: string} | null>(null);
   const [aiResults, setAiResults] = useState<Recipe[]>([]);
   const [pendingReveal, setPendingReveal] = useState<{
     type: 'ai' | 'surprise';
@@ -56,6 +53,47 @@ export default function Discovery() {
   const [activePresetTags, setActivePresetTags] = useState<string[]>([]);
   const [conversationalPromptText, setConversationalPromptText] = useState('');
   const [showConversationalHelper, setShowConversationalHelper] = useState(false);
+
+  // Quota & Billing Safety Cap Diagnostics
+  const [quotaStatus, setQuotaStatus] = useState<{
+    isOffline: boolean;
+    offlineTimestamp: number;
+    lastError: string;
+    details: any;
+  } | null>(null);
+  const [isClearingQuota, setIsClearingQuota] = useState(false);
+
+  const fetchQuotaStatus = async () => {
+    try {
+      const res = await faultTolerantFetchJson<any>('/api/ai/quota-status');
+      if (res) {
+        setQuotaStatus(res);
+      }
+    } catch (e) {
+      console.warn("Failed to retrieve current server quota status profile:", e);
+    }
+  };
+
+  useEffect(() => {
+    fetchQuotaStatus();
+  }, []);
+
+  const handleClearQuota = async () => {
+    setIsClearingQuota(true);
+    try {
+      const res = await fetch('/api/ai/quota-clear', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        await fetchQuotaStatus();
+        // Force retry the current active world search
+        handleSearch(undefined, searchTerm);
+      }
+    } catch (err) {
+      console.error("Could not reset billing offline protection safety check:", err);
+    } finally {
+      setIsClearingQuota(false);
+    }
+  };
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -333,6 +371,14 @@ export default function Discovery() {
         if (savedAI && savedAI !== 'undefined') {
           setAiResults(JSON.parse(savedAI));
         }
+        const savedTerm = sessionStorage.getItem('ai_search_term');
+        if (savedTerm) {
+          setSearchTerm(savedTerm);
+        }
+        const savedMode = sessionStorage.getItem('ai_search_mode');
+        if (savedMode === 'local' || savedMode === 'world') {
+          setSearchMode(savedMode as 'local' | 'world');
+        }
       } catch (e) {
         console.error("Failed to parse saved AI results", e);
       }
@@ -593,6 +639,7 @@ export default function Discovery() {
         console.error("AI Surprise failed:", error);
       } finally {
         setIsAISearching(false);
+        fetchQuotaStatus();
       }
       return;
     }
@@ -619,6 +666,10 @@ export default function Discovery() {
     setSurpriseResults(null);
 
     const termToUse = typeof overrideTerm === 'string' ? overrideTerm : searchTerm;
+    
+    // Persist search parameters in session storage for back navigation restoration
+    sessionStorage.setItem('ai_search_term', termToUse);
+    sessionStorage.setItem('ai_search_mode', searchMode);
 
     // Log query term directly to client-side Firestore search suggestions securely
     if (termToUse && termToUse.trim().length >= 2) {
@@ -639,13 +690,6 @@ export default function Discovery() {
     }
 
     if (searchMode === 'world') {
-      const hasConsent = localStorage.getItem('ai_consent_accepted') === 'true';
-      if (!hasConsent) {
-        setPendingSearchArgs({ e, overrideTerm });
-        setIsConsentOpen(true);
-        return;
-      }
-
       let queryStr = termToUse.trim() || 'trending gourmet recipes';
       if (selectedCuisine !== 'All') queryStr += ` ${selectedCuisine} cuisine`;
       if (difficultyLevel > 0) queryStr += ` ${difficultyLevels[difficultyLevel]} difficulty level`;
@@ -694,19 +738,13 @@ export default function Discovery() {
         }
       } finally {
         setIsAISearching(false);
+        fetchQuotaStatus();
       }
     }
 
     // Explicitly scroll to top of list when searching
     const el = document.getElementById('results-target');
     if (el) el.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const handleConsentAccept = () => {
-    if (pendingSearchArgs) {
-      handleSearch(pendingSearchArgs.e, pendingSearchArgs.overrideTerm);
-      setPendingSearchArgs(null);
-    }
   };
 
   const handleLoadMore = async () => {
@@ -749,6 +787,7 @@ export default function Discovery() {
       console.error("AI Load More failed:", error);
     } finally {
       setIsLoadingMore(false);
+      fetchQuotaStatus();
     }
   };
 
@@ -812,13 +851,6 @@ export default function Discovery() {
             <h1 className="font-serif text-6xl font-light text-white">Recipes</h1>
             <p className="text-gray-500 font-light text-lg">Browse our collection or find something new.</p>
           </div>
-          <button
-            onClick={() => navigate('/submit-recipe')}
-            className="self-start md:self-center px-6 py-3.5 bg-amber-accent hover:bg-amber-accent/80 text-black rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-amber-accent/15 hover:scale-[1.02] active:scale-95 shrink-0"
-          >
-            <Plus className="w-4 h-4 text-black" />
-            Submit a Recipe
-          </button>
         </div>
         
         <div className="flex flex-col xl:flex-row gap-8 xl:items-center">
@@ -1389,21 +1421,80 @@ export default function Discovery() {
         </div>
       ) : (currentDisplay.length > 0 || pendingReveal !== null) ? (
         <div className="space-y-12">
-          {searchMode === 'world' && currentDisplay.some(r => r.isFallback) && (
+          {searchMode === 'world' && (currentDisplay.some(r => r.isFallback) || (quotaStatus && quotaStatus.isOffline)) && (
             <motion.div 
-              initial={{ opacity: 0, y: -10 }}
+              initial={{ opacity: 0, y: -15 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-r from-amber-accent/10 to-amber-gold/5 border border-amber-accent/20 rounded-[24px] p-6 flex flex-col sm:flex-row items-start sm:items-center gap-5"
+              className="bg-gradient-to-br from-amber-950/45 via-zinc-900 to-zinc-950 border border-amber-500/20 rounded-[28px] p-8 space-y-6 shadow-2xl relative overflow-hidden"
             >
-              <div className="bg-amber-accent/20 p-3 rounded-full text-amber-accent shrink-0 select-none">
-                <Database className="w-6 h-6" />
+              {/* Decorative Blur Backgrounds */}
+              <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/5 rounded-full blur-[120px] pointer-events-none" />
+              <div className="absolute -bottom-10 -left-10 w-60 h-60 bg-red-500/5 rounded-full blur-[100px] pointer-events-none" />
+
+              <div className="flex flex-col md:flex-row gap-6 items-start">
+                <div className="bg-amber-500/10 p-4 rounded-xl text-amber-accent shrink-0 border border-amber-500/20 shadow-inner">
+                  <Database className="w-8 h-8" />
+                </div>
+                
+                <div className="space-y-3 flex-1">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="bg-amber-500/15 text-amber-accent text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full border border-amber-500/20">
+                      Resilient Cache Engaged
+                    </span>
+                    <span className="bg-red-500/15 text-red-400 text-[10px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full border border-red-500/20">
+                      API Safety Cap Engaged (429)
+                    </span>
+                  </div>
+
+                  <h3 className="text-xl font-serif text-white italic">Google AI Studio Safety Spending Cap Notification</h3>
+                  
+                  <div className="text-sm text-gray-350 font-light leading-relaxed space-y-3">
+                    <p>
+                      You have successfully upgraded to a **Paid API Plan**! However, Google AI Studio enforces a default safety **Monthly Spending Cap** (which defaults to **$0.00** on newly upgraded or newly configured billing portfolios).
+                    </p>
+                    <p>
+                      Until this cap is proactively adjusted on the Google console, premium Google Search Grounding endpoints will transiently return a <code className="bg-white/10 px-1.5 py-0.5 rounded text-red-300 font-mono text-xs">RESOURCE_EXHAUSTED</code> spend limit error.
+                    </p>
+                    
+                    {quotaStatus?.lastError && (
+                      <div className="mt-4 p-4 bg-black/40 rounded-2xl border border-white/5 font-mono text-xs text-amber-200/80 leading-relaxed max-w-full overflow-x-auto">
+                        <strong className="text-white block mb-1">Server Reported Diagnostic Profile:</strong>
+                        {quotaStatus.lastError}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div className="space-y-1">
-                <h4 className="text-white font-medium text-sm">Resilient Offline Companion Catalog Active</h4>
-                <p className="text-xs text-gray-400 font-light leading-relaxed">
-                  The primary Gemini API key has exceeded its daily free-tier quota (Resource Exhausted).
-                  To prevent blank screens or connection errors, our server-side Resilience Engine has automatically loaded gourmet companion recipes matching your search criteria.
-                </p>
+
+              {/* Action Guides & Direct Retry Trigger */}
+              <div className="bg-white/[0.02] rounded-[20px] p-5 border border-white/10 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-5">
+                <div className="space-y-1">
+                  <p className="text-xs text-white font-medium">Quick Resolution Workflow:</p>
+                  <p className="text-xs text-gray-400 font-light leading-relaxed">
+                    1. Direct spend control: Visit <a href="https://ai.studio/spend" target="_blank" rel="noopener noreferrer" className="text-amber-accent hover:underline font-semibold inline-flex items-center gap-1">ai.studio/spend <ExternalLink className="w-3 h-3 inline" /></a> and increase your Monthly Spend Cap.<br />
+                    2. Click the bypass toggle button on the right to refresh servers and test active live queries instantly.
+                  </p>
+                </div>
+
+                <div className="shrink-0 flex items-center">
+                  <button
+                    onClick={handleClearQuota}
+                    disabled={isClearingQuota}
+                    className="relative w-full lg:w-auto px-6 py-4 bg-gradient-to-r from-amber-500 to-amber-accent text-black rounded-xl text-xs font-bold uppercase tracking-wider hover:opacity-90 active:scale-95 transition-all duration-300 shadow-[0_4px_20px_rgba(245,158,11,0.25)] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {isClearingQuota ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-black" />
+                        <span>Rechecking Portfolios...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-4 h-4 text-black fill-current" />
+                        <span>Clear Safety Buffer & Search</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </motion.div>
           )}
@@ -1492,12 +1583,6 @@ export default function Discovery() {
         </div>
       )}
 
-      <AIConsentModal
-        isOpen={isConsentOpen}
-        onClose={() => setIsConsentOpen(false)}
-        onAccept={handleConsentAccept}
-        dataTypesToSend={['Recipe Query: ' + searchTerm, 'Active Cuisine Category', 'Allergy Restrictions & Dietary filters']}
-      />
     </div>
   );
 }

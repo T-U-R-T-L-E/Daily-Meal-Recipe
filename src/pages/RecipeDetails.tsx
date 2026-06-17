@@ -5,10 +5,10 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../lib/useAuth';
 import { Recipe } from '../types';
 import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
-import { Clock, ChefHat, User, Share2, CalendarPlus, ChevronLeft, X, Zap, CheckCircle2, Play, Video, ArrowRight, Info, Heart, Calendar, Box, Link2, Download, Printer, FileJson, FileText, AlertTriangle } from 'lucide-react';
+import { Clock, ChefHat, User, Share2, CalendarPlus, ChevronLeft, X, Zap, CheckCircle2, Play, Video, ArrowRight, Info, Heart, Calendar, Box, Link2, Download, Printer, FileJson, FileText, AlertTriangle, Star } from 'lucide-react';
 import { format } from 'date-fns';
 import { updateDoc, increment } from 'firebase/firestore';
-import { cn } from '../lib/utils';
+import { cn, cleanRecipeImageUrl, getStableFoodImage } from '../lib/utils';
 import CommentSection from '../components/recipes/CommentSection';
 import ShareSheet from '../components/ui/ShareSheet';
 import AccessDenied from '../components/auth/AccessDenied';
@@ -35,6 +35,68 @@ export default function RecipeDetails() {
   const [isCooking, setIsCooking] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [showCookedModal, setShowCookedModal] = useState(false);
+  const [cookedRating, setCookedRating] = useState(5);
+  const [cookedRatingHover, setCookedRatingHover] = useState<number | null>(null);
+  const [cookedReviewText, setCookedReviewText] = useState("");
+  const [submittingCookedRating, setSubmittingCookedRating] = useState(false);
+
+  const handleCopyDeepLink = async () => {
+    if (!recipe) return;
+    try {
+      const deepLink = `${window.location.origin}/recipe/${recipe.id}`;
+      await navigator.clipboard.writeText(deepLink);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy deep link:', err);
+    }
+  };
+
+  const handleCookedRatingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !recipe || submittingCookedRating) return;
+    setSubmittingCookedRating(true);
+    try {
+      const reviewPayload = {
+        userId: user.uid,
+        userName: user.displayName || 'Anonymous Chef',
+        userPhoto: user.photoURL || '',
+        comment: cookedReviewText.trim() || 'Cooked this recipe! It turned out perfectly.',
+        rating: cookedRating,
+        createdAt: serverTimestamp(),
+        recipeId: recipe.id
+      };
+
+      await addDoc(collection(db, 'recipes', recipe.id, 'reviews'), reviewPayload);
+
+      const reviewsSnap = await getDocs(collection(db, 'recipes', recipe.id, 'reviews'));
+      const reviewsData = reviewsSnap.docs.map(doc => doc.data());
+      const validRatings = reviewsData.filter(r => typeof r.rating === 'number' && r.rating > 0);
+      const count = validRatings.length;
+      const avg = count > 0 ? (validRatings.reduce((sum, r) => sum + (r.rating || 0), 0) / count) : 0;
+
+      await updateDoc(doc(db, 'recipes', recipe.id), {
+        ratingsCount: count,
+        averageRating: avg
+      });
+
+      setRecipe(prev => prev ? {
+        ...prev,
+        ratingsCount: count,
+        averageRating: avg
+      } : null);
+
+      setShowCookedModal(false);
+      setCookedReviewText('');
+      setCookedRating(5);
+    } catch (err) {
+      console.error('Failed to submit cooked review:', err);
+    } finally {
+      setSubmittingCookedRating(false);
+    }
+  };
 
   const exportRecipe = (format: 'json' | 'text') => {
     if (!recipe) return;
@@ -268,7 +330,7 @@ export default function RecipeDetails() {
         }).catch(e => console.warn("Recipe cookedCount update failed", e));
       }
 
-      alert(`Success! You've marked ${recipe.name} as cooked. Your culinary stats have been updated!`);
+      setShowCookedModal(true);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'users/cookingLogs');
     } finally {
@@ -339,7 +401,7 @@ export default function RecipeDetails() {
       className="space-y-16 pb-24"
     >
       <button 
-        onClick={() => navigate(-1)}
+        onClick={() => navigate('/discover')}
         className="flex items-center gap-3 text-white/60 hover:text-amber-accent transition-all group mb-4"
       >
         <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-all" />
@@ -360,7 +422,7 @@ export default function RecipeDetails() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-8 py-10 border-y border-white/5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-8 py-10 border-y border-white/5">
             <div className="flex flex-col gap-2">
               <span className="text-xs uppercase tracking-wider font-bold text-amber-accent">Prep</span>
               <div className="text-white italic tracking-tight">{recipe.prepTime || '15 min'}</div>
@@ -376,6 +438,14 @@ export default function RecipeDetails() {
             <div className="flex flex-col gap-2">
               <span className="text-xs uppercase tracking-wider font-bold text-amber-accent">Difficulty</span>
               <div className="text-white font-bold uppercase text-xs tracking-wider">{recipe.difficulty}</div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-xs uppercase tracking-wider font-bold text-amber-accent">Rating</span>
+              <div className="text-white italic tracking-tight flex items-center gap-1.5">
+                <Star className="w-4 h-4 text-amber-500 fill-amber-500 animate-pulse" />
+                <span>{recipe.averageRating ? recipe.averageRating.toFixed(1) : '5.0'}</span>
+                <span className="text-xs text-white/40">({recipe.ratingsCount || 0})</span>
+              </div>
             </div>
             <div className="flex flex-col gap-2">
               <span className="text-xs uppercase tracking-wider font-bold text-amber-accent">Views</span>
@@ -600,6 +670,16 @@ export default function RecipeDetails() {
               <Share2 className="w-3 h-3 text-amber-accent" />
               Share Recipe
             </button>
+            <button 
+              onClick={handleCopyDeepLink}
+              className={cn(
+                "flex-1 px-6 py-3 bg-graphite border rounded-full text-[9px] font-bold uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2",
+                copiedLink ? "border-amber-accent text-amber-accent shadow-lg shadow-amber-accent/5" : "border-white/10 text-white hover:border-amber-accent"
+              )}
+            >
+              <Link2 className="w-3 h-3 text-amber-accent" />
+              {copiedLink ? 'Copied Link!' : 'Copy Deep Link'}
+            </button>
             <div className="relative flex-1">
               <button 
                 onClick={() => setIsExportOpen(!isExportOpen)}
@@ -662,19 +742,19 @@ export default function RecipeDetails() {
           url={window.location.href}
         />
 
-        <div className="space-y-8">
+         <div className="space-y-8">
           <div className="rounded-[48px] border border-white/5 overflow-hidden shadow-2xl relative group h-[500px]">
              <motion.img 
               layoutId={`recipe-img-${recipe.id}`}
               style={{ y }}
-              src={recipe.imageUrl || `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=1000`}
+              src={cleanRecipeImageUrl(recipe.imageUrl, recipe.name, recipe.category, recipe.cuisine)}
               className="w-full h-[120%] object-cover md:grayscale md:group-hover:grayscale-0 transition-all duration-1000 scale-105 group-hover:scale-100 absolute top-[-10%]"
               alt={recipe.name}
               loading="eager"
               referrerPolicy="no-referrer"
               onError={(e) => {
                 e.currentTarget.onerror = null;
-                e.currentTarget.src = `https://images.unsplash.com/featured/1200x800/?food,${encodeURIComponent(recipe.category || recipe.name)}`;
+                e.currentTarget.src = getStableFoodImage(recipe.name, recipe.category, recipe.cuisine);
               }}
              />
              <div className="absolute inset-0 bg-gradient-to-t from-onyx/40 to-transparent pointer-events-none" />
@@ -1032,6 +1112,93 @@ export default function RecipeDetails() {
           <CommentSection recipeId={recipe.id} />
         </div>
       </div>
+
+      {/* Cooked Rating Celebration Modal */}
+      <AnimatePresence>
+        {showCookedModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-onyx border border-white/10 p-10 rounded-[40px] max-w-md w-full relative space-y-6 shadow-2xl shadow-amber-accent/5 overflow-hidden"
+            >
+              {/* Decorative background glow */}
+              <div className="absolute top-0 right-0 w-44 h-44 bg-amber-accent/5 rounded-full blur-[80px]" />
+              
+              <button 
+                onClick={() => setShowCookedModal(false)}
+                className="absolute top-6 right-6 p-2 text-white/40 hover:text-white hover:bg-white/5 rounded-full transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="space-y-2 text-center">
+                <div className="mx-auto bg-amber-accent/10 p-4 rounded-3xl w-fit">
+                  <ChefHat className="w-8 h-8 text-amber-accent" />
+                </div>
+                <h3 className="font-serif text-3xl font-light text-white italic">Culinary Triumph!</h3>
+                <p className="text-xs font-bold uppercase tracking-widest text-amber-accent">You marked this recipe as cooked</p>
+                <p className="text-sm font-light text-gray-400 italic">How did it turn out? Rate your experience and leave a note for the community.</p>
+              </div>
+
+              <form onSubmit={handleCookedRatingSubmit} className="space-y-6">
+                {/* 5-star raw selector */}
+                <div className="space-y-2 text-center">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Select Rating</span>
+                  <div className="flex justify-center gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setCookedRating(star)}
+                        onMouseEnter={() => setCookedRatingHover(star)}
+                        onMouseLeave={() => setCookedRatingHover(null)}
+                        className="hover:scale-125 active:scale-95 transition-transform p-1 cursor-pointer"
+                      >
+                        <Star
+                          className={`w-8 h-8 transition-colors ${
+                            star <= (cookedRatingHover ?? cookedRating)
+                              ? "text-amber-500 fill-amber-500"
+                              : "text-white/10"
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-amber-accent leading-none mt-1">
+                    {cookedRating === 5 ? 'Masterpiece (5/5)' : cookedRating === 4 ? 'Delicious (4/5)' : cookedRating === 3 ? 'Good (3/5)' : cookedRating === 2 ? 'Fair (2/5)' : 'Needs Work (1/5)'}
+                  </p>
+                </div>
+
+                {/* Optional review input */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-white/40">Optional Tip/Note</label>
+                  <textarea
+                    value={cookedReviewText}
+                    onChange={(e) => setCookedReviewText(e.target.value)}
+                    placeholder="E.g., I added a pinch of lemon zest, and it elevated the dish beautifully!"
+                    className="w-full bg-graphite border border-white/5 rounded-2xl p-4 text-white text-sm font-light italic focus:outline-none focus:border-amber-accent/50 transition-all min-h-[100px] resize-none shadow-inner"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submittingCookedRating}
+                  className="w-full py-4 bg-amber-accent text-black rounded-2xl text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-white hover:scale-[1.02] transition-all disabled:opacity-50 shadow-xl shadow-amber-accent/10 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {submittingCookedRating ? 'Submitting...' : 'Submit Rating & Tip'}
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

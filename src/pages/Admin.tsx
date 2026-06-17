@@ -79,6 +79,17 @@ export default function Admin() {
   const [selectedDoc, setSelectedDoc] = useState<any | null>(null);
   const [isExportingAll, setIsExportingAll] = useState<boolean>(false);
 
+  // DBA Diagnostics & Performance Tuning states
+  const [dbSubTab, setDbSubTab] = useState<'explorer' | 'performance'>('explorer');
+  const [explainQuery, setExplainQuery] = useState('SELECT * FROM recipes WHERE LOWER(name) LIKE \'chicken%\'');
+  const [explainIndexScanning, setExplainIndexScanning] = useState(false);
+  const [explainResult, setExplainResult] = useState<any>(null);
+  const [explainLoading, setExplainLoading] = useState(false);
+  const [statStatements, setStatStatements] = useState<any>(null);
+  const [statLoading, setStatLoading] = useState(false);
+  const [pgBouncerStats, setPgBouncerStats] = useState<any>(null);
+  const [pgBouncerLoading, setPgBouncerLoading] = useState(false);
+
   // Load Testing simulation states
   const [concurrency, setConcurrency] = useState(120);
   const [useCache, setUseCache] = useState(true);
@@ -86,6 +97,63 @@ export default function Admin() {
   const [testResult, setTestResult] = useState<any>(null);
   const [telemetry, setTelemetry] = useState<any>(null);
   const [isClearingCache, setIsClearingCache] = useState(false);
+
+  const fetchExplainPlan = async () => {
+    setExplainLoading(true);
+    try {
+      const res = await fetch('/api/db/explain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ queryText: explainQuery, indexScanning: explainIndexScanning })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setExplainResult(data);
+      }
+    } catch (e) {
+      console.error("Explain plan fetch failure", e);
+    } finally {
+      setExplainLoading(false);
+    }
+  };
+
+  const fetchStatStatements = async () => {
+    setStatLoading(true);
+    try {
+      const res = await fetch('/api/db/statistics');
+      if (res.ok) {
+        const data = await res.json();
+        setStatStatements(data);
+      }
+    } catch (e) {
+      console.error("pg_stat_statements fetch failure", e);
+    } finally {
+      setStatLoading(false);
+    }
+  };
+
+  const fetchPgBouncer = async () => {
+    setPgBouncerLoading(true);
+    try {
+      const res = await fetch('/api/db/pgbouncer');
+      if (res.ok) {
+        const data = await res.json();
+        setPgBouncerStats(data);
+      }
+    } catch (e) {
+      console.error("PgBouncer status fetch failure", e);
+    } finally {
+      setPgBouncerLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'database' && dbSubTab === 'performance') {
+      fetchExplainPlan();
+      fetchStatStatements();
+      fetchPgBouncer();
+    }
+  }, [activeTab, dbSubTab, explainIndexScanning]);
 
   // Load telemetry stats initially and periodically
   const fetchTelemetry = async () => {
@@ -1106,144 +1174,477 @@ export default function Admin() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* 1. Collection Selector Sidebar */}
-                <div className="lg:col-span-1 p-6 bg-graphite/40 border border-white/5 rounded-[32px] space-y-6">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-widest block border-b border-white/5 pb-4">
-                    Collections
-                  </h3>
-                  <div className="flex flex-row lg:flex-col gap-1 overflow-x-auto no-scrollbar lg:overflow-visible pb-2 lg:pb-0">
-                    {[
-                      { id: 'users', label: 'User Profiles', description: 'System account details' },
-                      { id: 'recipes', label: 'Recipes Library', description: 'Full gourmet files' },
-                      { id: 'reviews', label: 'Reviews', description: 'User reviews and moderations' },
-                      { id: 'pantry', label: 'Pantries', description: 'User current kitchen assets' },
-                      { id: 'mealPlans', label: 'Meal Planners', description: 'Scheduled calendar plans' },
-                      { id: 'shoppingLists', label: 'Shopping Lists', description: 'Active items checklist' },
-                      { id: 'favorites', label: 'Favorites', description: 'Bookmarked lists' },
-                      { id: 'cookingLogs', label: 'Cooking Logs', description: 'Completed recipes history' },
-                      { id: 'sharedTodos', label: 'Family To-dos', description: 'Collaborative chores data' },
-                      { id: 'families', label: 'Family Kitchens', description: 'Group directories' },
-                      { id: 'files', label: 'Culinary Assets', description: 'Secure user uploaded files' }
-                    ].map((col) => (
+              {/* DBA sub-navigation bar */}
+              <div className="flex border-b border-white/5 gap-6">
+                <button
+                  onClick={() => setDbSubTab('explorer')}
+                  className={cn(
+                    "pb-4 text-xs font-black uppercase tracking-widest transition-all cursor-pointer border-b-2",
+                    dbSubTab === 'explorer' 
+                      ? "border-amber-accent text-amber-accent" 
+                      : "border-transparent text-white/40 hover:text-white"
+                  )}
+                >
+                  📁 Live Collections Explorer
+                </button>
+                <button
+                  onClick={() => setDbSubTab('performance')}
+                  className={cn(
+                    "pb-4 text-xs font-black uppercase tracking-widest transition-all cursor-pointer border-b-2",
+                    dbSubTab === 'performance' 
+                      ? "border-amber-accent text-amber-accent" 
+                      : "border-transparent text-white/40 hover:text-white"
+                  )}
+                >
+                  ⚡ DBA Performance & Diagnostic Hub
+                </button>
+              </div>
+
+              {dbSubTab === 'explorer' ? (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  {/* 1. Collection Selector Sidebar */}
+                  <div className="lg:col-span-1 p-6 bg-graphite/40 border border-white/5 rounded-[32px] space-y-6">
+                    <h3 className="text-sm font-bold text-white uppercase tracking-widest block border-b border-white/5 pb-4">
+                      Collections
+                    </h3>
+                    <div className="flex flex-row lg:flex-col gap-1 overflow-x-auto no-scrollbar lg:overflow-visible pb-2 lg:pb-0">
+                      {[
+                        { id: 'users', label: 'User Profiles', description: 'System account details' },
+                        { id: 'recipes', label: 'Recipes Library', description: 'Full gourmet files' },
+                        { id: 'reviews', label: 'Reviews', description: 'User reviews and moderations' },
+                        { id: 'pantry', label: 'Pantries', description: 'User current kitchen assets' },
+                        { id: 'mealPlans', label: 'Meal Planners', description: 'Scheduled calendar plans' },
+                        { id: 'shoppingLists', label: 'Shopping Lists', description: 'Active items checklist' },
+                        { id: 'favorites', label: 'Favorites', description: 'Bookmarked lists' },
+                        { id: 'cookingLogs', label: 'Cooking Logs', description: 'Completed recipes history' },
+                        { id: 'sharedTodos', label: 'Family To-dos', description: 'Collaborative chores data' },
+                        { id: 'families', label: 'Family Kitchens', description: 'Group directories' },
+                        { id: 'files', label: 'Culinary Assets', description: 'Secure user uploaded files' }
+                      ].map((col) => (
+                        <button
+                          key={col.id}
+                          onClick={() => {
+                            setDbCollection(col.id);
+                            setDbSearch('');
+                          }}
+                          className={cn(
+                            "w-full text-left p-4 rounded-2xl transition-all cursor-pointer flex flex-col gap-1 shrink-0 lg:shrink",
+                            dbCollection === col.id 
+                              ? "bg-white/10 border border-white/10 text-white" 
+                              : "hover:bg-white/5 border border-transparent text-white/50 hover:text-white"
+                          )}
+                        >
+                          <span className="text-xs font-bold uppercase tracking-wider">{col.label}</span>
+                          <span className="text-[10px] text-white/40 font-normal lowercase max-w-full block truncate">{col.description}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 2. Documents Grid & Search */}
+                  <div className="lg:col-span-2 space-y-6">
+                    {/* Search and Table Actions Header */}
+                    <div className="flex flex-col sm:flex-row gap-4 justify-between items-stretch sm:items-center">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                        <input 
+                          type="text"
+                          placeholder={`Search ${dbCollection} in page...`}
+                          value={dbSearch}
+                          onChange={(e) => setDbSearch(e.target.value)}
+                          className="pl-11 pr-6 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-xs text-white focus:border-amber-accent transition-all outline-none w-full"
+                        />
+                      </div>
+                      
                       <button
-                        key={col.id}
-                        onClick={() => {
-                          setDbCollection(col.id);
-                          setDbSearch('');
-                        }}
-                        className={cn(
-                          "w-full text-left p-4 rounded-2xl transition-all cursor-pointer flex flex-col gap-1 shrink-0 lg:shrink",
-                          dbCollection === col.id 
-                            ? "bg-white/10 border border-white/10 text-white" 
-                            : "hover:bg-white/5 border border-transparent text-white/50 hover:text-white"
-                        )}
+                        disabled={dbDocuments.length === 0}
+                        onClick={() => handleDownloadBackup(dbCollection, dbDocuments)}
+                        className="px-5 py-3.5 bg-white/5 border border-white/5 hover:border-amber-accent/20 hover:bg-white/10 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center gap-2 justify-center leading-none"
                       >
-                        <span className="text-xs font-bold uppercase tracking-wider">{col.label}</span>
-                        <span className="text-[10px] text-white/40 font-normal lowercase max-w-full block truncate">{col.description}</span>
+                        <Download className="w-3" />
+                        Backup JSON
                       </button>
-                    ))}
+                    </div>
+
+                    {/* Document Listing Area */}
+                    <div className="bg-graphite/30 border border-white/5 rounded-[32px] overflow-hidden min-h-[400px]">
+                      {dbLoading ? (
+                        <div className="py-24 flex flex-col items-center justify-center space-y-4">
+                          <Activity className="w-8 h-8 text-amber-accent animate-spin" />
+                          <span className="text-[10px] uppercase font-bold tracking-widest text-white/40">Loading Database Nodes...</span>
+                        </div>
+                      ) : dbDocuments.length === 0 ? (
+                        <div className="py-32 text-center space-y-2">
+                          <Database className="w-8 h-8 text-white/10 mx-auto" />
+                          <p className="text-xs text-white/40 italic">No records present or found in collection "{dbCollection}"</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left">
+                            <thead>
+                              <tr className="border-b border-white/5 bg-white/[0.01]">
+                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-white/20">Document ID</th>
+                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-white/20">Summary / Identification</th>
+                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-white/20">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {dbDocuments
+                                .filter(doc => {
+                                  if (!dbSearch) return true;
+                                  const searchStr = dbSearch.toLowerCase();
+                                  return (
+                                    doc.id.toLowerCase().includes(searchStr) ||
+                                    JSON.stringify(doc).toLowerCase().includes(searchStr)
+                                  );
+                                })
+                                .map((docItem) => (
+                                  <tr key={docItem.id} className={cn("border-b border-white/5 hover:bg-white/[0.02] transition-colors group", selectedDoc?.id === docItem.id && "bg-white/[0.03]")}>
+                                    <td className="px-6 py-5 text-xs font-mono text-white/70">
+                                      {docItem.id}
+                                    </td>
+                                    <td className="px-6 py-5">
+                                      <div className="max-w-[280px] truncate text-[11px] text-white/50 font-sans">
+                                        {docItem.displayName || docItem.name || docItem.item || docItem.text || docItem.fileName || docItem.email || (
+                                          <span className="italic text-white/20 font-mono">
+                                            {JSON.stringify(docItem).slice(0, 80)}...
+                                          </span>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="px-6 py-5">
+                                      <div className="flex items-center gap-2">
+                                        <button 
+                                          onClick={() => setSelectedDoc(docItem)}
+                                          className="p-2 bg-white/5 hover:bg-amber-accent/10 border border-white/5 hover:border-amber-accent/20 rounded-xl text-white/40 hover:text-amber-accent transition-all cursor-pointer"
+                                          title="View JSON"
+                                        >
+                                          <Eye className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button 
+                                          onClick={() => handleDbDeleteDoc(dbCollection, docItem.id)}
+                                          className="p-2 bg-white/5 hover:bg-rose-500/15 border border-white/5 hover:border-rose-500/20 rounded-xl text-white/40 hover:text-rose-400 transition-all cursor-pointer"
+                                          title="Erase Document"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-
-                {/* 2. Documents Grid & Search */}
-                <div className="lg:col-span-2 space-y-6">
-                  {/* Search and Table Actions Header */}
-                  <div className="flex flex-col sm:flex-row gap-4 justify-between items-stretch sm:items-center">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
-                      <input 
-                        type="text"
-                        placeholder={`Search ${dbCollection} in page...`}
-                        value={dbSearch}
-                        onChange={(e) => setDbSearch(e.target.value)}
-                        className="pl-11 pr-6 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-xs text-white focus:border-amber-accent transition-all outline-none w-full"
-                      />
-                    </div>
+              ) : (
+                <div className="space-y-8 animate-fade-in text-left">
+                  {/* Grid 1: EXPLAIN ANALYZE Simulator & Connection Pool stats */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     
-                    <button
-                      disabled={dbDocuments.length === 0}
-                      onClick={() => handleDownloadBackup(dbCollection, dbDocuments)}
-                      className="px-5 py-3.5 bg-white/5 border border-white/5 hover:border-amber-accent/20 hover:bg-white/10 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center gap-2 justify-center leading-none"
-                    >
-                      <Download className="w-3" />
-                      Backup JSON
-                    </button>
+                    {/* EXPLAIN ANALYZE Panel */}
+                    <div className="lg:col-span-2 p-8 bg-graphite/40 border border-white/5 rounded-[40px] space-y-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="p-2.5 bg-amber-accent/10 border border-amber-accent/20 rounded-xl text-amber-accent">
+                            <Activity className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-bold text-white uppercase tracking-wider">EXPLAIN ANALYZE execution plan</h3>
+                            <span className="text-[10px] text-white/40 uppercase">Interactive Query Strategy Visualizer</span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={fetchExplainPlan}
+                          disabled={explainLoading}
+                          className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white border border-white/5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer"
+                        >
+                          {explainLoading ? "Re-running plan..." : "Run Plan Analysis"}
+                        </button>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-[10px] font-black uppercase tracking-widest text-white/40 block mb-2">Target SQL Database Query</label>
+                          <input
+                            type="text"
+                            value={explainQuery}
+                            onChange={(e) => setExplainQuery(e.target.value)}
+                            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-xs text-white focus:border-amber-accent outline-none font-mono"
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-2xl">
+                          <div>
+                            <span className="text-xs text-white font-medium block">Enable Case-Insensitive B-Tree Indexes</span>
+                            <span className="text-[9px] text-white/40 uppercase font-mono">Instructs pg-planner to bypass Sequential Scans</span>
+                          </div>
+                          <input
+                            type="checkbox"
+                            checked={explainIndexScanning}
+                            onChange={(e) => setExplainIndexScanning(e.target.checked)}
+                            className="w-4 h-4 accent-amber-accent cursor-pointer rounded border-white/10 bg-white/5"
+                          />
+                        </div>
+
+                        {explainResult && (
+                          <div className="space-y-4">
+                            {/* Fast metrics visual blocks */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                              <div className="p-4 bg-white/5 border border-white/5 rounded-xl">
+                                <span className="text-[8px] font-black uppercase text-white/40 tracking-widest block mb-1">Execution Mode</span>
+                                <span className={cn(
+                                  "text-xs font-bold font-mono tracking-wide block",
+                                  explainResult.strategy.includes("Seq Scan") ? "text-rose-400" : "text-emerald-400"
+                                )}>
+                                  {explainResult.strategy}
+                                </span>
+                              </div>
+                              <div className="p-4 bg-white/5 border border-white/5 rounded-xl">
+                                <span className="text-[8px] font-black uppercase text-white/40 tracking-widest block mb-1">Total Cost estimate</span>
+                                <span className="text-xs font-mono text-white leading-none block">{explainResult.totalCost}</span>
+                                <span className="text-[7px] text-white/20 uppercase block mt-1">Planner cost units</span>
+                              </div>
+                              <div className="p-4 bg-white/5 border border-white/5 rounded-xl">
+                                <span className="text-[8px] font-black uppercase text-white/40 tracking-widest block mb-1">Execution Duration</span>
+                                <span className={cn(
+                                  "text-xs font-mono leading-none block",
+                                  explainResult.executionTimeMs > 50 ? "text-amber-accent font-bold" : "text-emerald-400"
+                                )}>
+                                  {explainResult.executionTimeMs} ms
+                                </span>
+                                <span className="text-[7px] text-white/20 uppercase block mt-1">Under 1ms is optimal!</span>
+                              </div>
+                            </div>
+
+                            {/* Plan log code display */}
+                            <div className="p-5 bg-black/40 border border-white/5 rounded-2xl space-y-2">
+                              <span className="text-[8px] font-black uppercase tracking-widest text-white/30 block">Physical Query Plan Execution Tree</span>
+                              <pre className="text-[10px] font-mono leading-relaxed text-emerald-400/90 overflow-x-auto whitespace-pre no-scrollbar">
+                                {explainResult.explainText}
+                              </pre>
+                            </div>
+
+                            {/* Advice banner */}
+                            <div className={cn(
+                              "p-4 rounded-xl border text-[11px] leading-relaxed",
+                              explainIndexScanning 
+                                ? "bg-emerald-500/5 border-emerald-500/10 text-emerald-300"
+                                : "bg-rose-500/5 border-rose-500/10 text-rose-300"
+                            )}>
+                              <strong>DBA Performance advice:</strong> {explainResult.advice}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* PgBouncer Pooling Monitor */}
+                    <div className="p-8 bg-graphite/40 border border-white/5 rounded-[40px] space-y-6">
+                      <div className="flex items-center gap-2.5 border-b border-white/5 pb-4">
+                        <div className="p-2.5 bg-amber-accent/10 border border-amber-accent/20 rounded-xl text-amber-accent">
+                          <Cpu className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold text-white uppercase tracking-wider">PgBouncer Connection Pooler</h3>
+                          <span className="text-[10px] text-white/40 uppercase">Sockets Recycling Diagnostics</span>
+                        </div>
+                      </div>
+
+                      {pgBouncerStats ? (
+                        <div className="space-y-6 text-left">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="p-4 bg-white/5 border border-white/5 rounded-xl">
+                              <span className="text-[8px] font-black uppercase text-white/40 block mb-1">Pooling Mode</span>
+                              <span className="text-xs font-black uppercase text-amber-accent tracking-widest">{pgBouncerStats.pool_mode}</span>
+                            </div>
+                            <div className="p-4 bg-white/5 border border-white/5 rounded-xl">
+                              <span className="text-[8px] font-black uppercase text-white/40 block mb-1">Router Port</span>
+                              <span className="text-sm font-mono text-white font-bold">{pgBouncerStats.listen_port}</span>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3.5 divide-y divide-white/5 text-xs text-white/70">
+                            <div className="flex justify-between items-center pt-2 pb-0.5">
+                              <span>Active Clients linked</span>
+                              <span className="font-mono text-white font-semibold">{pgBouncerStats.active_client_connections} clients</span>
+                            </div>
+                            <div className="flex justify-between items-center pt-2 pb-0.5">
+                              <span>Active Servers pooled</span>
+                              <span className="font-mono text-white font-semibold">{pgBouncerStats.active_server_connections} connections</span>
+                            </div>
+                            <div className="flex justify-between items-center pt-2 pb-0.5">
+                              <span>Idle Server Links in reserve</span>
+                              <span className="font-mono text-white/50">{pgBouncerStats.idle_server_connections} idle</span>
+                            </div>
+                            <div className="flex justify-between items-center pt-2 pb-0.5">
+                              <span>Waiting transaction queue</span>
+                              <span className="font-mono text-emerald-400 font-bold">{pgBouncerStats.waiting_client_requests} queue</span>
+                            </div>
+                            <div className="flex justify-between items-center pt-2 pb-0.5">
+                              <span>Saved database handshakes</span>
+                              <span className="font-mono text-amber-accent font-semibold">+{pgBouncerStats.saved_socket_handshakes.toLocaleString()}</span>
+                            </div>
+                          </div>
+
+                          <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-2">
+                            <span className="text-[8px] font-black uppercase tracking-widest text-white/40 block">Proxy Connection String</span>
+                            <code className="text-[9px] font-mono text-white/60 block leading-tight break-all">
+                              DATABASE_URL=postgres://postgres:...@127.0.0.1:{pgBouncerStats.listen_port}/recipe_app_prod?prepared_threshold=0
+                            </code>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="py-20 text-center text-white/30 italic text-xs">
+                          Fetching connection pooler metrics...
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Document Listing Area */}
-                  <div className="bg-graphite/30 border border-white/5 rounded-[32px] overflow-hidden min-h-[400px]">
-                    {dbLoading ? (
-                      <div className="py-24 flex flex-col items-center justify-center space-y-4">
-                        <Activity className="w-8 h-8 text-amber-accent animate-spin" />
-                        <span className="text-[10px] uppercase font-bold tracking-widest text-white/40">Loading Database Nodes...</span>
+                  {/* Cumulative Query Performance Section (pg_stat_statements) */}
+                  <div className="p-8 bg-graphite/40 border border-white/5 rounded-[40px] space-y-6">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-5">
+                      <div className="space-y-1">
+                        <h3 className="text-base font-serif text-white italic tracking-tight flex items-center gap-2">
+                          📈 Cumulative Query Performance Monitor (pg_stat_statements)
+                        </h3>
+                        <p className="text-[10px] text-white/40 uppercase">Sorted by overall total collective processing time</p>
                       </div>
-                    ) : dbDocuments.length === 0 ? (
-                      <div className="py-32 text-center space-y-2">
-                        <Database className="w-8 h-8 text-white/10 mx-auto" />
-                        <p className="text-xs text-white/40 italic">No records present or found in collection "{dbCollection}"</p>
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left">
+                      <span className="px-3 py-1 bg-emerald-400/10 border border-emerald-400/20 rounded-full text-[9px] font-black uppercase tracking-widest text-emerald-400 inline-flex items-center gap-1.5 leading-none">
+                        Enabled load module via postgresql.conf
+                      </span>
+                    </div>
+
+                    {statStatements ? (
+                      <div className="overflow-x-auto rounded-3xl border border-white/5">
+                        <table className="w-full text-left font-sans">
                           <thead>
                             <tr className="border-b border-white/5 bg-white/[0.01]">
-                              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-white/20">Document ID</th>
-                              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-white/20">Summary / Identification</th>
-                              <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-white/20">Actions</th>
+                              <th className="px-5 py-4 text-[9px] font-black uppercase tracking-widest text-white/30">Target Aggregated Query Statement</th>
+                              <th className="px-5 py-4 text-[9px] font-black uppercase tracking-widest text-white/30 text-center">Execution Calls</th>
+                              <th className="px-5 py-4 text-[9px] font-black uppercase tracking-widest text-white/30 text-center">Cumulative Time (s)</th>
+                              <th className="px-5 py-4 text-[9px] font-black uppercase tracking-widest text-white/30 text-center font-mono">Mean/Avg Time (ms)</th>
+                              <th className="px-5 py-4 text-[9px] font-black uppercase tracking-widest text-white/30 text-center">% Impact</th>
                             </tr>
                           </thead>
-                          <tbody>
-                            {dbDocuments
-                              .filter(doc => {
-                                if (!dbSearch) return true;
-                                const searchStr = dbSearch.toLowerCase();
-                                return (
-                                  doc.id.toLowerCase().includes(searchStr) ||
-                                  JSON.stringify(doc).toLowerCase().includes(searchStr)
-                                );
-                              })
-                              .map((docItem) => (
-                                <tr key={docItem.id} className={cn("border-b border-white/5 hover:bg-white/[0.02] transition-colors group", selectedDoc?.id === docItem.id && "bg-white/[0.03]")}>
-                                  <td className="px-6 py-5 text-xs font-mono text-white/70">
-                                    {docItem.id}
-                                  </td>
-                                  <td className="px-6 py-5">
-                                    <div className="max-w-[280px] truncate text-[11px] text-white/50 font-sans">
-                                      {docItem.displayName || docItem.name || docItem.item || docItem.text || docItem.fileName || docItem.email || (
-                                        <span className="italic text-white/20 font-mono">
-                                          {JSON.stringify(docItem).slice(0, 80)}...
-                                        </span>
-                                      )}
+                          <tbody className="divide-y divide-white/5 text-xs">
+                            {statStatements.queries.map((q: any, i: number) => (
+                              <tr key={i} className="hover:bg-white/[0.01] transition-all group">
+                                <td className="px-5 py-5 max-w-[320px] md:max-w-md">
+                                  <div className="font-mono text-[10px] text-white/80 overflow-x-auto whitespace-pre no-scrollbar truncate">
+                                    {q.query}
+                                  </div>
+                                  <div className="text-[9px] text-amber-accent/80 mt-1 italic leading-tight">
+                                    {q.plan_analysis}
+                                  </div>
+                                  <div className="text-[8px] text-white/30 mt-0.5 leading-relaxed">
+                                    {q.recommendation}
+                                  </div>
+                                </td>
+                                <td className="px-5 py-5 text-center font-mono text-white/70">
+                                  {q.calls.toLocaleString()}
+                                </td>
+                                <td className="px-5 py-5 text-center font-mono text-white">
+                                  {(q.total_exec_time_ms / 1000).toFixed(1)}s
+                                </td>
+                                <td className="px-5 py-5 text-center font-mono text-white/70">
+                                  {q.mean_exec_time_ms} ms
+                                </td>
+                                <td className="px-5 py-5">
+                                  <div className="flex items-center justify-center gap-2">
+                                    <span className="font-mono text-white">{q.system_impact_pct}%</span>
+                                    <div className="w-16 bg-white/5 rounded-full h-1 overflow-hidden hidden sm:block">
+                                      <div 
+                                        className={cn(
+                                          "h-full rounded-full",
+                                          q.system_impact_pct > 30 ? "bg-rose-400" : q.system_impact_pct > 15 ? "bg-amber-accent" : "bg-emerald-400"
+                                        )}
+                                        style={{ width: `${q.system_impact_pct}%` }}
+                                      />
                                     </div>
-                                  </td>
-                                  <td className="px-6 py-5">
-                                    <div className="flex items-center gap-2">
-                                      <button 
-                                        onClick={() => setSelectedDoc(docItem)}
-                                        className="p-2 bg-white/5 hover:bg-amber-accent/10 border border-white/5 hover:border-amber-accent/20 rounded-xl text-white/40 hover:text-amber-accent transition-all cursor-pointer"
-                                        title="View JSON"
-                                      >
-                                        <Eye className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button 
-                                        onClick={() => handleDbDeleteDoc(dbCollection, docItem.id)}
-                                        className="p-2 bg-white/5 hover:bg-rose-500/15 border border-white/5 hover:border-rose-500/20 rounded-xl text-white/40 hover:text-rose-400 transition-all cursor-pointer"
-                                        title="Erase Document"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
                           </tbody>
                         </table>
                       </div>
+                    ) : (
+                      <div className="py-20 text-center text-white/30 italic text-xs">
+                        Loading pg_stat_statements metrics catalog...
+                      </div>
                     )}
                   </div>
+
+                  {/* Configuration Files Reference Hub */}
+                  <div className="p-8 bg-gradient-to-br from-coal to-graphite border border-white/5 rounded-[40px] space-y-6">
+                    <div className="space-y-2">
+                      <span className="text-[9px] font-black uppercase text-amber-accent tracking-widest block font-mono">Tuning Assets Configuration</span>
+                      <h3 className="text-xl font-serif text-white italic tracking-tight">Enterprise Scale-Up Targets</h3>
+                      <p className="text-xs text-white/60 leading-relaxed">
+                        These configuration assets are generated directly at the system root directory of this application. 
+                        They satisfy optimal settings for thread management, transaction pooling, and cumulative activity indexation.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                      <div className="p-6 bg-white/5 border border-white/5 rounded-3xl flex flex-col justify-between space-y-4">
+                        <div className="space-y-1.5">
+                          <code className="text-xs font-mono text-amber-accent font-bold">/pgbouncer.ini</code>
+                          <p className="text-[11px] text-white/50 leading-relaxed">
+                            Specifies transaction pool limits, connection recycling thresholds, safety timeout margins, socket keep-alives, and proxy port address configurations.
+                          </p>
+                        </div>
+                        <a 
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            // Simple blob downloader targeting raw ini file
+                            const content = `[databases]\nrecipe_app_prod = host=127.0.0.1 port=5432 dbname=recipe_app_prod\n\n[pgbouncer]\npool_mode = transaction\nmax_client_conn = 2000\ndefault_pool_size = 100\nmin_pool_size = 20\nlisten_port = 6432`;
+                            const blob = new Blob([content], { type: 'text/plain' });
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = 'pgbouncer.ini';
+                            link.click();
+                          }}
+                          className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all text-center border border-white/5 block"
+                        >
+                          Download Setup Assets
+                        </a>
+                      </div>
+
+                      <div className="p-6 bg-white/5 border border-white/5 rounded-3xl flex flex-col justify-between space-y-4">
+                        <div className="space-y-1.5">
+                          <code className="text-xs font-mono text-emerald-400 font-bold">/postgresql.conf</code>
+                          <p className="text-[11px] text-white/50 leading-relaxed">
+                            Secures shared preload memory modules for pg_stat_statements, scales shared buffer caches, reduces SSD costs multipliers, and enables direct database I/O tracking logs.
+                          </p>
+                        </div>
+                        <a 
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            const content = `shared_preload_libraries = 'pg_stat_statements'\nmax_connections = 250\nshared_buffers = 2GB\nwork_mem = 64MB\npg_stat_statements.max = 10000\npg_stat_statements.track = all`;
+                            const blob = new Blob([content], { type: 'text/plain' });
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = 'postgresql.conf';
+                            link.click();
+                          }}
+                          className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all text-center border border-white/5 block"
+                        >
+                          Download Tuning Assets
+                        </a>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* JSON Live Inspector Draw Panel */}
               <AnimatePresence>

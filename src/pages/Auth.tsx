@@ -315,7 +315,7 @@ export default function Auth() {
           isProfileComplete: true,
           subscription: {
             status: 'trial',
-            trialEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            trialEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
           }
         };
 
@@ -543,7 +543,7 @@ export default function Auth() {
           isProfileComplete: false,
           subscription: {
             status: 'trial',
-            trialEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            trialEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
           }
         };
         await setDoc(doc(db, 'users', firebaseUser.uid), userProfile);
@@ -614,7 +614,7 @@ export default function Auth() {
           isProfileComplete: false,
           subscription: {
             status: 'trial',
-            trialEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            trialEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
           }
         };
         await setDoc(doc(db, 'users', firebaseUser.uid), userProfile);

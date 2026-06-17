@@ -26,6 +26,14 @@ export default function Profile() {
   const [backupProgress, setBackupProgress] = useState<number>(0);
   const [verifiedBackup, setVerifiedBackup] = useState<any | null>(null);
   const [restoreMode, setRestoreMode] = useState<'merge' | 'overwrite'>('merge');
+  const [appUpdating, setAppUpdating] = useState(false);
+
+  const handleManualUpdate = () => {
+    setAppUpdating(true);
+    setTimeout(() => {
+      window.location.reload();
+    }, 1200);
+  };
 
   const diets = ['Vegan', 'Keto', 'Paleo', 'Vegetarian', 'Halal', 'Pescatarian', 'No Sugar'];
   const allergies = ['Nuts', 'Gluten', 'Dairy', 'Soy', 'Shellfish'];
@@ -63,7 +71,7 @@ export default function Profile() {
             createdAt: new Date().toISOString(),
             subscription: {
               status: 'trial',
-              trialEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+              trialEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
             }
           };
           await setDoc(doc(db, 'users', user.uid), defaultProfile);
@@ -893,6 +901,15 @@ export default function Profile() {
                     accept=".json" 
                   />
                 </div>
+
+                <button 
+                  onClick={handleManualUpdate}
+                  disabled={appUpdating}
+                  className="w-full py-4 border border-amber-accent/20 bg-amber-accent/5 text-amber-accent hover:bg-amber-accent hover:text-black rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50 mt-1"
+                >
+                  <RefreshCcw className={`w-3.5 h-3.5 ${appUpdating ? 'animate-spin' : ''}`} />
+                  {appUpdating ? 'Sourcing Culinary Updates...' : 'Check For App Updates & Refresh'}
+                </button>
                 
                 <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl text-center space-y-1 mt-2">
                   <p className="text-[9px] font-black uppercase tracking-widest text-white/20">Need Assistance?</p>

@@ -20,11 +20,12 @@ export function useSubscription() {
     const trialEnd = new Date(subscription.trialEndDate).getTime();
     const now = Date.now();
     const isExpired = now > trialEnd;
+    const rawDaysLeft = Math.max(0, Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24)));
     
     return { 
       loading: false, 
       isActive: !isExpired,
-      trialDaysLeft: Math.max(0, Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24)))
+      trialDaysLeft: Math.min(14, rawDaysLeft)
     };
   }
 

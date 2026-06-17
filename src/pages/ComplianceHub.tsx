@@ -195,7 +195,7 @@ export default function ComplianceHub() {
 
     const privacyBody = `PRIVACY POLICY FOR ${appName.toUpperCase()}
 
-Last Updated: May 2026
+Last Updated: June 2026
 
 At ${appName} ("we," "our," or "us"), operated under the entity ${legalEntity}, we are absolutely committed to protecting user transparency and complying with regional regulations such as GDPR (EU) and CCPA (USA).
 
@@ -214,24 +214,30 @@ ${marketing.length ? marketing.map(m => `- ${m.name}: Used for "${m.purpose}" ($
 D. Sensitive Information (Requires High-Consent Controls):
 ${sensitive.length ? sensitive.map(s => `- ${s.name}: Used for "${s.purpose}" (${s.description})`).join('\n') : '- None currently authorized.'}
 
-2. HOW WE STORE AND SECURE DATA
+2. SECURITY DISCLOSURE GATEWAY AND AI PROCESSING CONSENT
+By using the Platform, you acknowledge and agree to our AI processing frameworks:
+- Secured Outbound Transmissions: To generate delicious, custom-tailored dishes and search the global library, our Artisanal AI parses your entries. All ingredients, search queries, food categories, and allergy restrictions are securely transmitted to Google Gemini API servers (operated and maintained by Google LLC, our model vendor partner) for calculation.
+- Personal Perimeter Protection: Zero high-sensitivity account metadata (such as passwords, internal support logs, or billing credentials) is ever attached or transferred to outside services.
+- Verification Duty: Generative AI outputs are inherently non-deterministic and advisors, NOT absolute physical certifications. Users bear full responsibility to manually inspect food packaging and verify allergenic ingredients before preparation or consumption.
+
+3. HOW WE STORE AND SECURE DATA
 All account structures, preferences, and culinary credentials are encrypted and stored in certified high-security database regions. No human credentials are physically indexable. Payment operations are routed through modern end-to-end encrypted gateways. We never retain physical card information on our servers.
 
-3. THIRD-PARTY DATA DISCLOSURES
+4. THIRD-PARTY DATA DISCLOSURES
 We do not sell, trade, or rent your database records to advertising brokers. Data is parsed only through essential developer cloud platforms to keep the application fast, performant, and reliable.
 
-4. USER RIGHTS, EXPORT, AND GDPR ERASURE REQUESTS
+5. USER RIGHTS, EXPORT, AND GDPR ERASURE REQUESTS
 You retain absolute control of your data:
 - Right to Export: Retrieve a complete structural JSON of your favorites and pantry lists instantly at any time.
 - Right to be Forgotten (Erasure): Submit a secure profile purge request inside the application or via email to request deletion of all associated credentials.
 
-5. CONTACT LEGAL DESK
+6. CONTACT LEGAL DESK
 For queries, disputes, and compliance investigations, please contact us directly at:
 Email: ${supportEmail}`;
 
     const termsBody = `TERMS OF SERVICE AGREEMENT
 
-Last Updated: May 2026
+Last Updated: June 2026
 
 Welcome to ${appName}! This Agreement governs your legal usage of the platform, tools, and algorithms provided by ${legalEntity}.
 
@@ -242,24 +248,32 @@ As a condition of your account creation, you agree strictly to refrain from:
 - Uploading malicious files or binary proxies.
 Violations of platform security will result in an immediate unconditional ban without notice or refund.
 
-2. FEES, SUBSCRIPTIONS & REFUND POLICY
+2. SECURITY DISCLOSURE GATEWAY AND AI PROCESSING CONSENT
+By accepting this Agreement and continued usage of our Platform, you grant explicit double-opt-in consent to our AI operations:
+- Data Transfer to Partners: You authorize the secure transmission of ingredient logs, meal query terms, and health/allerigen setup profiles to Google Gemini API servers (operated by Google LLC) to programmatically compute optimal culinary pairings.
+- Manual verification Duty: You acknowledge that artificial-intelligence language models are subject to logical hallucinations. You maintain an absolute, personal duty to check phyiscal packaging labels, expiry times, and allergen instructions manually.
+- Service Limitation: Generative output is strictly advisory. We accept no civil or healthcare liability under any circumstances.
+
+3. FEES, SUBSCRIPTIONS & REFUND POLICY
 Some features of ${appName} are categorized as Plus components. Subscription rates, trial limits, and renewal dates are disclosed before activation. Paid modules are contractually billed in advance.
 
 Refunds & Guarantee: We offer a 14-day hassle-free refund policy for first-time premium subscription upgrades. You can receive a full refund of your payment if requested within 14 days of upgrade. After 14 days, fees are non-refundable. Refund requests must be sent to the support legal desk. Accounts found in violation of security or Decorum guidelines are entirely ineligible for refunds.
 
-3. PHYSICAL ALLERGEN WARNING & LIMITATION OF LIABILITY
+4. PHYSICAL ALLERGEN WARNING & LIMITATION OF LIABILITY
 Our meal planners, visual food scanners, and AI chefs act solely as advisory cooking guides. We cannot and do not guarantee the completeness or safety of allergy filtering. It is your absolute responsibility to check raw ingredients and prepare items safely. ${legalEntity} accepts no liability for foodborne illnesses, physical discomforts, or injury resulting from using our kitchen tools.
 
-4. DISPUTE RESOLUTION & ARBITRATION
+5. DISPUTE RESOLUTION & ARBITRATION
 This Agreement is governed under statutory laws. Any insolvencies or disputes will be resolved privately via professional mediation channels before seeking court litigation.
 
-5. REGISTRATION ACCEPTANCE
+6. REGISTRATION ACCEPTANCE
 By clicking "I agree to the Terms of Service and Privacy Policy" during registration, you bind your digital acceptance securely.
 
 Support Contact: ${supportEmail}`;
 
     setPolicyDraft(privacyBody);
     setTermsDraft(termsBody);
+    localStorage.setItem('legal_policy_draft', privacyBody);
+    localStorage.setItem('legal_terms_draft', termsBody);
 
     // Auto mark Privacy Policy and Terms as Created in Checklist
     if (!checklist.privacyPolicyCreated) toggleChecklist('privacyPolicyCreated');

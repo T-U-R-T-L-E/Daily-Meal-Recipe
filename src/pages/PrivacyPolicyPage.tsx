@@ -15,7 +15,7 @@ export default function PrivacyPolicyPage() {
     // Initial default draft matching the custom generator
     const defaultBody = `PRIVACY POLICY FOR ${savedName.toUpperCase()}
 
-Last Updated: May 2026
+Last Updated: June 2026
 
 At ${savedName} ("we," "our," or "us"), operated under the entity ${savedEntity}, we are absolutely committed to protecting user transparency, secure system architecture, and complying with regional regulations such as GDPR (EU) and CCPA (USA).
 
@@ -28,19 +28,25 @@ We process account credentials and metrics necessary to support cloud-synchroniz
 - Cookies & Browser Storage: Storing local parameters, ingredients list items, and session indicators.
 - Dietary Requirements / Allergies: Strictly processed with high consent to safeguard recipes from allergy concerns.
 
-2. PHYSICAL STORAGE AND SECURITY MEASURES
+2. SECURITY DISCLOSURE GATEWAY AND AI PROCESSING CONSENT
+By using the Platform, you acknowledge and agree to our AI processing frameworks:
+- Secured Outbound Transmissions: To generate delicious, custom-tailored dishes and search the global library, our Artisanal AI parses your entries. All ingredients, search queries, food categories, and allergy restrictions are securely transmitted to Google Gemini API servers (operated and maintained by Google LLC, our model vendor partner) for calculation.
+- Personal Perimeter Protection: Zero high-sensitivity account metadata (such as passwords, internal support logs, or billing credentials) is ever attached or transferred to outside services.
+- Verification Duty: Generative AI outputs are inherently non-deterministic and advisors, NOT absolute physical certifications. Users bear full responsibility to manually inspect food packaging and verify allergenic ingredients before preparation or consumption.
+
+3. PHYSICAL STORAGE AND SECURITY MEASURES
 All user preferences and database items are hosted securely under modern Firestore guidelines. Credentials cannot be index-read in plain sight. We enforce strict data transmission controls:
 
 - Secure Transport: Authorized tokens are restricted to premium SSL/TLS connections and transmitted solely in request headers, never exposed via query strings or URL history.
 - Browser Cache Security: Firewalls protect browser level state, automatically clear memory caching under system restarts, and self-heal from sandbox environment corruption.
 
-3. SECURITY COHESION & THIRD-PARTY OAuth
+4. SECURITY COHESION & THIRD-PARTY OAuth
 We protect user identities across environments utilizing industry-standard validation mechanisms:
 - Proof Key for Code Exchange (PKCE) natively shields OAuth handshakes, preventing auth manipulation across shared devices.
 - Anti-CSRF protection forces cryptographically random token callbacks.
 - RISC Integration coordinates security channels to automatically clear active local sessions if authentication keys are revoked or compromised.
 
-4. YOUR RIGHTS: ERASURE & JSON EXPORT
+5. YOUR RIGHTS: ERASURE & JSON EXPORT
 Under strict GDPR rules, you hold full claim to request instant, permanent erasure of your culinary registries, subscription state records, or to download a full JSON dump of your profile files.
 
 For questions or data action requests, please dispatch details to ${savedEmail}.`;

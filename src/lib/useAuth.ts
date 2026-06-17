@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { UserProfile } from '../types';
 
@@ -76,6 +76,28 @@ export function useAuth() {
             if (userDoc.exists()) {
               console.log("Auth: Profile exists");
               const profileData = { uid: firebaseUser.uid, ...userDoc.data() } as UserProfile;
+              
+              // Normalize existing trial subscription days if more than 14 days are remaining in database
+              if (profileData.subscription?.status === 'trial') {
+                const now = Date.now();
+                const trialEnd = new Date(profileData.subscription.trialEndDate).getTime();
+                const daysLeftRaw = Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24));
+                if (daysLeftRaw > 14) {
+                  // Capped to exactly 14 days from now
+                  const correctedEndDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+                  profileData.subscription.trialEndDate = correctedEndDate;
+                  
+                  // Non-blocking update back to Firestore database
+                  updateDoc(doc(db, 'users', firebaseUser.uid), {
+                    'subscription.trialEndDate': correctedEndDate
+                  }).then(() => {
+                    console.log("Auth: Corrected subscription.trialEndDate in database to 14 days maximum limit.");
+                  }).catch(err => {
+                    console.error("Auth: Failed to correct subscription in firestore", err);
+                  });
+                }
+              }
+
               setProfile(profileData);
               localStorage.setItem('cached_user_profile', JSON.stringify(profileData));
               setLoading(false);
@@ -122,7 +144,7 @@ export function useAuth() {
                 isProfileComplete: false, // Default is false for Google first-time login auto profile creation
                 subscription: {
                   status: 'trial',
-                  trialEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                  trialEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
                 }
               };
               
