@@ -353,15 +353,17 @@ export default function ShoppingList() {
               </div>
             ) : items.length > 0 ? (
               <div className="divide-y divide-white/5">
-                {items.sort((a,b) => Number(a.completed) - Number(b.completed)).map((item) => (
-                  <motion.div
-                    key={item.id}
-                    layout
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, x: -40 }}
-                    className="group flex items-center justify-between p-5 md:p-8 hover:bg-onyx transition-colors gap-3"
-                  >
+                <AnimatePresence mode="popLayout">
+                  {items.sort((a,b) => Number(a.completed) - Number(b.completed)).map((item) => (
+                    <motion.div
+                      key={item.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, x: -30, scale: 0.95 }}
+                      transition={{ duration: 0.25, ease: "easeOut" }}
+                      className="group flex items-center justify-between p-5 md:p-8 hover:bg-onyx transition-colors gap-3"
+                    >
                     <div className="flex items-center gap-4 md:gap-6 min-w-0 flex-1">
                       <button 
                         onClick={() => toggleComplete(item.id!, item.completed)}
@@ -425,8 +427,9 @@ export default function ShoppingList() {
                     >
                       <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
                     </button>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
             ) : (
               <div className="py-24 md:py-40 flex flex-col items-center justify-center text-center space-y-6 md:space-y-8 px-6 md:px-12 relative overflow-hidden">

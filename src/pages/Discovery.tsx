@@ -163,7 +163,7 @@ export default function Discovery() {
 
       setIsLoadingSaved(true);
       try {
-        const ids = Array.from(favoriteRecipeIds).slice(0, 9);
+        const ids = Array.from(favoriteRecipeIds).slice(0, 120);
         const docPromises = ids.map(id => 
           getDoc(doc(db, 'recipes', id)).catch(err => {
             console.warn(`Could not get recipe ${id}, skipping:`, err);

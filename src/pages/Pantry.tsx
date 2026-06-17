@@ -173,14 +173,17 @@ export default function Pantry() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredItems.map((item) => (
-            <motion.div
-              layout
-              key={item.id}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="bg-graphite p-8 rounded-[32px] border border-white/5 group hover:border-amber-accent/30 transition-all shadow-xl"
-            >
+          <AnimatePresence mode="popLayout">
+            {filteredItems.map((item) => (
+              <motion.div
+                layout
+                key={item.id}
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -15 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className="bg-graphite p-8 rounded-[32px] border border-white/5 group hover:border-amber-accent/30 transition-all shadow-xl"
+              >
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-widest text-amber-accent opacity-60 mb-2 block">{item.category}</span>
@@ -216,6 +219,7 @@ export default function Pantry() {
               </div>
             </motion.div>
           ))}
+          </AnimatePresence>
         </div>
       )}
 

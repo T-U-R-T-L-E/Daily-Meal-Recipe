@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp, limit } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp, limit, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../lib/useAuth';
 import { Recipe } from '../types';
@@ -41,6 +41,58 @@ export default function RecipeDetails() {
   const [cookedRatingHover, setCookedRatingHover] = useState<number | null>(null);
   const [cookedReviewText, setCookedReviewText] = useState("");
   const [submittingCookedRating, setSubmittingCookedRating] = useState(false);
+
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [favoriteId, setFavoriteId] = useState<string | null>(null);
+  const [isToggling, setIsToggling] = useState(false);
+
+  useEffect(() => {
+    if (!user || !id) return;
+
+    const q = query(
+      collection(db, 'favorites'),
+      where('userId', '==', user.uid),
+      where('recipeId', '==', id)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        setIsFavorited(true);
+        setFavoriteId(snapshot.docs[0].id);
+      } else {
+        setIsFavorited(false);
+        setFavoriteId(null);
+      }
+    }, (error) => {
+      console.error("Favorite sync error in details:", error);
+    });
+
+    return () => unsubscribe();
+  }, [user, id]);
+
+  const toggleFavorite = async () => {
+    if (!user || !recipe || isToggling) return;
+
+    setIsToggling(true);
+    try {
+      if (isFavorited && favoriteId) {
+        await deleteDoc(doc(db, 'favorites', favoriteId));
+      } else {
+        await addDoc(collection(db, 'favorites'), {
+          userId: user.uid,
+          recipeId: recipe.id,
+          recipeName: recipe.name,
+          recipeImage: recipe.imageUrl || null,
+          category: recipe.category || null,
+          createdAt: serverTimestamp()
+        });
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'favorites');
+    } finally {
+      setIsToggling(false);
+    }
+  };
 
   const handleCopyDeepLink = async () => {
     if (!recipe) return;
@@ -644,7 +696,20 @@ export default function RecipeDetails() {
              </button>
           </div>
 
-          <div className="flex gap-4 pt-4 border-t border-white/5">
+          <div className="flex flex-wrap gap-3 pt-4 border-t border-white/5">
+            {user && (
+              <button 
+                onClick={toggleFavorite}
+                disabled={isToggling}
+                className={cn(
+                  "flex-1 min-w-[120px] px-6 py-3 bg-graphite border rounded-full text-[9px] font-bold uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 cursor-pointer",
+                  isFavorited ? "border-red-500/40 text-red-400 bg-red-500/5 hover:bg-red-500/10" : "border-white/10 text-white hover:border-amber-accent"
+                )}
+              >
+                <Heart className={cn("w-3 h-3 transition-transform", isFavorited ? "text-red-500 fill-current scale-110" : "text-amber-accent")} />
+                {isFavorited ? 'Favorited' : 'Bookmark'}
+              </button>
+            )}
             <button 
               onClick={() => {
                 try {
@@ -658,14 +723,14 @@ export default function RecipeDetails() {
                   console.error("Failed to save recipes", e);
                 }
               }}
-              className="flex-1 px-6 py-3 bg-graphite border border-white/10 text-white rounded-full text-[9px] font-bold uppercase tracking-[0.2em] hover:border-amber-accent transition-all flex items-center justify-center gap-2"
+              className="flex-1 min-w-[125px] px-6 py-3 bg-graphite border border-white/10 text-white rounded-full text-[9px] font-bold uppercase tracking-[0.2em] hover:border-amber-accent transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <Zap className="w-3 h-3 text-amber-accent" />
               Save Offline
             </button>
             <button 
               onClick={handleShareRecipe}
-              className="flex-1 px-6 py-3 bg-graphite border border-white/10 text-white rounded-full text-[9px] font-bold uppercase tracking-[0.2em] hover:border-amber-accent transition-all flex items-center justify-center gap-2"
+              className="flex-1 min-w-[125px] px-6 py-3 bg-graphite border border-white/10 text-white rounded-full text-[9px] font-bold uppercase tracking-[0.2em] hover:border-amber-accent transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <Share2 className="w-3 h-3 text-amber-accent" />
               Share Recipe
@@ -673,17 +738,17 @@ export default function RecipeDetails() {
             <button 
               onClick={handleCopyDeepLink}
               className={cn(
-                "flex-1 px-6 py-3 bg-graphite border rounded-full text-[9px] font-bold uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2",
+                "flex-1 min-w-[125px] px-6 py-3 bg-graphite border rounded-full text-[9px] font-bold uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 cursor-pointer",
                 copiedLink ? "border-amber-accent text-amber-accent shadow-lg shadow-amber-accent/5" : "border-white/10 text-white hover:border-amber-accent"
               )}
             >
               <Link2 className="w-3 h-3 text-amber-accent" />
               {copiedLink ? 'Copied Link!' : 'Copy Deep Link'}
             </button>
-            <div className="relative flex-1">
+            <div className="relative flex-1 min-w-[125px]">
               <button 
                 onClick={() => setIsExportOpen(!isExportOpen)}
-                className="w-full px-6 py-3 bg-graphite border border-white/10 text-white rounded-full text-[9px] font-bold uppercase tracking-[0.2em] hover:border-amber-accent transition-all flex items-center justify-center gap-2"
+                className="w-full px-6 py-3 bg-graphite border border-white/10 text-white rounded-full text-[9px] font-bold uppercase tracking-[0.2em] hover:border-amber-accent transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Download className="w-3 h-3 text-amber-accent" />
                 Export
@@ -740,6 +805,7 @@ export default function RecipeDetails() {
           title={recipe.name}
           text={`Check out this amazing ${recipe.name} recipe on Discovery!`}
           url={window.location.href}
+          recipe={recipe}
         />
 
          <div className="space-y-8">

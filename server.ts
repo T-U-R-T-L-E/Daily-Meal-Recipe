@@ -83,7 +83,7 @@ function handleAdminDbError(err: any, contextMsg: string) {
 });
 
 const app = express();
-const PORT = 3000;
+const PORT = parseInt(process.env.PORT || "3000", 10);
 
 // Firebase Authentication Custom Domain Proxy Bridge
 // Completely resolves Chrome's Third-Party Cookie deprecation by proxying all auth operations
