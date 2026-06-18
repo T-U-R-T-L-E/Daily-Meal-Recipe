@@ -20,6 +20,24 @@ https.get(logoUrl, (response) => {
     file.on('finish', () => {
       file.close();
       console.log('Logo downloaded and saved successfully under /public/logo.png!');
+      
+      // Also generate PWA icons
+      const iconsDir = path.join(targetDir, 'icons');
+      if (!fs.existsSync(iconsDir)) {
+        fs.mkdirSync(iconsDir, { recursive: true });
+      }
+      const targetIcons = [
+        'apple-touch-icon.png',
+        'screenshot-mobile.png',
+        'screenshot-desktop.png',
+        'icon-192.png',
+        'icon-512.png',
+      ];
+      for (const iconName of targetIcons) {
+        const destPath = path.join(iconsDir, iconName);
+        fs.copyFileSync(targetPath, destPath);
+        console.log(`[PWA Boost] Created dynamic fallback icon under /public/icons/${iconName}`);
+      }
     });
   } else {
     console.error(`Failed to download icon. Status code: ${response.statusCode}`);

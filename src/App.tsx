@@ -30,7 +30,6 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 import RefundPolicyPage from './pages/RefundPolicyPage';
 import { motion, AnimatePresence } from 'motion/react';
-import PullToRefresh from './components/layout/PullToRefresh';
 
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from './lib/firebase';
@@ -190,8 +189,7 @@ function AppContent() {
   }
 
   return (
-    <PullToRefresh>
-      <div className="min-h-screen bg-onyx flex flex-col text-gray-300">
+    <div className="min-h-screen bg-onyx flex flex-col text-gray-300">
         <Navbar onOpenDownload={() => setIsDownloadOpen(true)} />
         <main className={`flex-1 w-full max-w-7xl xxl:max-w-[1400px] 3xl:max-w-[1800px] 4xl:max-w-[2400px] 5xl:max-w-[3200px] mx-auto ${location.pathname === '/' ? 'px-1 xs:px-2' : 'px-3 xs:px-4'} sm:px-6 pt-6 pb-20 md:py-12`}>
           <AnimatePresence mode="wait">
@@ -290,7 +288,6 @@ function AppContent() {
         <BackgroundJobDeck />
         <DownloadAppPrompt forceOpen={isDownloadOpen} onCloseForce={() => setIsDownloadOpen(false)} />
       </div>
-    </PullToRefresh>
   );
 }
 

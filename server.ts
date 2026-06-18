@@ -2677,10 +2677,15 @@ app.delete("/api/files/delete", (req, res) => {
 // Vite middleware setup
 async function setupVite() {
   try {
-    // Ensure PWA local directories and assets fallback inside public/
+    // Ensure PWA local directories and assets fallback inside public/ & dist/
     const iconsDir = path.join(process.cwd(), 'public', 'icons');
     if (!fs.existsSync(iconsDir)) {
       fs.mkdirSync(iconsDir, { recursive: true });
+    }
+
+    const distIconsDir = path.join(process.cwd(), 'dist', 'icons');
+    if (fs.existsSync(path.join(process.cwd(), 'dist')) && !fs.existsSync(distIconsDir)) {
+      fs.mkdirSync(distIconsDir, { recursive: true });
     }
 
     const logoSourcePath = path.join(process.cwd(), 'public', 'logo.png');
@@ -2694,13 +2699,27 @@ async function setupVite() {
 
     if (fs.existsSync(logoSourcePath)) {
       for (const iconName of targetIcons) {
+        // Copy to public for development
         const targetPath = path.join(iconsDir, iconName);
         if (!fs.existsSync(targetPath)) {
           try {
             fs.copyFileSync(logoSourcePath, targetPath);
             console.log(`[PWA Boost] Created dynamic fallback icon /public/icons/${iconName}`);
           } catch (copyErr) {
-            console.warn(`[PWA Boost] Failed to create ${iconName}:`, copyErr);
+            console.warn(`[PWA Boost] Failed to create public/${iconName}:`, copyErr);
+          }
+        }
+
+        // Copy to dist for production static serving
+        if (fs.existsSync(path.join(process.cwd(), 'dist'))) {
+          const distTargetPath = path.join(distIconsDir, iconName);
+          if (!fs.existsSync(distTargetPath)) {
+            try {
+              fs.copyFileSync(logoSourcePath, distTargetPath);
+              console.log(`[PWA Boost] Created dynamic production icon /dist/icons/${iconName}`);
+            } catch (copyErr) {
+              console.warn(`[PWA Boost] Failed to create dist/${iconName}:`, copyErr);
+            }
           }
         }
       }
