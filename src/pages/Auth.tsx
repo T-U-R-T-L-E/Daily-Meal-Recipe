@@ -40,9 +40,6 @@ type AuthMode = 'signin' | 'signup' | 'forgot';
 export default function Auth() {
   const { handleError } = useErrorUX();
   const [mode, setMode] = useState<AuthMode>('signin');
-  const [isFirstTime, setIsFirstTime] = useState(() => {
-    return !localStorage.getItem('has_opened_before');
-  });
 
   useEffect(() => {
     localStorage.setItem('has_opened_before', 'true');
@@ -762,17 +759,6 @@ export default function Auth() {
           </div>
         ) : (
           <div className="space-y-6 relative z-10">
-            {isFirstTime && (
-              <div id="first-time-offline-banner" className="p-4 bg-amber-accent/10 border border-amber-accent/25 rounded-2xl text-xs text-amber-accent flex items-start gap-3 text-left">
-                <Wifi className="w-4.5 h-4.5 shrink-0 mt-0.5 text-amber-accent animate-pulse" />
-                <div className="space-y-1">
-                  <p className="font-bold uppercase tracking-wider text-[10px]">Connection Required Since It's Your First Visit</p>
-                  <p className="text-[11px] leading-relaxed text-white/70">
-                    You must be connected to the internet to complete your login or signup initially. Once you authorize your session, you can cook and manage everything offline perfectly!
-                  </p>
-                </div>
-              </div>
-            )}
 
             {/* Mode Switcher Tabs */}
             {mode !== 'forgot' && (
