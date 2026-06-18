@@ -87,68 +87,78 @@ const PORT = parseInt(process.env.PORT || "3000", 10);
 // Firebase Authentication Custom Domain Proxy Bridge
 // Completely resolves Chrome's Third-Party Cookie deprecation by proxying all auth operations
 // in a first-party context under custom domains (e.g., https://dailymealrecipe.online).
-app.all("/__/auth/*", async (req, res) => {
+app.all("/__/auth/*", (req, res) => {
   try {
     const targetUrl = `https://confident-monument-s6tp2.firebaseapp.com${req.originalUrl}`;
-    
-    const headers = new Headers();
+    const parsedUrl = new URL(targetUrl);
+
+    // Filter and replicate incoming headers
+    const headers: Record<string, string | string[]> = {};
     for (const [key, value] of Object.entries(req.headers)) {
-      if (value) {
+      if (value !== undefined) {
         const lowerKey = key.toLowerCase();
+        // Exclude connection and host headers as the proxy client (https.request) negotiates them
         if (
           lowerKey !== 'host' &&
           lowerKey !== 'connection' &&
           lowerKey !== 'keep-alive' &&
           lowerKey !== 'proxy-connection' &&
-          lowerKey !== 'transfer-encoding' &&
           lowerKey !== 'te' &&
           lowerKey !== 'upgrade'
         ) {
-          if (Array.isArray(value)) {
-            value.forEach(v => headers.append(key, v));
-          } else {
-            headers.set(key, value as string);
-          }
+          headers[key] = value;
         }
       }
     }
 
-    const hasBody = req.method !== "GET" && req.method !== "HEAD";
-    const body = hasBody ? req : undefined;
-
-    const fetchOptions: any = {
+    const options: https.RequestOptions = {
       method: req.method,
+      hostname: parsedUrl.hostname,
+      port: 443,
+      path: parsedUrl.pathname + parsedUrl.search,
       headers: headers,
-      body: body,
-      redirect: 'manual'  // Handle redirect flows manually to enable correct cookies propagation
     };
-    
-    if (hasBody) {
-      fetchOptions.duplex = 'half';
-    }
 
-    const response = await fetch(targetUrl, fetchOptions);
+    const proxyReq = https.request(options, (proxyRes) => {
+      // Replicate the exact HTTP status code
+      res.status(proxyRes.statusCode || 500);
 
-    res.status(response.status);
-
-    response.headers.forEach((value, name) => {
-      const lowerName = name.toLowerCase();
-      // Exclude hop-by-hop and node-decompressed encoding/length headers
-      if (
-        lowerName !== 'transfer-encoding' && 
-        lowerName !== 'connection' &&
-        lowerName !== 'content-encoding' &&
-        lowerName !== 'content-length'
-      ) {
-        res.setHeader(name, value);
+      // Replicate response headers to client
+      for (const [key, value] of Object.entries(proxyRes.headers)) {
+        if (value !== undefined) {
+          const lowerKey = key.toLowerCase();
+          // Exclude hop-by-hop and browser-decompressed headers
+          if (
+            lowerKey !== 'transfer-encoding' &&
+            lowerKey !== 'connection' &&
+            lowerKey !== 'content-encoding' &&
+            lowerKey !== 'content-length'
+          ) {
+            res.setHeader(key, value);
+          }
+        }
       }
+
+      // Natively pipe response stream back to browser
+      proxyRes.pipe(res);
     });
 
-    const arrayBuffer = await response.arrayBuffer();
-    res.send(Buffer.from(arrayBuffer));
+    proxyReq.on('error', (err) => {
+      console.error("[AUTH PROXY ERROR] Failed to connect to Firebase backend:", err);
+      res.status(500).send("Authentication proxy backend connection failure.");
+    });
+
+    // Only pipe the user's request stream if the method typically contains a body (e.g. POST, PUT, PATCH).
+    // For GET/HEAD/OPTIONS, call .end() immediately to prevent the request from hanging permanently.
+    const hasBody = req.method !== "GET" && req.method !== "HEAD" && req.method !== "OPTIONS";
+    if (hasBody) {
+      req.pipe(proxyReq);
+    } else {
+      proxyReq.end();
+    }
   } catch (err: any) {
-    console.error("[AUTH PROXY ERROR] Failed to forward OAuth redirect payload:", err);
-    res.status(500).send("Authentication proxy request failure.");
+    console.error("[AUTH PROXY EXCEPTION] Failed to execute reverse proxy operation:", err);
+    res.status(500).send("Authentication proxy critical failure.");
   }
 });
 
@@ -2726,10 +2736,14 @@ async function setupVite() {
     }
 
     const distPath = path.join(process.cwd(), 'dist');
-    const isProd = process.env.NODE_ENV === "production" || fs.existsSync(path.join(distPath, 'index.html'));
+    const hasDistIndex = fs.existsSync(path.join(distPath, 'index.html'));
+    
+    // Self-healing check: strictly use production serving only if pre-compiled index.html exists.
+    // Otherwise, fallback gracefully to Vite's live dev middleware to reconstruct the entry points on-the-fly.
+    const isProd = process.env.NODE_ENV === "production" && hasDistIndex;
 
     if (!isProd) {
-      console.log("Starting in DEVELOPMENT mode (Vite Middleware)...");
+      console.log("Starting in DEVELOPMENT mode or self-healing fallback (Vite Middleware)...");
       const { createServer: createViteServer } = await import("vite");
       const vite = await createViteServer({
         server: { middlewareMode: true },
