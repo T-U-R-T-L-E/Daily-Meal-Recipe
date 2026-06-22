@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/useAuth';
 import { faultTolerantFetchJson } from '../lib/api';
+import AuthModal from '../components/auth/AuthModal';
 
 // Client-side in-memory search query cache to make repetitive searches instantaneous (<1ms)
 const clientSearchCache: Record<string, Recipe[]> = {};
@@ -57,6 +58,7 @@ export default function Discovery() {
   const [savedRecipes, setSavedRecipes] = useState<Recipe[]>([]);
   const [isLoadingSaved, setIsLoadingSaved] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   
   // Enhanced Search Features States
   const [isListening, setIsListening] = useState(false);
@@ -666,7 +668,7 @@ export default function Discovery() {
 
   const skipToRandom = async () => {
     if (!user) {
-      navigate('/auth', { state: { from: location } });
+      setIsAuthModalOpen(true);
       return;
     }
     if (loading || isAISearching) return;
@@ -725,7 +727,7 @@ export default function Discovery() {
   const handleSearch = async (e?: React.FormEvent, overrideTerm?: string) => {
     if (e) e.preventDefault();
     if (!user) {
-      navigate('/auth', { state: { from: location } });
+      setIsAuthModalOpen(true);
       return;
     }
     setSurpriseResults(null);
@@ -1721,6 +1723,13 @@ export default function Discovery() {
         </div>
       )}
 
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        title="Gourmet Recipe Search"
+        message="To search the global recipe index, utilize AI-powered search, generate surprise dishes, or upload photos to scan ingredients, please sign in to your Daily Meal Recipe account."
+        actionName="search and discover recipes"
+      />
     </div>
   );
 }
