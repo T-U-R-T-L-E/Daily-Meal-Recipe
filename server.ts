@@ -367,7 +367,11 @@ app.use((req, res, next) => {
 
   // 1. Bot & Scraper Guard Evaluation (Arcjet bot detection mechanism)
   const userAgent = req.headers['user-agent'] || '';
-  const clientIp = (req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || '127.0.0.1').split(',')[0].trim();
+  const xForwardedFor = req.headers['x-forwarded-for'];
+  const rawIp = Array.isArray(xForwardedFor)
+    ? (xForwardedFor[0] || '')
+    : (typeof xForwardedFor === 'string' ? xForwardedFor : (req.socket.remoteAddress || '127.0.0.1'));
+  const clientIp = rawIp.split(',')[0].trim();
 
   if (userAgent && BotAgentRegex.test(userAgent)) {
     console.warn(`[SECURITY - SHIELD BLOCK] Scraper or Automated script identified: "${userAgent}" from IP ${clientIp}`);
