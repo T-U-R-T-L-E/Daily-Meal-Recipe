@@ -357,6 +357,25 @@ setInterval(() => {
 
 app.use(express.json());
 
+// Robust Native Cross-Origin Resource Sharing (CORS) Middleware
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  } else {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+  }
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, PATCH, DELETE");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, X-User-Id, Accept");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  
+  // Instantly resolve CORS preflight options requests successfully
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
 // Global Rate Limiting and Automated Bot Protection middleware
 app.use((req, res, next) => {
   // Only apply Bot Guard and Rate Limiting to backend API routes (/api/*).

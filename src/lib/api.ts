@@ -12,6 +12,27 @@ export interface FaultTolerantFetchOptions extends RequestInit {
   initialDelayMs?: number;
 }
 
+const STABLE_CLOUD_RUN_BACKEND = "https://daily-meal-recipe-650075039266.europe-west2.run.app";
+
+export function getApiUrl(path: string): string {
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+  
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    // If we are on a custom domain (like dailymealrecipe.online, not localhost or standard run.app preview domains),
+    // default directly to the stable Cloud Run backend endpoint
+    if (hostname && hostname !== "localhost" && hostname !== "127.0.0.1" && !hostname.endsWith(".run.app")) {
+      return `${STABLE_CLOUD_RUN_BACKEND}${cleanPath}`;
+    }
+  }
+  
+  return cleanPath;
+}
+
 export async function faultTolerantFetch(
   input: RequestInfo | URL,
   options?: FaultTolerantFetchOptions
@@ -23,6 +44,7 @@ export async function faultTolerantFetch(
     ...fetchInit
   } = options || {};
 
+  let requestUrl = typeof input === "string" ? getApiUrl(input) : input;
   let attempt = 0;
   let delay = initialDelayMs;
 
@@ -32,12 +54,26 @@ export async function faultTolerantFetch(
     const id = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const response = await fetch(input, {
+      const response = await fetch(requestUrl, {
         ...fetchInit,
         signal: controller.signal
       });
       
       clearTimeout(id);
+
+      // Verify that we did not receive an HTML response (indicates CDN/Static host page fallback)
+      const contentType = response.headers.get("content-type") || "";
+      const isHtmlResponse = contentType.includes("text/html");
+
+      if (isHtmlResponse && typeof requestUrl === "string" && !requestUrl.startsWith(STABLE_CLOUD_RUN_BACKEND)) {
+        console.warn(`[Self-Healing Router] Detected HTML document instead of API payload. Auto-routing endpoint to stable production Cloud Run server...`);
+        const origin = typeof window !== "undefined" ? window.location.origin : "";
+        const pathPart = origin ? requestUrl.replace(origin, "") : requestUrl;
+        const cleanPath = pathPart.startsWith("/api/") ? pathPart : `/api${pathPart.startsWith("/") ? "" : "/"}${pathPart}`;
+        requestUrl = `${STABLE_CLOUD_RUN_BACKEND}${cleanPath}`;
+        attempt--; // Refund retry count
+        continue;
+      }
 
       // Throttling or connection limit retry handling
       if (response.status === 503 && attempt < maxRetries) {
@@ -59,6 +95,17 @@ export async function faultTolerantFetch(
       const isAbort = error.name === "AbortError";
       const isNetwork = error instanceof TypeError; // standard dropped socket/offline
       
+      // Auto-fallback on network errors when running on custom domain
+      if (isNetwork && typeof requestUrl === "string" && !requestUrl.startsWith(STABLE_CLOUD_RUN_BACKEND)) {
+        console.warn(`[Self-Healing Router] Relative endpoints are unreachable. Dynamically routing to stable backend...`);
+        const origin = typeof window !== "undefined" ? window.location.origin : "";
+        const pathPart = origin ? requestUrl.replace(origin, "") : requestUrl;
+        const cleanPath = pathPart.startsWith("/api/") ? pathPart : `/api${pathPart.startsWith("/") ? "" : "/"}${pathPart}`;
+        requestUrl = `${STABLE_CLOUD_RUN_BACKEND}${cleanPath}`;
+        attempt--; // Refund retry count
+        continue;
+      }
+
       if ((isAbort || isNetwork) && attempt < maxRetries) {
         const backoffMs = delay * (1 + Math.random() * 0.25);
         console.warn(`[API Network Recover] Attempt ${attempt} failed (${error.message || "Timeout"}). Retrying in ${Math.round(backoffMs)}ms...`);
