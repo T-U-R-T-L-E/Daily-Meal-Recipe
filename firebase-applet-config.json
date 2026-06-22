@@ -2,7 +2,7 @@
   "projectId": "confident-monument-s6tp2",
   "appId": "1:650075039266:web:beac9aabdbaf609342cc7b",
   "apiKey": "AIzaSyCw9UOjO876VQuyBKlhkmHDLgcSC12PQVI",
-  "authDomain": "dailymealrecipe.online",
+  "authDomain": "auth.dailymealrecipe.online"
   "firestoreDatabaseId": "ai-studio-6beb5136-c069-4cf3-85bb-75cf12bb6163",
   "storageBucket": "confident-monument-s6tp2.firebasestorage.app",
   "messagingSenderId": "650075039266",
