@@ -538,6 +538,13 @@ export default function Discovery() {
 
   // Start dictating terms using Web Speech API
   const startVoiceSearch = () => {
+    if (!user) {
+      setAuthModalTitle("Voice Command Search");
+      setAuthModalMessage("To use voice recognition and dictate gourmet recipe searches, please sign in first.");
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       setAiError("Speech recognition is not supported in this browser. Please type or try Chrome/Safari.");
@@ -590,6 +597,13 @@ export default function Discovery() {
   const handleImageSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!user) {
+      setAuthModalTitle("AI Image Scan");
+      setAuthModalMessage("To upload photos and utilize AI-powered recipe ingredient scanning, please sign in first.");
+      setIsAuthModalOpen(true);
+      return;
+    }
 
     setIsAnalyzingImage(true);
     setAiError(null);
@@ -671,6 +685,13 @@ export default function Discovery() {
   const skipToRandom = async () => {
     if (loading || isAISearching) return;
     
+    if (!user) {
+      setAuthModalTitle("Curated Recipes");
+      setAuthModalMessage("Please sign in first to skip to random curated gourmet recipes.");
+      setIsAuthModalOpen(true);
+      return;
+    }
+    
     if (searchMode === 'world') {
       setIsAISearching(true);
       try {
@@ -725,6 +746,13 @@ export default function Discovery() {
   const handleSearch = async (e?: React.FormEvent, overrideTerm?: string) => {
     if (e) e.preventDefault();
     setSurpriseResults(null);
+
+    if (!user) {
+      setAuthModalTitle("Gourmet Recipe Search");
+      setAuthModalMessage("To search the global recipe index, utilize AI-powered search, generate surprise dishes, or upload photos to scan ingredients, please sign in to your Daily Meal Recipe account.");
+      setIsAuthModalOpen(true);
+      return;
+    }
 
     const termToUse = typeof overrideTerm === 'string' ? overrideTerm : searchTerm;
     
@@ -888,9 +916,12 @@ export default function Discovery() {
     const matchesDifficulty = difficultyLevel === 0 || difficultyMap[r.difficulty] === difficultyLevel;
     
     // Advanced Filters
-    const parseTime = (time: string) => {
-      const mins = parseInt(time) || 0;
-      if (time.includes('hr')) return mins * 60;
+    const parseTime = (time: any) => {
+      if (time === undefined || time === null) return 0;
+      if (typeof time === 'number') return time;
+      const timeStr = String(time);
+      const mins = parseInt(timeStr) || 0;
+      if (timeStr.toLowerCase().includes('hr')) return mins * 60;
       return mins;
     };
     const totalTime = parseTime(r.prepTime) + parseTime(r.cookTime);

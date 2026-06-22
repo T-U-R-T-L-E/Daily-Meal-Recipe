@@ -1638,57 +1638,137 @@ function getServerStableFoodImage(recipeName: string = "", category: string = ""
   const catLower = (category || "").toLowerCase();
   const cuiLower = (cuisine || "").toLowerCase();
 
-  const images: Record<string, string> = {
-    curry: "photo-1565557623262-b51c2513a641",
-    soup: "photo-1547592180-85f173990554",
-    salad: "photo-1512621776951-a57141f2eefd",
-    pasta: "photo-1563379091339-03b21ab4a4f8",
-    pizza: "photo-1513104890138-7c749659a591",
-    burger: "photo-1568901346375-23c9450c58cd",
-    tacos: "photo-1565299585323-38d6b0865b47",
-    steak: "photo-1544025162-d76694265947",
-    seafood: "photo-1519708227418-c8fd9a32b7a2",
-    chicken: "photo-1598515214211-89d3c73ae83b",
-    dessert: "photo-1578985545062-69928b1d9587",
-    breakfast: "photo-1525351484163-7529414344d8",
-    asian: "photo-1585032226651-759b368d7246",
-    rice: "photo-1541832676-9b763b0239ab",
-    vegan: "photo-1540420773420-3366772f4999",
-    default: "photo-1546069901-ba9599a7e63c"
-  };
+  const stableMappings: { keywords: string[]; id: string }[] = [
+    // 1. Italian/Pastas Specifics
+    { keywords: ["carbonara"], id: "photo-1612874742237-6526221588e3" },
+    { keywords: ["bolognese", "meat sauce", "ragu"], id: "photo-1563379091339-03b21ab4a4f8" },
+    { keywords: ["lasagna", "lasagne"], id: "photo-1574894709920-11b28e7367e3" },
+    { keywords: ["pesto"], id: "photo-1473093295043-cdd812d0e601" },
+    { keywords: ["mac and cheese", "macaroni", "mac n cheese"], id: "photo-1543339494-b4cd4f7ba686" },
+    { keywords: ["alfredo", "creamy pasta", "carbonara style"], id: "photo-1645112411341-6c4fd023714a" },
+    { keywords: ["ravioli", "tortellini"], id: "photo-1587740908075-9e245a707a6d" },
+    { keywords: ["penne", "rigatoni", "fettuccine", "spaghetti", "linguine", "pasta"], id: "photo-1546549032-9571cd6b27df" },
 
-  let id = images.default;
+    // 2. Pizzas Specifics
+    { keywords: ["margherita"], id: "photo-1574071318508-1cdbab80d001" },
+    { keywords: ["pepperoni"], id: "photo-1628840042765-356cda07504e" },
+    { keywords: ["pizza", "flatbread"], id: "photo-1513104890138-7c749659a591" },
 
-  if (nameLower.includes("curry") || catLower.includes("curry") || cuiLower.includes("indian") || cuiLower.includes("jamaican")) {
-    id = images.curry;
-  } else if (nameLower.includes("soup") || nameLower.includes("stew") || nameLower.includes("ramen") || catLower.includes("soup")) {
-    id = images.soup;
-  } else if (nameLower.includes("pasta") || nameLower.includes("spaghetti") || nameLower.includes("lasagna") || catLower.includes("pasta") || cuiLower.includes("italian")) {
-    id = images.pasta;
-  } else if (nameLower.includes("pizza") || catLower.includes("pizza") || nameLower.includes("flatbread")) {
-    id = images.pizza;
-  } else if (nameLower.includes("burger") || nameLower.includes("sandwich") || catLower.includes("burger")) {
-    id = images.burger;
-  } else if (nameLower.includes("taco") || nameLower.includes("fajita") || nameLower.includes("burrito") || cuiLower.includes("mexican")) {
-    id = images.tacos;
-  } else if (nameLower.includes("steak") || nameLower.includes("ribs") || nameLower.includes("beef") || nameLower.includes("lamb") || nameLower.includes("ribeye") || nameLower.includes("goat") || nameLower.includes("mutton")) {
-    id = images.steak;
-  } else if (nameLower.includes("salad") || catLower.includes("salad")) {
-    id = images.salad;
-  } else if (nameLower.includes("fish") || nameLower.includes("shrimp") || nameLower.includes("salmon") || nameLower.includes("seafood") || nameLower.includes("crab") || catLower.includes("seafood")) {
-    id = images.seafood;
-  } else if (nameLower.includes("chicken") || nameLower.includes("poultry") || nameLower.includes("turkey") || nameLower.includes("wings")) {
-    id = images.chicken;
-  } else if (nameLower.includes("dessert") || nameLower.includes("cake") || nameLower.includes("cookie") || nameLower.includes("sweet") || nameLower.includes("pancakes") || catLower.includes("dessert")) {
-    id = images.dessert;
-  } else if (nameLower.includes("breakfast") || nameLower.includes("toast") || nameLower.includes("egg") || nameLower.includes("waffle")) {
-    id = images.breakfast;
-  } else if (nameLower.includes("rice") || nameLower.includes("biryani") || nameLower.includes("risotto")) {
-    id = images.rice;
-  } else if (cuiLower.includes("asian") || cuiLower.includes("chinese") || cuiLower.includes("japanese") || nameLower.includes("noodles") || nameLower.includes("stir")) {
-    id = images.asian;
-  } else if (nameLower.includes("vegan") || nameLower.includes("vegetarian")) {
-    id = images.vegan;
+    // 3. Burger & Sandwich Specifics
+    { keywords: ["cheeseburger", "hamburger", "beef burger", "burger", "sliders"], id: "photo-1568901346375-23c9450c58cd" },
+    { keywords: ["chicken sandwich", "chicken burger"], id: "photo-1525059696034-4967a8e1dca2" },
+    { keywords: ["pulled pork"], id: "photo-1529193591184-b1d58069ecdd" },
+    { keywords: ["grilled cheese"], id: "photo-1525351484163-7529414344d8" },
+    { keywords: ["turkey sandwich", "club sandwich", "sandwich", "panini"], id: "photo-1509722747041-616f39b57569" },
+
+    // 4. Mexican Specifics
+    { keywords: ["taco", "tacos"], id: "photo-1565299585323-38d6b0865b47" },
+    { keywords: ["burrito", "wrap"], id: "photo-1626700051175-6518c4793f0b" },
+    { keywords: ["quesadilla"], id: "photo-1599974579688-8dbdd335c77f" },
+    { keywords: ["guacamole", "avocado dip"], id: "photo-1515443961218-a51367888e4b" },
+    { keywords: ["fajita", "fajitas"], id: "photo-1534939561126-855b8675edd7" },
+    { keywords: ["enchilada", "enchiladas"], id: "photo-1534349762130-e621b434de1a" },
+
+    // 5. Breakfast & Eggs
+    { keywords: ["pancakes", "pancake"], id: "photo-1567620905732-2d1ec7ab7445" },
+    { keywords: ["french toast"], id: "photo-1484723091739-30a097e8f929" },
+    { keywords: ["waffle", "waffles"], id: "photo-1562376502-6f769499c886" },
+    { keywords: ["oatmeal", "porridge", "muesli", "granola", "chia"], id: "photo-1517881917430-e70dfb3610aa" },
+    { keywords: ["avocado toast"], id: "photo-1541532713592-79a0317b6b77" },
+    { keywords: ["benedict", "poached egg"], id: "photo-1600891964599-f61ba0e24092" },
+    { keywords: ["scrambled egg", "omelette", "frittata", "scrambled", "fried egg", "toast", "breakfast"], id: "photo-1608039829572-78524f79c4c7" },
+
+    // 6. Chicken Specifics
+    { keywords: ["butter chicken", "tikka masala", "tandoori"], id: "photo-1603894584373-5ac82b2ae398" },
+    { keywords: ["wing", "wings", "buffalo wing"], id: "photo-1567620832903-9fc6debc209f" },
+    { keywords: ["roast chicken", "baked chicken", "cooked chicken", "roasted chicken", "whole chicken"], id: "photo-1598515214211-89d3c73ae83b" },
+    { keywords: ["fried chicken", "nuggets", "tenders", "crispy chicken"], id: "photo-1569058242253-92a9c755a0ec" },
+    { keywords: ["chicken breast", "grilled chicken"], id: "photo-1604908176997-125f25cc6f3d" },
+    { keywords: ["chicken thigh", "drumsticks", "drumstick", "chicken legs"], id: "photo-1606728035253-49e190477c84" },
+    { keywords: ["chicken"], id: "photo-1598515214211-89d3c73ae83b" },
+
+    // 7. Beef, Pork, Lamb & Meats Specifics
+    { keywords: ["steak", "ribeye", "sirloin", "mignon", "t-bone"], id: "photo-1544025162-d76694265947" },
+    { keywords: ["beef stew", "pot roast", "beef roast", "bourguignon", "stew", "goulash"], id: "photo-1547592180-85f173990554" },
+    { keywords: ["meatballs", "meatball"], id: "photo-1529042410759-befb1204b468" },
+    { keywords: ["bbq ribs", "ribs", "spareribs", "pork ribs"], id: "photo-1529193591184-b1d58069ecdd" },
+    { keywords: ["pork chop", "pork chops", "pork loin", "tenderloin"], id: "photo-1602491453631-e2a5ad90a131" },
+    { keywords: ["lamb chop", "lamb chops", "rack of lamb", "lamb shank"], id: "photo-1603006905003-be475563bc59" },
+    { keywords: ["beef", "pork", "lamb", "goat", "mutton", "veal"], id: "photo-1544025162-d76694265947" },
+
+    // 8. Seafood Specifics
+    { keywords: ["grilled salmon", "salmon fillet", "salmon"], id: "photo-1467003909585-2f8a72700288" },
+    { keywords: ["fish and chips", "fried fish"], id: "photo-1579631542720-3a87824ffd8e" },
+    { keywords: ["shrimp", "prawn", "prawns", "scampi"], id: "photo-1559737607-37a8a24de314" },
+    { keywords: ["lobster", "crab", "seafood", "clam", "scallop", "scallops", "mussels"], id: "photo-1559737607-37a8a24de314" },
+    { keywords: ["fish", "cod", "tuna", "haddock", "halibut", "seabass", "snapper"], id: "photo-1519708227418-c8fd9a32b7a2" },
+
+    // 9. Asian Classics
+    { keywords: ["sushi", "sashimi", "maki", "roll"], id: "photo-1579871494447-9811cf80d66c" },
+    { keywords: ["ramen", "udon", "soba"], id: "photo-1569718212165-3a8278d5f624" },
+    { keywords: ["pad thai", "fried noodles", "pan-fried noodles", "lo mein", "chow mein", "hakka noodles"], id: "photo-1552611052-33e04de081de" },
+    { keywords: ["fried rice"], id: "photo-1603133872878-684f208fb84b" },
+    { keywords: ["stir fry", "stir-fry", "wok"], id: "photo-1512058564366-18510be2db19" },
+    { keywords: ["samosa", "samosas"], id: "photo-1601050690597-df056fb4ce78" },
+    { keywords: ["dumpling", "dumplings", "gyoza", "dim sum", "potstickers"], id: "photo-1563245372-f21724e3856d" },
+    { keywords: ["pho", "spring rolls"], id: "photo-1582878826629-29b7ad1cdc43" },
+
+    // 10. Salads
+    { keywords: ["caesar salad"], id: "photo-1550304943-4f24f54ddde9" },
+    { keywords: ["greek salad"], id: "photo-1540420773420-3366772f4999" },
+    { keywords: ["caprese salad", "caprese"], id: "photo-1592417817098-8f3d6eb19675" },
+    { keywords: ["fruit salad", "fruit bowl"], id: "photo-1619566636858-adf3ef46400b" },
+    { keywords: ["salad", "greens"], id: "photo-1512621776951-a57141f2eefd" },
+
+    // 11. Soups & Broths
+    { keywords: ["pumpkin soup", "squash soup", "butternut soup"], id: "photo-1476718406336-bb5a9690ee2a" },
+    { keywords: ["tomato soup", "balsamic tomato"], id: "photo-1546069901-ba9599a7e63c" },
+    { keywords: ["french onion", "onion soup"], id: "photo-1620418029225-b8309dfd70ec" },
+    { keywords: ["soup", "broth", "chowder", "lentil soup", "minestrone", "chili"], id: "photo-1547592180-85f173990554" },
+
+    // 12. Rice & Grains Specifics
+    { keywords: ["paella"], id: "photo-1534080391025-097d02b17385" },
+    { keywords: ["biryani", "pulao", "pilaf"], id: "photo-1633945274405-b6c8069047b0" },
+    { keywords: ["risotto"], id: "photo-1476124369491-e7addf5db371" },
+    { keywords: ["rice", "grain", "quinoa", "couscous"], id: "photo-1541832676-9b763b0239ab" },
+
+    // 13. Curries Specifics (Non-chicken)
+    { keywords: ["chana masala", "chickpea curry", "dal", "lentil curry"], id: "photo-1585238342024-78d387f4a707" },
+    { keywords: ["green curry", "red curry", "thai curry", "coconut curry"], id: "photo-1455619452474-d2be8b1e70cd" },
+    { keywords: ["paneer", "palak", "saag"], id: "photo-1601050690597-df056fb4ce78" },
+    { keywords: ["curry", "madras", "korma", "masala"], id: "photo-1565557623262-b51c2513a641" },
+
+    // 14. Baking, Dessert & Treats
+    { keywords: ["cookies", "cookie", "chocolate chip"], id: "photo-1499636136210-6f4ee915583e" },
+    { keywords: ["chocolate cake", "brownie", "fudge cake", "lava cake"], id: "photo-1606313564200-e75d5e30476c" },
+    { keywords: ["apple pie", "pie", "tart", "galette"], id: "photo-1519869325930-281384150729" },
+    { keywords: ["strawberry cheesecake", "cheesecake"], id: "photo-1533134242443-d4fd215305ad" },
+    { keywords: ["donut", "donuts", "doughnut"], id: "photo-1551024601-bec78aea704b" },
+    { keywords: ["ice cream", "sundae", "gelato", "sorbet"], id: "photo-1501443715940-a10c04ced1d6" },
+    { keywords: ["muffin", "muffins", "cupcake", "cupcakes"], id: "photo-1607958996333-41aef7caefaa" },
+    { keywords: ["banana bread", "sweet bread"], id: "photo-1607958996333-41aef7caefaa" },
+    { keywords: ["dessert", "cake", "sweet", "custard", "pudding"], id: "photo-1578985545062-69928b1d9587" },
+
+    // 15. Sides & Vegetarian / Vegan Staples
+    { keywords: ["french fries", "fries", "potato wedges", "baked potato", "potatoes"], id: "photo-1573080496219-bb080dd4f877" },
+    { keywords: ["falafel", "hummus", "tahini"], id: "photo-1547058886-af77813becc2" },
+    { keywords: ["roast vegetables", "roasted vegetables", "vegetable medley", "grilled vegetables"], id: "photo-1540420773420-3366772f4999" },
+    { keywords: ["tofu", "vegan", "vegetarian"], id: "photo-1540420773420-3366772f4999" }
+  ];
+
+  let id = "photo-1546069901-ba9599a7e63c"; // Global Default (Gorgeous salad/healthy plate)
+
+  // Sequentially search from specific dish keywords to broader concepts
+  for (const mapping of stableMappings) {
+    let matched = false;
+    for (const kw of mapping.keywords) {
+      if (nameLower.includes(kw) || catLower.includes(kw) || cuiLower.includes(kw)) {
+        id = mapping.id;
+        matched = true;
+        break;
+      }
+    }
+    if (matched) break;
   }
 
   return `https://images.unsplash.com/${id}?auto=format&fit=crop&q=80&w=1000`;
@@ -1881,15 +1961,8 @@ app.post("/api/ai/generate-recipe", async (req, res) => {
     parsedRecipe.isPublic = true;
     parsedRecipe.status = "approved";
 
-    // Ensure image URL is valid, active, and contains no template placeholders
-    let validatedImageUrl = "";
-    if (typeof parsedRecipe.imageUrl === "string" && parsedRecipe.imageUrl.trim().startsWith("http") && !parsedRecipe.imageUrl.includes("[") && !parsedRecipe.imageUrl.includes("]") && !parsedRecipe.imageUrl.includes("UNIQUE-ID") && !parsedRecipe.imageUrl.includes("featured")) {
-      validatedImageUrl = parsedRecipe.imageUrl.trim();
-    }
-    
-    if (!validatedImageUrl) {
-      validatedImageUrl = getServerStableFoodImage(parsedRecipe.name, parsedRecipe.category, parsedRecipe.cuisine);
-    }
+    // Ensure image URL is 100% accurate, related, and fast-loading via our stable food photography mapper
+    const validatedImageUrl = getServerStableFoodImage(parsedRecipe.name, parsedRecipe.category, parsedRecipe.cuisine);
     parsedRecipe.imageUrl = validatedImageUrl;
     
     if (adminDb) {
@@ -2551,13 +2624,8 @@ app.post("/api/ai/search-recipes", async (req, res) => {
       item.isPublic = true;
       item.status = "approved";
 
-      // Ensure image URL is valid, active, and contains no template placeholders
-      let validatedImageUrl = "";
-      if (typeof item.imageUrl === "string" && item.imageUrl.trim().startsWith("http") && !item.imageUrl.includes("featured")) {
-        validatedImageUrl = item.imageUrl.trim();
-      } else {
-        validatedImageUrl = getServerStableFoodImage(recipeName, item.category, item.cuisine);
-      }
+      // Ensure image URL is 100% accurate, related, and fast-loading via our stable food photography mapper
+      const validatedImageUrl = getServerStableFoodImage(recipeName, item.category, item.cuisine);
       item.imageUrl = validatedImageUrl;
 
       if (adminDb) {

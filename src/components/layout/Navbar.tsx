@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../lib/useAuth';
-import { signIn, signOut } from '../../lib/firebase';
+import { signOut } from '../../lib/firebase';
 import { 
   ChefHat, 
   Search, 
@@ -137,12 +137,12 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
                   </Link>
                 </div>
               ) : (
-                <button
-                  onClick={() => signIn()}
-                  className="px-8 py-3 bg-amber-accent text-black rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-white transition-all shadow-xl shadow-amber-accent/10 active:scale-95 cursor-pointer"
+                <Link
+                  to="/auth"
+                  className="px-8 py-3 bg-amber-accent text-black rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-white transition-all shadow-xl shadow-amber-accent/10 active:scale-95 cursor-pointer inline-block text-center"
                 >
                   Sign In
-                </button>
+                </Link>
               )}
             </div>
           </div>
