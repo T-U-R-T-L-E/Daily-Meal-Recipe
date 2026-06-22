@@ -6,7 +6,7 @@ import RecipeCard from '../components/recipes/RecipeCard';
 import { RecipeCardSkeleton } from '../components/recipes/RecipeSkeleton';
 import { Search, RotateCcw, Plus, SlidersHorizontal, Sparkles, Zap, Coffee, Utensils, Moon, Candy, IceCream, Globe, Database, Heart, Filter, Clock, Check, ChevronDown, CheckCircle2, X, ChefHat, Mic, MicOff, Image as ImageIcon, Loader2, Flame, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/useAuth';
 import { faultTolerantFetchJson } from '../lib/api';
 
@@ -107,6 +107,7 @@ export default function Discovery() {
   };
 
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
@@ -664,6 +665,10 @@ export default function Discovery() {
   };
 
   const skipToRandom = async () => {
+    if (!user) {
+      navigate('/auth', { state: { from: location } });
+      return;
+    }
     if (loading || isAISearching) return;
     
     if (searchMode === 'world') {
@@ -719,6 +724,10 @@ export default function Discovery() {
 
   const handleSearch = async (e?: React.FormEvent, overrideTerm?: string) => {
     if (e) e.preventDefault();
+    if (!user) {
+      navigate('/auth', { state: { from: location } });
+      return;
+    }
     setSurpriseResults(null);
 
     const termToUse = typeof overrideTerm === 'string' ? overrideTerm : searchTerm;

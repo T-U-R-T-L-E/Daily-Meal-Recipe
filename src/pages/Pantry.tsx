@@ -6,6 +6,7 @@ import { PantryItem } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Trash2, Calendar, ShoppingCart, Search, Filter, AlertTriangle } from 'lucide-react';
 import { format, isBefore, addDays } from 'date-fns';
+import AuthModal from '../components/auth/AuthModal';
 
 export default function Pantry() {
   const { user } = useAuth();
@@ -14,11 +15,15 @@ export default function Pantry() {
   const [isAdding, setIsAdding] = useState(false);
   const [newItem, setNewItem] = useState({ item: '', quantity: '', expiryDate: '', category: 'Oils & Vinegars' });
   const [searchTerm, setSearchTerm] = useState('');
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const categories = ['Oils & Vinegars', 'Spices', 'Grains', 'Proteins', 'Vegetables', 'Dairy', 'Baking', 'Other'];
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     const q = query(collection(db, 'pantry'), where('userId', '==', user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PantryItem)));
@@ -31,7 +36,11 @@ export default function Pantry() {
 
   const addItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !newItem.item) return;
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    if (!newItem.item) return;
     try {
       await addDoc(collection(db, 'pantry'), {
         ...newItem,
@@ -99,7 +108,13 @@ export default function Pantry() {
             />
           </div>
           <button 
-            onClick={() => setIsAdding(true)}
+            onClick={() => {
+              if (!user) {
+                setIsAuthModalOpen(true);
+              } else {
+                setIsAdding(true);
+              }
+            }}
             className="px-6 py-3 bg-white text-black rounded-full font-bold uppercase tracking-widest text-[10px] hover:bg-amber-accent transition-all flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
@@ -227,13 +242,27 @@ export default function Pantry() {
         <div className="py-24 text-center space-y-6">
           <p className="font-serif text-3xl italic text-white/20">Your pantry is empty.</p>
           <button 
-            onClick={() => setIsAdding(true)}
+            onClick={() => {
+              if (!user) {
+                setIsAuthModalOpen(true);
+              } else {
+                setIsAdding(true);
+              }
+            }}
             className="px-8 py-4 border border-white/10 text-white rounded-full hover:bg-white/5 transition-all text-[10px] font-bold uppercase tracking-widest"
           >
             Add your first item
           </button>
         </div>
       )}
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        title="Gourmet Pantry Stock"
+        message="To catalog your groceries, manage your kitchen inventory, and receive warnings about expiring ingredients, please sign in to your Daily Meal Recipe account."
+        actionName="manage your kitchen pantry"
+      />
     </div>
   );
 }

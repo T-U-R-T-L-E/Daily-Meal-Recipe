@@ -46,6 +46,8 @@ import {
 } from '../lib/fileService';
 import { cn } from '../lib/utils';
 import { useErrorUX } from '../lib/ErrorUXContext';
+import AuthModal from '../components/auth/AuthModal';
+
 // @ts-ignore
 import { renderAsync } from 'docx-preview';
 import * as XLSX from 'xlsx';
@@ -643,6 +645,7 @@ export default function FilesHub() {
   const [selectedStatus, setSelectedStatus] = useState<string>('active');
   const [selectedFileForHistory, setSelectedFileForHistory] = useState<FileRecord | null>(null);
   const [isDragActive, setIsDragActive] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   
   // Custom Multimedia Preview Overlay State Hooks
   const [previewFile, setPreviewFile] = useState<FileRecord | null>(null);
@@ -737,7 +740,10 @@ export default function FilesHub() {
 
   // Real-time listener for the user's files collection in Firestore
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     let uidFiles: FileRecord[] = [];
@@ -859,7 +865,7 @@ export default function FilesHub() {
   // Process the file, validate bounds, and initiate upload
   const processAndUploadFile = async (file: File) => {
     if (!user) {
-      showToast('You must be logged in to upload assets.', 'error');
+      setIsAuthModalOpen(true);
       return;
     }
 
@@ -1980,6 +1986,14 @@ export default function FilesHub() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        title="Gourmet Shield Vault"
+        message="To upload and secure your private culinary assets, recipe documents, spreadsheets, and cooking files, please sign in to your Daily Meal Recipe account."
+        actionName="upload files to the vault"
+      />
     </div>
   );
 }

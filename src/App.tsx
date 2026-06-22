@@ -170,14 +170,33 @@ function AppContent() {
     return <BrandedSplash />;
   }
 
-  const isPublicPath = location.pathname === '/privacy' || location.pathname === '/terms' || location.pathname === '/refund-policy';
+  const isPublicPath = 
+    location.pathname === '/' || 
+    location.pathname === '/discover' || 
+    location.pathname === '/generate' || 
+    location.pathname === '/planner' || 
+    location.pathname === '/shopping' || 
+    location.pathname === '/shared-todos' || 
+    location.pathname === '/pantry' || 
+    location.pathname === '/files' || 
+    location.pathname === '/profile' || 
+    location.pathname === '/subscription' || 
+    location.pathname === '/leaderboard' || 
+    location.pathname === '/scanner' || 
+    location.pathname.startsWith('/recipe/') || 
+    location.pathname.startsWith('/guided/') || 
+    location.pathname === '/privacy' || 
+    location.pathname === '/terms' || 
+    location.pathname === '/refund-policy' ||
+    location.pathname === '/auth';
 
   if (!user && !isPublicPath) {
-    return (
-      <div className="min-h-screen bg-onyx flex flex-col justify-center py-12">
-        <Auth />
-      </div>
-    );
+    return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
+  if (user && location.pathname === '/auth') {
+    const from = (location.state as any)?.from?.pathname || "/";
+    return <Navigate to={from} replace />;
   }
 
   if (user && profile && profile.isProfileComplete === false && !isPublicPath) {
@@ -206,73 +225,62 @@ function AppContent() {
               <Route 
                 path="/generate" 
                 element={
-                  user ? (
-                    <SubscriptionGuard>
-                      <Generator />
-                    </SubscriptionGuard>
-                  ) : <Navigate to="/" />
+                  <SubscriptionGuard>
+                    <Generator />
+                  </SubscriptionGuard>
                 } 
               />
               <Route 
                 path="/planner" 
                 element={
-                  user ? (
-                    <SubscriptionGuard>
-                      <MealPlanner />
-                    </SubscriptionGuard>
-                  ) : <Navigate to="/" />
+                  <SubscriptionGuard>
+                    <MealPlanner />
+                  </SubscriptionGuard>
                 } 
               />
               <Route 
                 path="/shopping" 
                 element={
-                  user ? (
-                    <SubscriptionGuard>
-                      <ShoppingList />
-                    </SubscriptionGuard>
-                  ) : <Navigate to="/" />
+                  <SubscriptionGuard>
+                    <ShoppingList />
+                  </SubscriptionGuard>
                 } 
               />
               <Route 
                 path="/shared-todos" 
                 element={
-                  user ? (
-                    <SubscriptionGuard>
-                      <SharedTodos />
-                    </SubscriptionGuard>
-                  ) : <Navigate to="/" />
+                  <SubscriptionGuard>
+                    <SharedTodos />
+                  </SubscriptionGuard>
                 } 
               />
               <Route 
                 path="/pantry" 
                 element={
-                  user ? (
-                    <SubscriptionGuard>
-                      <Pantry />
-                    </SubscriptionGuard>
-                  ) : <Navigate to="/" />
+                  <SubscriptionGuard>
+                    <Pantry />
+                  </SubscriptionGuard>
                 } 
               />
               <Route 
                 path="/files" 
                 element={
-                  user ? (
-                    <SubscriptionGuard>
-                      <FilesHub />
-                    </SubscriptionGuard>
-                  ) : <Navigate to="/" />
+                  <SubscriptionGuard>
+                    <FilesHub />
+                  </SubscriptionGuard>
                 } 
               />
-              <Route path="/profile" element={user ? <Profile /> : <Navigate to="/" />} />
-              <Route path="/subscription" element={user ? <Subscription /> : <Navigate to="/" />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/subscription" element={<Subscription />} />
               <Route path="/recipe/:id" element={<RecipeDetails />} />
               <Route path="/guided/:id" element={<GuidedCooking />} />
-              <Route path="/leaderboard" element={user ? <Leaderboard /> : <Navigate to="/" />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/admin" element={user && user.email === 'lewisiraki1@gmail.com' ? <Admin /> : <Navigate to="/" />} />
               <Route path="/compliance" element={user && user.email === 'lewisiraki1@gmail.com' ? <ComplianceHub /> : <Navigate to="/" />} />
               <Route path="/privacy" element={<PrivacyPolicyPage />} />
               <Route path="/terms" element={<TermsOfServicePage />} />
               <Route path="/refund-policy" element={<RefundPolicyPage />} />
+              <Route path="/auth" element={<Auth />} />
               <Route 
                 path="/scanner" 
                 element={

@@ -6,6 +6,7 @@ import { ShoppingListItem, Recipe } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle2, Circle, Trash2, Plus, ShoppingBag, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
+import AuthModal from '../components/auth/AuthModal';
 
 export default function ShoppingList() {
   const { user } = useAuth();
@@ -13,6 +14,7 @@ export default function ShoppingList() {
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [newItem, setNewItem] = useState({ item: '', amount: 'As needed', category: 'Oils & Vinegars' });
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const categories = ['Oils & Vinegars', 'Spices', 'Grains', 'Proteins', 'Vegetables', 'Dairy', 'Baking', 'Other'];
 
@@ -63,7 +65,10 @@ export default function ShoppingList() {
 
   // Load shopping list items inside real-time snapshot listeners
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
 
     let q = query(
@@ -109,7 +114,11 @@ export default function ShoppingList() {
 
   const addItem = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!user || !newItem.item.trim()) return;
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    if (!newItem.item.trim()) return;
     try {
       const itemToAdd: any = {
         item: newItem.item.trim(),
@@ -156,7 +165,10 @@ export default function ShoppingList() {
   };
 
   const syncFromMealPlan = async () => {
-    if (!user) return;
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     try {
       // 1. Get recent meal plans (scope dynamically to active kitchen council)
       const q = activeFamily
@@ -269,14 +281,26 @@ export default function ShoppingList() {
         </div>
         <div className="flex gap-3 w-full md:w-auto">
           <button 
-            onClick={() => setIsAdding(true)}
+            onClick={() => {
+              if (!user) {
+                setIsAuthModalOpen(true);
+              } else {
+                setIsAdding(true);
+              }
+            }}
             className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3.5 bg-white text-black hover:bg-amber-accent rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-md focus:outline-none"
           >
             <Plus className="w-4 h-4" />
             Add Item
           </button>
           <button 
-            onClick={syncFromMealPlan}
+            onClick={() => {
+              if (!user) {
+                setIsAuthModalOpen(true);
+              } else {
+                syncFromMealPlan();
+              }
+            }}
             className="flex-1 md:flex-none flex items-center justify-center gap-3 px-6 py-3.5 bg-graphite text-white border border-white/10 rounded-full text-[10px] font-black uppercase tracking-[0.2em] hover:bg-amber-accent hover:text-black hover:border-amber-accent transition-all shadow-2xl focus:outline-none"
           >
             <Sparkles className="w-4 h-4" />
@@ -446,6 +470,14 @@ export default function ShoppingList() {
           </AnimatePresence>
         </div>
       </div>
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        title="Gourmet Shopping List"
+        message="To create custom grocery shopping checklists, sync items from your weekly meal planner automatically, or co-manage lists with your roommate pod, please sign in to your Daily Meal Recipe account."
+        actionName="manage your shopping list"
+      />
     </div>
   );
 }

@@ -10,6 +10,8 @@ import { useNavigate } from 'react-router-dom';
 import { useBackgroundJobs } from '../lib/BackgroundJobContext';
 import { useErrorUX, InlineErrorHelper } from '../lib/ErrorUXContext';
 import AIConsentModal from '../components/AIConsentModal';
+import AuthModal from '../components/auth/AuthModal';
+
 
 export default function Generator() {
   const { user, profile } = useAuth();
@@ -106,6 +108,8 @@ export default function Generator() {
     return () => document.removeEventListener('click', clickOutside);
   }, []);
   const [isConsentOpen, setIsConsentOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
 
   // Find if there's active recipe generation job running
   const activeGeneratorJob = jobs.find(j => j.type === 'recipe_generation' && j.status === 'running');
@@ -173,6 +177,10 @@ export default function Generator() {
   };
 
   const generateRecipe = () => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     if (ingredients.length === 0) return;
     const hasConsent = localStorage.getItem('ai_consent_accepted') === 'true';
     if (!hasConsent) {
@@ -181,6 +189,7 @@ export default function Generator() {
     }
     executeRecipeGeneration();
   };
+
 
   const executeRecipeGeneration = () => {
     setLoading(true);
@@ -563,6 +572,15 @@ export default function Generator() {
         onAccept={executeRecipeGeneration}
         dataTypesToSend={['Ingredients Inventory', 'Selected Category (' + selectedCategory + ')', 'Custom Profile Allergies & Health Goals']}
       />
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        title="Artisanal AI Chef"
+        message="To generate custom gourmet recipes using our advanced culinary AI model, please sign in to your Daily Meal Recipe account."
+        actionName="generate AI recipes"
+      />
+
     </div>
   );
 }

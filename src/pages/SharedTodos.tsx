@@ -21,6 +21,8 @@ import {
   Check
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import AuthModal from '../components/auth/AuthModal';
+
 
 interface SharedTodo {
   id?: string;
@@ -60,6 +62,8 @@ export default function SharedTodos() {
   const [familySuccess, setFamilySuccess] = useState<string | null>(null);
   const [familyError, setFamilyError] = useState<string | null>(null);
   const [showCreateFamily, setShowCreateFamily] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
 
   // Load user's families where they are members
   useEffect(() => {
@@ -108,7 +112,10 @@ export default function SharedTodos() {
 
   // Load real-time collaborative tasks scoped to active family via onSnapshot
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     if (!activeFamily) {
       setTodos([]);
       setLoading(false);
@@ -156,7 +163,11 @@ export default function SharedTodos() {
 
   const handleCreateFamily = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !user.email || !newFamilyName.trim()) return;
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    if (!user.email || !newFamilyName.trim()) return;
 
     setCreatingFamily(true);
     setFamilyError(null);
@@ -182,7 +193,12 @@ export default function SharedTodos() {
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !activeFamily || !newMemberEmail.trim()) return;
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    if (!activeFamily || !newMemberEmail.trim()) return;
+
 
     const emailToAdd = newMemberEmail.trim().toLowerCase();
     
@@ -219,7 +235,11 @@ export default function SharedTodos() {
 
   const handleAddTodo = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !text.trim() || !activeFamily) return;
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    if (!text.trim() || !activeFamily) return;
 
     try {
       const newTodo: any = {
@@ -251,7 +271,11 @@ export default function SharedTodos() {
   };
 
   const handleToggleComplete = async (todo: SharedTodo) => {
-    if (!user || !todo.id) return;
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    if (!todo.id) return;
     try {
       const nextCompleted = !todo.completed;
       await updateDoc(doc(db, 'sharedTodos', todo.id), {
@@ -266,7 +290,10 @@ export default function SharedTodos() {
   };
 
   const handleAssignToMe = async (todoId: string) => {
-    if (!user) return;
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     try {
       await updateDoc(doc(db, 'sharedTodos', todoId), {
         assignedTo: user.uid,
@@ -757,6 +784,13 @@ export default function SharedTodos() {
         </div>
       )}
 
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        title="Family Culinary Hub"
+        message="To manage collaborative shopping lists, sync chore schedules, and coordinate with family circle groups, please sign in to your Daily Meal Recipe account."
+        actionName="create family circles"
+      />
     </div>
   );
 }

@@ -35,6 +35,7 @@ import {
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { MealPlannerSkeleton } from '../components/recipes/RecipeSkeleton';
+import AuthModal from '../components/auth/AuthModal';
 
 // Gourmet Chef-Curated fallback database for flawless ingrediet-based shopping list aggregation
 const INCLUDED_GOURMET_RECIPES = [
@@ -148,11 +149,28 @@ export default function MealPlanner() {
 
   const [plans, setPlans] = useState<MealPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   
   // Single synchronized focus date & interactive view mode toggling
   const [focalDate, setFocalDate] = useState<Date>(new Date());
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [selectedDateStr, setSelectedDateStr] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+
+  const startAddingMeal = (dateStr: string, recipeData?: { id: string, name: string } | null) => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    setAddingTo({ date: dateStr, type: 'dinner' });
+    if (recipeData) {
+      setCustomInput(recipeData.name);
+      setSelectedRecipeId(recipeData.id);
+    } else {
+      setCustomInput('');
+      setSelectedRecipeId('custom');
+    }
+  };
+
 
   const pendingRecipe = useMemo(() => location.state?.addRecipe as { id: string, name: string } | null, [location.state]);
 
@@ -212,7 +230,10 @@ export default function MealPlanner() {
 
   // Load meal plans in real-time matching the active circle
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
 
     let q = query(
@@ -829,13 +850,9 @@ export default function MealPlanner() {
                       <button 
                         onClick={() => {
                           if (pendingRecipe) {
-                            setAddingTo({ date: dateStr, type: 'dinner' });
-                            setCustomInput(pendingRecipe.name);
-                            setSelectedRecipeId(pendingRecipe.id);
+                            startAddingMeal(dateStr, pendingRecipe);
                           } else {
-                            setAddingTo({ date: dateStr, type: 'dinner' });
-                            setCustomInput('');
-                            setSelectedRecipeId('custom');
+                            startAddingMeal(dateStr);
                           }
                         }}
                         className={cn(
@@ -1133,13 +1150,10 @@ export default function MealPlanner() {
                   ) : (
                     <button
                       onClick={() => {
-                        setAddingTo({ date: selectedDateStr, type: 'dinner' });
                         if (pendingRecipe) {
-                          setCustomInput(pendingRecipe.name);
-                          setSelectedRecipeId(pendingRecipe.id);
+                          startAddingMeal(selectedDateStr, pendingRecipe);
                         } else {
-                          setCustomInput('');
-                          setSelectedRecipeId('custom');
+                          startAddingMeal(selectedDateStr);
                         }
                       }}
                       className="w-full h-44 border-2 border-dashed border-white/10 rounded-[32px] flex flex-col items-center justify-center gap-4 text-white/20 hover:text-amber-accent hover:border-amber-accent/40 hover:bg-amber-accent/5 transition-all"
@@ -1252,6 +1266,13 @@ export default function MealPlanner() {
 
       </div>
 
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        title="Schedule Culinary Plans"
+        message="To plan your daily meals, schedule cooking schedules, and auto-aggregate your shopping list, please sign in to your Daily Meal Recipe account."
+        actionName="schedule meals"
+      />
     </div>
   );
 }

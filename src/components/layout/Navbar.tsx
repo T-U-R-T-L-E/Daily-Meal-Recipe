@@ -151,7 +151,6 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
           <div className="h-14 flex items-center justify-start xl:justify-center overflow-x-auto no-scrollbar px-4 xl:px-0">
             <div className="flex items-center gap-4 lg:gap-8 xl:gap-10 min-w-max">
               {navItems.map((item) => {
-                if (item.auth && !user) return null;
                 const isActive = location.pathname === item.path;
                 const Icon = item.icon;
 
@@ -197,7 +196,7 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
           </div>
         </Link>
 
-        {user && (
+        {user ? (
           <div className="flex items-center gap-3">
             <Link to="/profile" className="w-8 h-8 rounded-full overflow-hidden border border-white/10 active:scale-90 transition-transform">
               <img 
@@ -207,6 +206,13 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
               />
             </Link>
           </div>
+        ) : (
+          <Link
+            to="/auth"
+            className="px-4 py-2 bg-amber-accent text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all active:scale-95 cursor-pointer shadow-lg shadow-amber-accent/10"
+          >
+            Sign In
+          </Link>
         )}
       </header>
 

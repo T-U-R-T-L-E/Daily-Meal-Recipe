@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChefHat, Sparkles, Utensils, ArrowRight, Clock, Sun, Moon, Coffee, Heart, Star, Calendar, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../lib/useAuth';
-import { signIn, db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { cn } from '../lib/utils';
 import { collection, query, limit, getDocs, where } from 'firebase/firestore';
 import { useEffect, useState, useMemo } from 'react';
@@ -71,7 +71,7 @@ export default function Home() {
 
   const handleFeatureClick = (href: string, requiresAuth: boolean) => {
     if (requiresAuth && !user) {
-      signIn();
+      navigate('/auth', { state: { from: { pathname: href } } });
     } else {
       navigate(href);
     }
@@ -123,7 +123,7 @@ export default function Home() {
             </Link>
           ) : (
             <button
-              onClick={signIn}
+              onClick={() => navigate('/auth')}
               className="w-full sm:w-auto px-8 py-4 bg-amber-accent text-black hover:bg-white rounded-2xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-3 border border-transparent shadow-lg shadow-amber-accent/10 cursor-pointer"
             >
               Get Started Free
@@ -418,7 +418,7 @@ export default function Home() {
 
           <div className="pt-4 flex flex-wrap gap-4 items-center">
             <button 
-              onClick={() => user ? navigate('/discover') : signIn()} 
+              onClick={() => user ? navigate('/discover') : navigate('/auth')} 
               className="px-8 py-4 bg-white hover:bg-amber-accent text-black rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer"
             >
               {user ? 'Browse Database' : 'Start Cooking For Free'}
@@ -441,6 +441,76 @@ export default function Home() {
               e.currentTarget.src = "https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=1000&q=80";
             }}
           />
+        </div>
+      </section>
+
+      {/* Structured Application Purpose & Mission Section */}
+      <section className="max-w-7xl xxl:max-w-[1400px] 3xl:max-w-[1800px] 4xl:max-w-[2400px] 5xl:max-w-[3200px] mx-auto px-1 sm:px-6 mt-12 sm:mt-20">
+        <div className="relative overflow-hidden border border-white/5 bg-onyx/[0.2] rounded-[24px] sm:rounded-[40px] p-6 sm:p-12 md:p-20 space-y-12 sm:space-y-16">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-amber-accent/5 blur-[120px] rounded-full pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-rose-500/[0.03] blur-[120px] rounded-full pointer-events-none" />
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative z-10">
+            {/* Mission Statement & Vision Header */}
+            <div className="lg:col-span-5 space-y-6">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-accent/10 border border-amber-accent/25 text-amber-accent rounded-full text-[9px] font-bold uppercase tracking-widest leading-none">
+                <Sparkles className="w-3 h-3" />
+                <span>Our Vision</span>
+              </div>
+              <h2 className="font-serif text-4xl sm:text-5xl leading-tight text-white font-normal">
+                An integrated, <span className="italic text-amber-accent">zero-waste</span> culinary system.
+              </h2>
+              <p className="text-gray-400 font-light text-sm leading-relaxed">
+                Daily Meal Recipe was born out of a simple goal: to eliminate kitchen fatigue and vegetable spoilage. Most cooking apps throw complicated 30-step recipes at you that require buying twenty new seasonings. 
+              </p>
+              <p className="text-gray-400 font-light text-sm leading-relaxed">
+                Our purpose is to streamline your home kitchen. We provide a single dashboard to map leftovers into AI-designed meals, coordinate tasks collaboratively with your family, and keep your custom cookbooks securely backed up.
+              </p>
+              <div className="pt-4 flex flex-wrap gap-4 items-center">
+                <div className="text-[11px] font-mono text-white/50 bg-white/5 border border-white/5 px-3 py-2 rounded-xl">
+                  🥣 <span className="text-white font-bold">Smart Generator</span> • Leftover Matching
+                </div>
+                <div className="text-[11px] font-mono text-white/50 bg-white/5 border border-white/5 px-3 py-2 rounded-xl">
+                  🛡️ <span className="text-white font-bold">Secure Vault</span> • PDF & XLS Cookbooks
+                </div>
+              </div>
+            </div>
+
+            {/* Structured Columns of How the App Works */}
+            <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="p-6 bg-[#0F0F0F] border border-white/5 rounded-3xl space-y-4 hover:border-white/10 transition-all">
+                <span className="text-2xl font-serif text-amber-accent italic font-bold">01.</span>
+                <h3 className="font-serif text-xl font-normal text-white">Leftover Mapping</h3>
+                <p className="text-[11px] text-gray-500 font-light leading-relaxed">
+                  Type what's currently languishing in your vegetable drawer. Our artisanal culinary model instantly generates perfect cooking procedures, allergy adaptations, and exact durations.
+                </p>
+              </div>
+
+              <div className="p-6 bg-[#0F0F0F] border border-white/5 rounded-3xl space-y-4 hover:border-white/10 transition-all">
+                <span className="text-2xl font-serif text-amber-accent italic font-bold">02.</span>
+                <h3 className="font-serif text-xl font-normal text-white">Interactive Planner</h3>
+                <p className="text-[11px] text-gray-500 font-light leading-relaxed">
+                  Keep structured weekly schedules. Add custom recipes from our shared global index directly into breakfasts, lunches, or dinners, which then auto-aggregate missing elements into interactive shopping checklists.
+                </p>
+              </div>
+
+              <div className="p-6 bg-[#0F0F0F] border border-white/5 rounded-3xl space-y-4 hover:border-white/10 transition-all">
+                <span className="text-2xl font-serif text-amber-accent italic font-bold">03.</span>
+                <h3 className="font-serif text-xl font-normal text-white">Collaborative Circles</h3>
+                <p className="text-[11px] text-gray-500 font-light leading-relaxed">
+                  Create group circles for your family room or roommate pod. Assign grocery chores, real-time checklist items, and meal milestones instantly with secure collaborative state.
+                </p>
+              </div>
+
+              <div className="p-6 bg-[#0F0F0F] border border-white/5 rounded-3xl space-y-4 hover:border-white/10 transition-all">
+                <span className="text-2xl font-serif text-amber-accent italic font-bold">04.</span>
+                <h3 className="font-serif text-xl font-normal text-white">The Gourmet Vault</h3>
+                <p className="text-[11px] text-gray-500 font-light leading-relaxed">
+                  Upload PDF cookbooks, XLSX grocery sheets, docx preparation notes, and high-fidelity food photographs. Track file histories, view previews, and keep culinary assets organized in one space.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     </div>

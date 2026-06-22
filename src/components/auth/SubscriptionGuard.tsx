@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useSubscription } from '../../lib/useSubscription';
+import { useAuth } from '../../lib/useAuth';
 import { motion } from 'motion/react';
 
 interface SubscriptionGuardProps {
@@ -7,6 +8,7 @@ interface SubscriptionGuardProps {
 }
 
 export default function SubscriptionGuard({ children }: SubscriptionGuardProps) {
+  const { user } = useAuth();
   const { isActive, loading } = useSubscription();
   const location = useLocation();
 
@@ -20,6 +22,11 @@ export default function SubscriptionGuard({ children }: SubscriptionGuardProps) 
         />
       </div>
     );
+  }
+
+  // If there is no user, let them pass (it's a public page context like Discover)
+  if (!user) {
+    return <>{children}</>;
   }
 
   if (!isActive && location.pathname !== '/subscription' && location.pathname !== '/profile') {
