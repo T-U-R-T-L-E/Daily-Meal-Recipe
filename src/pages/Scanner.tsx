@@ -7,12 +7,17 @@ import { useAuth } from '../lib/useAuth';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useErrorUX, InlineErrorHelper } from '../lib/ErrorUXContext';
+import AuthModal from '../components/auth/AuthModal';
 
 export default function Scanner() {
   const { addJob, jobs, cancelJob, toggleMinimize } = useBackgroundJobs();
   const { user } = useAuth();
   const { handleError } = useErrorUX();
   
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalTitle, setAuthModalTitle] = useState("Visual Ingredient Scanner");
+  const [authModalMessage, setAuthModalMessage] = useState("To capture live camera snapshots or scan food photos and extract recipe ingredients, please sign in first.");
+
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [loading, setLoading] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -107,6 +112,14 @@ export default function Scanner() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!user) {
+      setAuthModalTitle("Photo Ingredient Scan");
+      setAuthModalMessage("To scan food photos and automatically extract recipe ingredients, please sign in first.");
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     processImageFile(file);
   };
 
@@ -169,6 +182,13 @@ export default function Scanner() {
   const captureAndScan = () => {
     if (!videoRef.current || !canvasRef.current || isCurrentlyScanning) return;
 
+    if (!user) {
+      setAuthModalTitle("Video Spotlight Scan");
+      setAuthModalMessage("To capture live camera spotlight frames and scan ingredient products, please sign in first.");
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     setScanning(true);
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -217,11 +237,9 @@ export default function Scanner() {
   const addToPantry = async () => {
     if (scannedItems.length === 0) return;
     if (!user) {
-      const friendlyVal = handleError(
-        "Unauthorized authorization token. No active profile details were detected in this session.",
-        { componentName: 'Scanner', actionName: 'addToPantry', preferredPlacement: 'inline' }
-      );
-      setError(friendlyVal);
+      setAuthModalTitle("Kitchen Pantry Integration");
+      setAuthModalMessage("To add ingredients to your kitchen pantry inventory and track gourmet checklists, please sign in first.");
+      setIsAuthModalOpen(true);
       return;
     }
     setAddingToPantry(true);
@@ -537,6 +555,12 @@ export default function Scanner() {
           </div>
         ))}
       </div>
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        title={authModalTitle}
+        message={authModalMessage}
+      />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { Recipe } from '../types';
 import RecipeCard from '../components/recipes/RecipeCard';
 import { RecipeCardSkeleton, Shimmer } from '../components/recipes/RecipeSkeleton';
+import AuthModal from '../components/auth/AuthModal';
 
 export default function Home() {
   const { user } = useAuth();
@@ -16,6 +17,10 @@ export default function Home() {
   const [featuredRecipes, setFeaturedRecipes] = useState<Recipe[]>([]);
   const [recipeOfTheDay, setRecipeOfTheDay] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalTitle, setAuthModalTitle] = useState("Sign In Required");
+  const [authModalMessage, setAuthModalMessage] = useState("To access premium cooking features, generate customized recipes, scan ingredients, or map weekly meal plans, please sign in.");
 
   // Time context logic
   const timeContext = useMemo(() => {
@@ -69,12 +74,8 @@ export default function Home() {
     loadDynamicContent();
   }, [timeContext]);
 
-  const handleFeatureClick = (href: string, requiresAuth: boolean) => {
-    if (requiresAuth && !user) {
-      navigate('/auth', { state: { from: { pathname: href } } });
-    } else {
-      navigate(href);
-    }
+  const handleFeatureClick = (href: string) => {
+    navigate(href);
   };
 
   return (
@@ -196,7 +197,7 @@ export default function Home() {
             ].map((feature) => (
               <div
                 key={feature.title}
-                onClick={() => handleFeatureClick(feature.href, feature.requiresAuth)}
+                onClick={() => handleFeatureClick(feature.href)}
                 className="p-5 sm:p-8 rounded-[24px] sm:rounded-[30px] border border-white/5 bg-onyx flex flex-col justify-between hover:border-white/15 cursor-pointer group transition-all"
               >
                 <div className="space-y-6">
@@ -517,6 +518,12 @@ export default function Home() {
           </div>
         </div>
       </section>
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        title={authModalTitle}
+        message={authModalMessage}
+      />
     </div>
   );
 }

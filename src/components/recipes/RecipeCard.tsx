@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { Clock, ChefHat, Heart, ArrowUpRight, AlertTriangle, Star } from 'lucide-react';
+import { Clock, ChefHat, Heart, ArrowUpRight, AlertTriangle, Star, Share2, Check } from 'lucide-react';
 import { Recipe } from '../../types';
 import { cn, cleanRecipeImageUrl, getStableFoodImage } from '../../lib/utils';
 import { useAuth } from '../../lib/useAuth';
@@ -22,6 +22,45 @@ export default function RecipeCard({ recipe, index, activeTags = [] }: Props) {
   const [isToggling, setIsToggling] = useState(false);
   const [imageSrc, setImageSrc] = useState(() => cleanRecipeImageUrl(recipe.imageUrl, recipe.name, recipe.category, recipe.cuisine));
   const [imgLoading, setImgLoading] = useState(true);
+  const [copiedShare, setCopiedShare] = useState(false);
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const origin = window.location.origin;
+    // Build direct absolute recipe link
+    const recipeUrl = `${origin}/recipe/${recipe.id}`;
+    
+    const shareData = {
+      title: recipe.name,
+      text: recipe.description || `Check out this amazing ${recipe.name} recipe on Daily Meal Recipe!`,
+      url: recipeUrl,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.warn('Native share failed, using clipboard fallback:', err);
+          copyToClipboardFallback(recipeUrl);
+        }
+      }
+    } else {
+      copyToClipboardFallback(recipeUrl);
+    }
+  };
+
+  const copyToClipboardFallback = async (textToCopy: string) => {
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setCopiedShare(true);
+      setTimeout(() => setCopiedShare(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy fallback link:', err);
+    }
+  };
 
   const warnings = getRecipeWarnings(recipe, activeTags, profile);
 
@@ -160,16 +199,47 @@ export default function RecipeCard({ recipe, index, activeTags = [] }: Props) {
               </div>
             )}
           </div>
-          <button 
-            onClick={toggleFavorite}
-            disabled={isToggling}
-            className={cn(
-              "transition-all pt-1 cursor-pointer disabled:opacity-50",
-              isFavorited ? "text-red-500 hover:text-red-400" : "text-white/20 hover:text-white"
-            )}
-          >
-            <Heart className={cn("w-5 h-5 transition-transform", isFavorited && "fill-current scale-110")} />
-          </button>
+          <div className="flex items-center gap-2.5 shrink-0 pt-0.5">
+            <button
+              onClick={handleShare}
+              className={cn(
+                "p-2 bg-white/5 hover:bg-white/10 rounded-full transition-all cursor-pointer relative group",
+                copiedShare ? "text-amber-accent border border-amber-accent/30" : "text-white/40 hover:text-amber-accent border border-white/5 hover:border-white/10"
+              )}
+              title={copiedShare ? "Link copied!" : "Share Recipe"}
+            >
+              {copiedShare ? (
+                <Check className="w-3.5 h-3.5" />
+              ) : (
+                <Share2 className="w-3.5 h-3.5" />
+              )}
+              
+              {/* Tooltip */}
+              <AnimatePresence>
+                {copiedShare && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                    animate={{ opacity: 1, y: -34, scale: 1 }}
+                    exit={{ opacity: 0, y: 5, scale: 0.9 }}
+                    className="absolute left-1/2 transform -translate-x-1/2 bg-amber-accent text-black font-sans font-bold text-[8px] uppercase tracking-wider px-2 py-0.5 rounded shadow-lg pointer-events-none whitespace-nowrap z-10"
+                  >
+                    Link Copied!
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </button>
+
+            <button 
+              onClick={toggleFavorite}
+              disabled={isToggling}
+              className={cn(
+                "p-2 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 rounded-full transition-all cursor-pointer disabled:opacity-50",
+                isFavorited ? "text-red-500 hover:text-red-400" : "text-white/40 hover:text-white"
+              )}
+            >
+              <Heart className={cn("w-3.5 h-3.5 transition-transform", isFavorited && "fill-current scale-110")} />
+            </button>
+          </div>
         </div>
 
         <p className="text-gray-500 text-sm font-light line-clamp-2 leading-relaxed italic">

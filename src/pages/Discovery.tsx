@@ -10,6 +10,7 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/useAuth';
 import { faultTolerantFetchJson } from '../lib/api';
 import AuthModal from '../components/auth/AuthModal';
+import AddRecipeModal from '../components/recipes/AddRecipeModal';
 
 // Client-side in-memory search query cache to make repetitive searches instantaneous (<1ms)
 const clientSearchCache: Record<string, Recipe[]> = {};
@@ -59,8 +60,20 @@ export default function Discovery() {
   const [isLoadingSaved, setIsLoadingSaved] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [authModalTitle, setAuthModalTitle] = useState("Gourmet Recipe Search");
   const [authModalMessage, setAuthModalMessage] = useState("To search the global recipe index, utilize AI-powered search, generate surprise dishes, or upload photos to scan ingredients, please sign in to your Daily Meal Recipe account.");
+
+  const handleAddRecipeClick = () => {
+    if (!user) {
+      setAuthModalTitle("Add Recipe");
+      setAuthModalMessage("To create and share your gourmet cooking masterpiece with the community, please sign in first.");
+      setIsAuthModalOpen(true);
+    } else {
+      setIsAddModalOpen(true);
+    }
+  };
   
   // Enhanced Search Features States
   const [isListening, setIsListening] = useState(false);
@@ -534,7 +547,7 @@ export default function Discovery() {
       }
     }
     loadRecipes();
-  }, [offlineOnly]);
+  }, [offlineOnly, refreshTrigger]);
 
   // Start dictating terms using Web Speech API
   const startVoiceSearch = () => {
@@ -960,6 +973,13 @@ export default function Discovery() {
             <h1 className="font-serif text-6xl font-light text-white">Recipes</h1>
             <p className="text-gray-500 font-light text-lg">Browse our collection or find something new.</p>
           </div>
+          <button
+            onClick={handleAddRecipeClick}
+            className="h-12 px-6 bg-amber-accent hover:bg-white text-black rounded-full text-xs font-bold uppercase tracking-widest transition-all gap-2 flex items-center shadow-xl shadow-amber-accent/20 self-start md:self-auto cursor-pointer font-sans"
+          >
+            <Plus className="w-4 h-4 text-black" />
+            Add Recipe
+          </button>
         </div>
         
         <div className="flex flex-col xl:flex-row gap-8 xl:items-center">
@@ -1723,10 +1743,10 @@ export default function Discovery() {
               <div className="flex flex-wrap gap-4 justify-center pt-4">
                 {recipes.length === 0 ? (
                   <button 
-                    onClick={() => navigate('/generator')}
-                    className="px-8 py-4 bg-amber-accent text-black rounded-full text-xs font-bold uppercase tracking-widest hover:bg-white transition-all shadow-xl shadow-amber-accent/20"
+                    onClick={handleAddRecipeClick}
+                    className="px-8 py-4 bg-amber-accent text-black rounded-full text-xs font-bold uppercase tracking-widest hover:bg-white transition-all shadow-xl shadow-amber-accent/20 cursor-pointer"
                   >
-                    Create First Recipe
+                    Add First Recipe
                   </button>
                 ) : (
                   <button 
@@ -1754,6 +1774,21 @@ export default function Discovery() {
         title={authModalTitle}
         message={authModalMessage}
         actionName="search and discover recipes"
+      />
+
+      <AddRecipeModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={(id) => {
+          console.log("Newly published recipe ID:", id);
+          setSearchTerm('');
+          setCategory('All');
+          setOfflineOnly(false);
+          setFavoritesOnly(false);
+          setSurpriseResults(null);
+          setSearchMode('local'); // set to local Collection search to see their newly added recipe!
+          setRefreshTrigger(prev => prev + 1); // trigger list refresh
+        }}
       />
     </div>
   );

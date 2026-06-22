@@ -43,8 +43,14 @@ export default function Profile() {
   const levels = ['Beginner', 'Intermediate', 'Expert', 'Professional'];
 
   useEffect(() => {
+    if (!user) {
+      setProfile(null);
+      setLoading(false);
+      return;
+    }
+
     async function loadProfile() {
-      if (!user) return;
+      setLoading(true);
       try {
         const docSnap = await getDoc(doc(db, 'users', user.uid));
         if (docSnap.exists()) {
@@ -507,7 +513,52 @@ export default function Profile() {
   };
 
   if (loading) return <ProfileSkeleton />;
-  if (!profile) return null;
+  if (!user || !profile) {
+    return (
+      <div className="max-w-md mx-auto my-12 text-center py-16 px-8 bg-[#141414] border border-white/5 rounded-[40px] shadow-2xl relative overflow-hidden">
+        {/* Subtle Top Accent line */}
+        <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-amber-500/20 via-amber-accent to-rose-500/20" />
+        
+        {/* Decorative Glowing Orbs */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-accent/10 blur-[60px] -mr-16 -mt-16 rounded-full pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-rose-500/5 blur-[60px] -ml-16 -mb-16 rounded-full pointer-events-none" />
+
+        <div className="flex flex-col items-center gap-6">
+          <div className="w-16 h-16 bg-amber-accent/10 border border-amber-accent/25 rounded-3xl flex items-center justify-center shadow-lg shadow-amber-accent/5">
+            <ChefHat className="w-8 h-8 text-amber-accent" />
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-white font-serif text-3xl italic">
+              Sign In to View Profile
+            </h2>
+            <p className="text-[9px] uppercase font-bold tracking-[0.25em] text-amber-accent/70">
+              Access Restricted
+            </p>
+          </div>
+
+          <p className="text-sm text-gray-400 italic font-light leading-relaxed px-4">
+            Please sign in to view your profile settings, dietary preferences, cooking milestones, streaks, and data export features.
+          </p>
+
+          <div className="w-full pt-6 border-t border-white/5 flex flex-col gap-3">
+            <Link
+              to="/auth"
+              className="w-full h-14 bg-amber-accent hover:bg-white text-black rounded-full font-bold uppercase tracking-[0.15em] text-[10px] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xl shadow-amber-accent/10"
+            >
+              Sign In / Sign Up
+            </Link>
+            <Link
+              to="/discover"
+              className="w-full h-14 bg-white/5 border border-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-full font-bold uppercase tracking-[0.15em] text-[10px] flex items-center justify-center transition-all cursor-pointer"
+            >
+              Back to Discover
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-16">

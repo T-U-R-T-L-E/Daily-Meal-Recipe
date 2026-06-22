@@ -27,12 +27,20 @@ import {
 import { cn } from '../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useState, useEffect } from 'react';
+import AuthModal from '../auth/AuthModal';
+import LogoutConfirmModal from '../auth/LogoutConfirmModal';
 
 export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void }) {
   const { user, profile } = useAuth();
   const location = useLocation();
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalTitle, setAuthModalTitle] = useState("Sign In Required");
+  const [authModalMessage, setAuthModalMessage] = useState("To access premium cooking features, generate customized recipes, scan ingredients, or map weekly meal plans, please sign in.");
+
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
   useEffect(() => {
     const checkStandalone = 
@@ -44,7 +52,7 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
   // Desktop Navigation list
   const navItems = [
     { name: 'Discover', path: '/discover', icon: Search },
-    { name: 'Scanner', path: '/scanner', icon: ChefHat },
+    { name: 'Scanner', path: '/scanner', icon: ChefHat, auth: true },
     { name: 'Generator', path: '/generate', icon: Sparkles, auth: true },
     { name: 'Pantry', path: '/pantry', icon: ShoppingBag, auth: true },
     { name: 'Planner', path: '/planner', icon: Calendar, auth: true },
@@ -61,24 +69,24 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
   // Mobile fast-switching main bottom-bar tabs
   const mobileCoreTabs = [
     { name: 'Discover', path: '/discover', icon: Search },
-    { name: 'Scanner', path: '/scanner', icon: ChefHat },
-    { name: 'AI Gen', path: '/generate', icon: Sparkles },
-    { name: 'Pantry', path: '/pantry', icon: ShoppingBag },
+    { name: 'Scanner', path: '/scanner', icon: ChefHat, auth: true },
+    { name: 'AI Gen', path: '/generate', icon: Sparkles, auth: true },
+    { name: 'Pantry', path: '/pantry', icon: ShoppingBag, auth: true },
   ];
 
   // Mobile "More" sheet items
   const mobileMoreTabs = [
-    { name: 'Meal Planner', path: '/planner', icon: Calendar },
-    { name: 'Shopping List', path: '/shopping', icon: ShoppingBag },
-    { name: 'Family Hub', path: '/shared-todos', icon: ClipboardList },
-    { name: 'Gourmet Vault', path: '/files', icon: Database },
-    { name: 'My Profile', path: '/profile', icon: User },
-    { name: 'Subscription', path: '/subscription', icon: CreditCard },
+    { name: 'Meal Planner', path: '/planner', icon: Calendar, auth: true },
+    { name: 'Shopping List', path: '/shopping', icon: ShoppingBag, auth: true },
+    { name: 'Family Hub', path: '/shared-todos', icon: ClipboardList, auth: true },
+    { name: 'Gourmet Vault', path: '/files', icon: Database, auth: true },
+    { name: 'My Profile', path: '/profile', icon: User, auth: true },
+    { name: 'Subscription', path: '/subscription', icon: CreditCard, auth: true },
   ];
 
   if (user?.email === 'lewisiraki1@gmail.com') {
-    mobileMoreTabs.unshift({ name: 'Compliance Hub', path: '/compliance', icon: Scale });
-    mobileMoreTabs.unshift({ name: 'Admin Hub', path: '/admin', icon: Shield });
+    mobileMoreTabs.unshift({ name: 'Compliance Hub', path: '/compliance', icon: Scale, auth: true });
+    mobileMoreTabs.unshift({ name: 'Admin Hub', path: '/admin', icon: Shield, auth: true });
   }
 
   return (
@@ -121,7 +129,7 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
                   <div className="flex flex-col items-end">
                     <span className="text-[10px] font-black text-white uppercase tracking-wider">{user.displayName}</span>
                     <button
-                      onClick={() => signOut()}
+                      onClick={() => setIsLogoutConfirmOpen(true)}
                       className="text-[9px] uppercase tracking-widest text-amber-accent/60 hover:text-amber-accent font-bold transition-colors cursor-pointer"
                     >
                       Logout
@@ -224,6 +232,7 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
           {mobileCoreTabs.map((tab) => {
             const isActive = location.pathname === tab.path;
             const Icon = tab.icon;
+
             return (
               <Link
                 key={tab.path}
@@ -306,6 +315,7 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
                 {mobileMoreTabs.map((tab) => {
                   const isActive = location.pathname === tab.path;
                   const Icon = tab.icon;
+
                   return (
                     <Link
                       key={tab.path}
@@ -347,7 +357,7 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
                   <button
                     onClick={() => {
                       setIsMoreMenuOpen(false);
-                      signOut();
+                      setIsLogoutConfirmOpen(true);
                     }}
                     className="w-full py-4 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-2xl text-xs uppercase tracking-widest font-black transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
@@ -360,6 +370,22 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
           </>
         )}
       </AnimatePresence>
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        title={authModalTitle}
+        message={authModalMessage}
+      />
+
+      <LogoutConfirmModal
+        isOpen={isLogoutConfirmOpen}
+        onClose={() => setIsLogoutConfirmOpen(false)}
+        onConfirm={() => {
+          setIsLogoutConfirmOpen(false);
+          signOut();
+        }}
+      />
     </>
   );
 }

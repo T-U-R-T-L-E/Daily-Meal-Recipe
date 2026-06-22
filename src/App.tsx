@@ -3,32 +3,34 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './lib/useAuth';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
-import Home from './pages/Home';
-import Discovery from './pages/Discovery';
-import Generator from './pages/Generator';
-import MealPlanner from './pages/MealPlanner';
-import ShoppingList from './pages/ShoppingList';
-import RecipeDetails from './pages/RecipeDetails';
-import Pantry from './pages/Pantry';
-import GuidedCooking from './pages/GuidedCooking';
-import Profile from './pages/Profile';
-import Subscription from './pages/Subscription';
-import Scanner from './pages/Scanner';
-import Admin from './pages/Admin';
-import Leaderboard from './pages/Leaderboard';
-import Auth from './pages/Auth';
-import SharedTodos from './pages/SharedTodos';
-import CompleteProfile from './pages/CompleteProfile';
-import FilesHub from './pages/FilesHub';
-import ComplianceHub from './pages/ComplianceHub';
-import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
-import TermsOfServicePage from './pages/TermsOfServicePage';
-import RefundPolicyPage from './pages/RefundPolicyPage';
+
+// Lazy load heavy page modules for ultra-optimized bundle splitting
+const Home = lazy(() => import('./pages/Home'));
+const Discovery = lazy(() => import('./pages/Discovery'));
+const Generator = lazy(() => import('./pages/Generator'));
+const MealPlanner = lazy(() => import('./pages/MealPlanner'));
+const ShoppingList = lazy(() => import('./pages/ShoppingList'));
+const RecipeDetails = lazy(() => import('./pages/RecipeDetails'));
+const Pantry = lazy(() => import('./pages/Pantry'));
+const GuidedCooking = lazy(() => import('./pages/GuidedCooking'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Subscription = lazy(() => import('./pages/Subscription'));
+const Scanner = lazy(() => import('./pages/Scanner'));
+const Admin = lazy(() => import('./pages/Admin'));
+const Leaderboard = lazy(() => import('./pages/Leaderboard'));
+const Auth = lazy(() => import('./pages/Auth'));
+const SharedTodos = lazy(() => import('./pages/SharedTodos'));
+const CompleteProfile = lazy(() => import('./pages/CompleteProfile'));
+const FilesHub = lazy(() => import('./pages/FilesHub'));
+const ComplianceHub = lazy(() => import('./pages/ComplianceHub'));
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
+const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
+const RefundPolicyPage = lazy(() => import('./pages/RefundPolicyPage'));
 import { motion, AnimatePresence } from 'motion/react';
 
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
@@ -109,6 +111,28 @@ function BrandedSplash() {
         <div className="w-48 h-0.5 bg-white/5 rounded-full overflow-hidden relative">
           <div className="absolute inset-y-0 left-0 bg-amber-accent rounded-full animate-[shimmer_1.5s_infinite]" style={{ width: '40%' }} />
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Dedicated page-transition fallback for Suspense-based lazy-loaded modules
+function PageLoadingFallback() {
+  return (
+    <div className="w-full min-h-[50vh] flex flex-col items-center justify-center p-8">
+      <div className="relative flex flex-col items-center space-y-4">
+        {/* Pulsing themed loader icon */}
+        <motion.div
+          animate={{ scale: [0.95, 1.05, 0.95], opacity: [0.6, 1, 0.6] }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+          className="flex items-center justify-center p-5 bg-white/[0.01] border border-white/5 rounded-full"
+        >
+          <ChefHat className="w-8 h-8 text-amber-accent" />
+        </motion.div>
+        
+        <p className="text-[9px] uppercase font-bold tracking-[0.25em] text-white/30 animate-pulse">
+          Plating up gourmet workspace...
+        </p>
       </div>
     </div>
   );
@@ -212,7 +236,8 @@ function AppContent() {
         <Navbar onOpenDownload={() => setIsDownloadOpen(true)} />
         <main className={`flex-1 w-full max-w-7xl xxl:max-w-[1400px] 3xl:max-w-[1800px] 4xl:max-w-[2400px] 5xl:max-w-[3200px] mx-auto ${location.pathname === '/' ? 'px-1 xs:px-2' : 'px-3 xs:px-4'} sm:px-6 pt-6 pb-20 md:py-12`}>
           <AnimatePresence mode="wait">
-            <Routes location={location} key={location.pathname}>
+            <Suspense fallback={<PageLoadingFallback />}>
+              <Routes location={location} key={location.pathname}>
               <Route path="/" element={<Home />} />
               <Route 
                 path="/discover" 
@@ -290,7 +315,8 @@ function AppContent() {
                 } 
               />
             </Routes>
-          </AnimatePresence>
+          </Suspense>
+        </AnimatePresence>
         </main>
         <Footer />
         <BackgroundJobDeck />
