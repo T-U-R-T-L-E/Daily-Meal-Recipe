@@ -67,19 +67,19 @@ function handleAdminDbError(err: any, contextMsg: string) {
 // Global Outbound HTTP/HTTPS Connection Pooling optimization.
 // Automatically pools and reuses sockets for downstream requests (Stripe, Gemini, external APIs)
 // preventing Ephemeral Socket Exhaustion under high concurrent user load (100+ users).
-(https.globalAgent as any) = new https.Agent({
-  keepAlive: true,
-  maxSockets: 350,
-  maxFreeSockets: 50,
-  timeout: 30000
-});
+if (https.globalAgent) {
+  (https.globalAgent as any).options = (https.globalAgent as any).options || {};
+  (https.globalAgent as any).options.keepAlive = true;
+  https.globalAgent.maxSockets = 350;
+  (https.globalAgent as any).maxFreeSockets = 50;
+}
 
-(http.globalAgent as any) = new http.Agent({
-  keepAlive: true,
-  maxSockets: 350,
-  maxFreeSockets: 50,
-  timeout: 30000
-});
+if (http.globalAgent) {
+  (http.globalAgent as any).options = (http.globalAgent as any).options || {};
+  (http.globalAgent as any).options.keepAlive = true;
+  http.globalAgent.maxSockets = 350;
+  (http.globalAgent as any).maxFreeSockets = 50;
+}
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3000", 10);
@@ -2192,7 +2192,60 @@ app.post("/api/ai/search-recipes", async (req, res) => {
     ].join(",") : "";
     const searchDocId = normKey + (ctxHash ? "-" + normalizeSearchKey(ctxHash) : "");
 
-    // Bypassing preliminary database cache checks to guarantee an active live web search on each query.
+    // Attempt to satisfy query from Firestore Cache first to optimize API usage and support instant loading
+    if (adminDb && rawQuery && (!exclude || exclude.length === 0)) {
+      try {
+        console.log(`[Cache System] Checking cached recipe indices for search query "${searchQuery}"...`);
+        
+        let cachedRecipeIds: string[] = [];
+        let hitType = "";
+        
+        // Step A: Look for exact-context cache match (word + preferences)
+        const exactSnap = await adminDb.collection("searches").doc(searchDocId).get();
+        if (exactSnap.exists) {
+          const exactData = exactSnap.data();
+          if (exactData && Array.isArray(exactData.recipeIds) && exactData.recipeIds.length > 0) {
+            cachedRecipeIds = exactData.recipeIds;
+            hitType = "Exact Context Match";
+          }
+        }
+        
+        // Step B: Look for search word cache match if no exact-context match exists
+        if (cachedRecipeIds.length === 0 && searchDocId !== normKey) {
+          const wordSnap = await adminDb.collection("searches").doc(normKey).get();
+          if (wordSnap.exists) {
+            const wordData = wordSnap.data();
+            if (wordData && Array.isArray(wordData.recipeIds) && wordData.recipeIds.length > 0) {
+              cachedRecipeIds = wordData.recipeIds;
+              hitType = "Generalized Word Match";
+            }
+          }
+        }
+        
+        // Step C: If we found cached recipe IDs, retrieve the complete recipe documents from 'recipes'
+        if (cachedRecipeIds.length > 0) {
+          console.log(`[Cache Hit] ${hitType} found for "${searchQuery}". Total recipe references: ${cachedRecipeIds.length}. Fetching from Firestore...`);
+          
+          const recipesPromises = cachedRecipeIds.slice(0, 5).map(async (rid: string) => {
+            const recipeDoc = await adminDb.collection("recipes").doc(rid).get();
+            if (recipeDoc.exists) {
+              return { ...recipeDoc.data(), id: recipeDoc.id };
+            }
+            return null;
+          });
+          const fetchedRecipesRaw = await Promise.all(recipesPromises);
+          const cachedRecipes = fetchedRecipesRaw.filter((r): r is any => r !== null);
+          
+          if (cachedRecipes.length > 0) {
+            console.log(`[Cache Hit] Successfully serving ${cachedRecipes.length} cached recipes for "${searchQuery}" from Firestore.`);
+            return res.json(cachedRecipes);
+          }
+        }
+      } catch (cacheCheckErr) {
+        console.error("[Cache System] Error running cache checks, falling back to Gemini API:", cacheCheckErr);
+      }
+    }
+
     console.log(`[Search Engine] Seeking fresh recipes for: "${searchQuery}". Actively querying Gemini API with live search grounding.`);
 
     const specialInstructions = buildUserContextInstructions(userContext);
@@ -2515,13 +2568,25 @@ app.post("/api/ai/search-recipes", async (req, res) => {
     // Save search query mapping to database
     if (adminDb && savedRecipeIds.length > 0) {
       try {
+        // Save exact-context query mapping
         await adminDb.collection("searches").doc(searchDocId).set({
           recipeIds: savedRecipeIds,
           searchKey: normKey,
           query: rawQuery,
           createdAt: FieldValue.serverTimestamp()
         });
-        console.log(`Saved compiled search index mapping for "${searchDocId}".`);
+        console.log(`[Cache System] Saved compiled exact search index mapping for "${searchDocId}".`);
+
+        // Save normalized word/keyword-only query mapping for general reuse by other users
+        if (searchDocId !== normKey) {
+          await adminDb.collection("searches").doc(normKey).set({
+            recipeIds: savedRecipeIds,
+            searchKey: normKey,
+            query: rawQuery,
+            createdAt: FieldValue.serverTimestamp()
+          });
+          console.log(`[Cache System] Saved compiled generalized search index mapping for "${normKey}".`);
+        }
       } catch (dbErr) {
         handleAdminDbError(dbErr, "Could not save searched recipes map index");
       }

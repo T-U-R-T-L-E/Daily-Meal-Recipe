@@ -4,7 +4,7 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Recipe, UserProfile } from '../types';
 import RecipeCard from '../components/recipes/RecipeCard';
 import { RecipeCardSkeleton } from '../components/recipes/RecipeSkeleton';
-import { Search, Plus, SlidersHorizontal, Sparkles, Zap, Coffee, Utensils, Moon, Candy, IceCream, Globe, Database, Heart, Filter, Clock, Check, ChevronDown, CheckCircle2, X, ChefHat, Mic, MicOff, Image as ImageIcon, Loader2, Flame, ExternalLink } from 'lucide-react';
+import { Search, RotateCcw, Plus, SlidersHorizontal, Sparkles, Zap, Coffee, Utensils, Moon, Candy, IceCream, Globe, Database, Heart, Filter, Clock, Check, ChevronDown, CheckCircle2, X, ChefHat, Mic, MicOff, Image as ImageIcon, Loader2, Flame, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/useAuth';
@@ -18,6 +18,17 @@ export default function Discovery() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  
+  // Recent Searches state
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('recent_cooking_searches');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [category, setCategory] = useState('All');
   const [offlineOnly, setOfflineOnly] = useState(false);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
@@ -203,13 +214,58 @@ export default function Discovery() {
   const cookingMethods = ['All', 'Baking', 'Grilling', 'Sautéing', 'Slow Cooking', 'Air Frying', 'Steaming', 'Poaching', 'Roasting'];
   const occasions = ['All', 'Weeknight', 'Party', 'Holiday', 'Date Night', 'Kids Friendly', 'Breakfast in Bed', 'Picnic'];
 
+  // Debounce mechanism for search input to prevent rapid API calls & DB queries during typing
   useEffect(() => {
-    if (searchTerm.trim().length < 2) {
+    const handler = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 400); // 400ms delay protects Firestore suggestions query and API limits from typing noise
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchTerm]);
+
+  const saveRecentSearch = (queryStr: string) => {
+    if (!queryStr || queryStr.trim().length === 0) return;
+    const cleanWord = queryStr.trim();
+    setRecentSearches(prev => {
+      const filtered = prev.filter(q => q.toLowerCase() !== cleanWord.toLowerCase());
+      const updated = [cleanWord, ...filtered].slice(0, 6); // Keep top 6 recent searches
+      localStorage.setItem('recent_cooking_searches', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const removeRecentSearch = (queryStr: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRecentSearches(prev => {
+      const updated = prev.filter(q => q !== queryStr);
+      localStorage.setItem('recent_cooking_searches', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  // Close search suggestions on clicking outside the search input container
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.search-input-container')) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (debouncedSearchTerm.trim().length < 2) {
       setSuggestions([]);
       return;
     }
 
-    const term = searchTerm.toLowerCase();
+    const term = debouncedSearchTerm.toLowerCase();
     const matches = new Set<string>();
 
     // Search in recipes
@@ -247,7 +303,7 @@ export default function Discovery() {
       } catch (err) {
         console.warn("Client Firestore suggestions query failed, using offline api fallback:", err);
         try {
-          const response = await fetch(`/api/search/suggestions?q=${encodeURIComponent(searchTerm)}`);
+          const response = await fetch(`/api/search/suggestions?q=${encodeURIComponent(debouncedSearchTerm)}`);
           if (response.ok) {
             const data = await response.json();
             if (active && data && Array.isArray(data.suggestions)) {
@@ -270,7 +326,7 @@ export default function Discovery() {
     return () => {
       active = false;
     };
-  }, [searchTerm, recipes]);
+  }, [debouncedSearchTerm, recipes]);
 
   useEffect(() => {
     const urlMode = searchParams.get('mode');
@@ -671,6 +727,11 @@ export default function Discovery() {
     sessionStorage.setItem('ai_search_term', termToUse);
     sessionStorage.setItem('ai_search_mode', searchMode);
 
+    // Save search query to recent searches
+    if (termToUse && termToUse.trim().length > 0) {
+      saveRecentSearch(termToUse.trim());
+    }
+
     // Log query term directly to client-side Firestore search suggestions securely
     if (termToUse && termToUse.trim().length >= 2) {
       const queryClean = termToUse.trim();
@@ -701,7 +762,19 @@ export default function Discovery() {
         queryStr += ` ${activePresetTags.join(' ')}`;
       }
 
-      // Bypassed client-side session cache lookup for World Search so it always triggers a fresh online search
+      // Check client-side (in-memory) search query cache first for instant load
+      if (clientSearchCache[queryStr] && clientSearchCache[queryStr].length > 0) {
+        console.log(`[Cache Hit] Instant load past search query: "${queryStr}"`);
+        setAiResults([]);
+        setPendingReveal({ type: 'ai', mode: 'overwrite', items: clientSearchCache[queryStr] });
+        sessionStorage.setItem('ai_search_results', JSON.stringify(clientSearchCache[queryStr]));
+        
+        // Scroll to results
+        const el = document.getElementById('results-target');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
+
       setIsAISearching(true);
       setAiError(null);
       try {
@@ -950,7 +1023,7 @@ export default function Discovery() {
 
             <form 
               onSubmit={(e) => handleSearch(e)}
-              className="relative flex gap-2"
+              className="relative flex gap-2 search-input-container"
             >
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20" />
@@ -962,7 +1035,7 @@ export default function Discovery() {
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
                     if (surpriseResults) setSurpriseResults(null);
-                    setShowSuggestions(e.target.value.length > 1);
+                    setShowSuggestions(true);
                   }}
                   className="w-[220px] sm:w-[320px] h-11 pl-11 pr-24 bg-white/5 border border-white/10 rounded-full focus:outline-none focus:border-amber-accent/50 transition-all text-xs text-white placeholder:text-white/20"
                 />
@@ -1009,27 +1082,83 @@ export default function Discovery() {
                 </div>
 
                 <AnimatePresence>
-                  {showSuggestions && suggestions.length > 0 && (
+                  {showSuggestions && (suggestions.length > 0 || recentSearches.length > 0) && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
-                      className="absolute top-full left-0 right-0 mt-2 bg-onyx border border-white/10 rounded-2xl overflow-hidden z-25 shadow-2xl"
+                      className="absolute top-full left-0 right-0 mt-2 bg-onyx border border-white/10 rounded-2xl overflow-hidden z-40 shadow-2xl min-w-[280px] sm:min-w-[320px]"
                     >
-                      {suggestions.map((suggestion, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => {
-                            setSearchTerm(suggestion);
-                            setShowSuggestions(false);
-                            handleSearch(undefined, suggestion);
-                          }}
-                          className="w-full text-left px-5 py-3 text-xs text-white/60 hover:text-white hover:bg-white/5 border-b border-white/5 last:border-0 transition-colors cursor-pointer"
-                        >
-                          {suggestion}
-                        </button>
-                      ))}
+                      {/* Recent Searches Section */}
+                      {recentSearches.length > 0 && (
+                        <div className="p-3 bg-white/[0.02] border-b border-white/5 space-y-1.5">
+                          <div className="flex items-center justify-between px-2">
+                            <span className="text-[10px] font-black uppercase text-amber-accent/70 tracking-widest flex items-center gap-1">
+                              <RotateCcw className="w-3 h-3 text-amber-accent" /> Recent Searches
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setRecentSearches([]);
+                                localStorage.removeItem('recent_cooking_searches');
+                              }}
+                              className="text-[9px] uppercase tracking-wider text-red-400 hover:text-red-300 font-bold transition-colors cursor-pointer"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            {recentSearches.map((term, i) => (
+                              <div
+                                key={`recent-${i}`}
+                                onClick={() => {
+                                  setSearchTerm(term);
+                                  setShowSuggestions(false);
+                                  handleSearch(undefined, term);
+                                }}
+                                className="flex items-center justify-between px-3 py-1.5 rounded-xl hover:bg-white/5 group transition-colors cursor-pointer"
+                              >
+                                <span className="text-xs text-white/50 group-hover:text-white transition-colors truncate pr-4">
+                                  {term}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => removeRecentSearch(term, e)}
+                                  className="text-white/20 hover:text-red-400 p-1 rounded transition-colors cursor-pointer"
+                                  title="Remove query from history"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Autocomplete suggestions Section */}
+                      {suggestions.length > 0 && (
+                        <div className="p-2">
+                          <div className="px-3 py-1.5 text-[9px] font-black uppercase text-white/40 tracking-widest">
+                            Suggestions
+                          </div>
+                          {suggestions.map((suggestion, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => {
+                                setSearchTerm(suggestion);
+                                setShowSuggestions(false);
+                                handleSearch(undefined, suggestion);
+                              }}
+                              className="w-full text-left px-3 py-2 text-xs text-white/60 hover:text-white hover:bg-white/5 rounded-xl transition-colors cursor-pointer flex items-center gap-2"
+                            >
+                              <Search className="w-3 h-3 text-white/20" />
+                              <span className="truncate">{suggestion}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>

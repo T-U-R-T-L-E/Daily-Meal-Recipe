@@ -1,5 +1,5 @@
 // Service Worker for Daily Meal Recipe PWA installation
-const CACHE_NAME = 'daily-meal-v5-force-refresh';
+const CACHE_NAME = 'daily-meal-v6-force-refresh';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -36,6 +36,11 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
 
+  // Always fetch the service worker itself directly from network to allow instant updates
+  if (url.pathname.includes('/sw.js')) {
+    return;
+  }
+
   // Exclude Firebase Auth, dynamic APIs, and background dev tools that are strictly online-only:
   // 1. Searching recipes: /api/ai/search-recipes
   // 2. Logging in or signing up (firebase auth or APIs)
@@ -68,6 +73,35 @@ self.addEventListener('fetch', (event) => {
 
   // Handle local origin assets (Vite index/chunk JS, CSS, images, layouts, schemas, logs)
   if (url.origin === self.location.origin) {
+    const isMainDoc = url.pathname === '/' || url.pathname === '/index.html' || url.pathname.endsWith('.html') || url.pathname.endsWith('.json');
+
+    if (isMainDoc) {
+      // Force Network-First for entry points and main docs so that updates show up instantly when online
+      event.respondWith(
+        fetch(event.request).then((networkResponse) => {
+          if (networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return networkResponse;
+        }).catch(async () => {
+          // Fallback to cache if totally offline
+          const cachedResponse = await caches.match(event.request);
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          const cachedIndex = await caches.match('/index.html') || await caches.match('/');
+          if (cachedIndex) {
+            return cachedIndex;
+          }
+          return new Response("Offline resource unavailable", { status: 408 });
+        })
+      );
+      return;
+    }
+
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
         if (cachedResponse) {

@@ -4,20 +4,9 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 import { getStorage } from 'firebase/storage';
 import appletConfig from '../../firebase-applet-config.json';
 
-const getDynamicAuthDomain = () => {
-  if (typeof window !== 'undefined' && window.location.hostname) {
-    const host = window.location.hostname;
-    // Use the current host if it's our custom domain or local preview, which supports the proxy bridge
-    if (host.includes('dailymealrecipe.online') || host.includes('localhost') || host.includes('127.0.0.1')) {
-      return host;
-    }
-  }
-  return 'confident-monument-s6tp2.firebaseapp.com';
-};
-
 const firebaseConfig = {
   apiKey: appletConfig.apiKey,
-  authDomain: getDynamicAuthDomain(),
+  authDomain: appletConfig.authDomain || 'confident-monument-s6tp2.firebaseapp.com',
   databaseURL: 'https://confident-monument-s6tp2-default-rtdb.firebaseio.com',
   projectId: appletConfig.projectId,
   storageBucket: appletConfig.storageBucket,

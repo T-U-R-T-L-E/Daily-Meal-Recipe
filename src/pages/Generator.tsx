@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, Plus, X, Wand2, ChefHat, Save, Package, Check, ChevronDown, ChevronUp, Play, Eye, RotateCcw } from 'lucide-react';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, getDoc, orderBy, limit } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../lib/useAuth';
 import { Recipe, UserProfile } from '../types';
@@ -19,6 +19,9 @@ export default function Generator() {
 
   const [ingredients, setIngredients] = useState<string[]>([]);
   const [currentInput, setCurrentInput] = useState('');
+  const [debouncedInput, setDebouncedInput] = useState('');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
@@ -28,6 +31,80 @@ export default function Generator() {
   const [showPantry, setShowPantry] = useState(false);
   const [pantryLoading, setPantryLoading] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
+  // Debounce ingredient input typing to limit Firestore suggestions reads during typing
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedInput(currentInput);
+    }, 350);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [currentInput]);
+
+  useEffect(() => {
+    if (debouncedInput.trim().length < 2) {
+      setSuggestions([]);
+      return;
+    }
+
+    const term = debouncedInput.toLowerCase();
+    let active = true;
+
+    // Hardcoded list of popular fresh culinary ingredients to complement database query
+    const popularIngredients = [
+      'chicken breast', 'salmon fillet', 'ground beef', 'garlic', 'onion', 'broccoli', 
+      'pasta', 'olive oil', 'cheddar cheese', 'butter', 'eggs', 'flour', 'milk', 'rice', 
+      'potato', 'tomato', 'spinach', 'bell pepper', 'carrot', 'parmesan', 'lemon', 'ginger'
+    ];
+
+    const loadSuggestions = async () => {
+      const matchedLocal = popularIngredients.filter(item => item.toLowerCase().includes(term));
+      const results = new Set(matchedLocal);
+
+      try {
+        const ref = collection(db, "search_suggestions");
+        const q = query(ref, orderBy("count", "desc"), limit(25));
+        const snap = await getDocs(q);
+        if (active) {
+          snap.forEach(doc => {
+            const data = doc.data();
+            if (data && data.text) {
+              const textClean = data.text.trim().toLowerCase();
+              if (textClean.includes(term)) {
+                results.add(textClean);
+              }
+            }
+          });
+        }
+      } catch (err) {
+        console.warn("Error looking up suggestions in Generator:", err);
+      }
+
+      if (active) {
+        setSuggestions(Array.from(results).slice(0, 5));
+      }
+    };
+
+    loadSuggestions();
+
+    return () => {
+      active = false;
+    };
+  }, [debouncedInput]);
+
+  // Close suggestions folder when user clicks outside
+  useEffect(() => {
+    const clickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.ingredient-input-container')) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('click', clickOutside);
+    return () => document.removeEventListener('click', clickOutside);
+  }, []);
   const [isConsentOpen, setIsConsentOpen] = useState(false);
 
   // Find if there's active recipe generation job running
@@ -177,13 +254,17 @@ export default function Generator() {
       <div className="bg-graphite p-10 rounded-[40px] border border-white/5 shadow-2xl space-y-10">
         <div className="space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="w-full md:flex-1 md:pr-4">
+            <div className="w-full md:flex-1 md:pr-4 relative ingredient-input-container">
               <div className="flex gap-2 sm:gap-4">
                 <input
                   type="text"
                   placeholder="What ingredients do you have?"
                   value={currentInput}
-                  onChange={(e) => setCurrentInput(e.target.value)}
+                  onFocus={() => setShowSuggestions(currentInput.length > 0)}
+                  onChange={(e) => {
+                    setCurrentInput(e.target.value);
+                    setShowSuggestions(e.target.value.length > 0);
+                  }}
                   onKeyDown={(e) => e.key === 'Enter' && addIngredient()}
                   className="flex-1 px-4 sm:px-8 py-4 sm:py-5 bg-onyx border border-white/10 rounded-2xl focus:outline-none focus:border-amber-accent/50 text-white italic placeholder:text-white/20 text-sm sm:text-base min-w-0"
                 />
@@ -194,6 +275,39 @@ export default function Generator() {
                   Add
                 </button>
               </div>
+
+              {/* Suggestions Autocomplete Panel */}
+              <AnimatePresence>
+                {showSuggestions && suggestions.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute top-full left-0 right-4 mt-2 bg-onyx border border-white/10 rounded-2xl overflow-hidden z-25 shadow-2xl"
+                  >
+                    <div className="px-3 py-1.5 text-[9px] font-black uppercase text-amber-accent/70 tracking-widest bg-white/[0.01] border-b border-white/5">
+                      Completed Ingredients Suggestions
+                    </div>
+                    {suggestions.map((suggestion, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => {
+                          if (!ingredients.includes(suggestion)) {
+                            setIngredients([...ingredients, suggestion]);
+                          }
+                          setCurrentInput('');
+                          setShowSuggestions(false);
+                        }}
+                        className="w-full text-left px-5 py-3 text-xs text-white/60 hover:text-white hover:bg-white/5 border-b border-white/5 last:border-0 transition-colors cursor-pointer flex items-center justify-between"
+                      >
+                        <span>{suggestion}</span>
+                        <span className="text-[10px] uppercase text-amber-accent/60 font-semibold tracking-wider">Add +</span>
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
             
             <button 
