@@ -384,131 +384,135 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Down-to-Earth Trust & Pragmatic Testimonial Section */}
-      <section className="bg-coal border border-white/5 p-5 sm:p-10 md:p-20 rounded-[24px] sm:rounded-[40px] flex flex-col lg:flex-row items-center justify-between gap-8 md:gap-12 max-w-7xl xxl:max-w-[1400px] 3xl:max-w-[1800px] 4xl:max-w-[2400px] 5xl:max-w-[3200px] mx-1 sm:mx-6 lg:mx-auto relative">
-        <div className="space-y-8 max-w-xl z-10 w-full">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-accent">Real Experiences</span>
-          <h2 className="font-serif text-4xl md:text-5xl font-normal leading-tight text-white">
-            Practical cooking <br />
-            <span className="italic text-amber-accent">for busy weeks.</span>
-          </h2>
-          <p className="text-gray-400 font-light text-base leading-relaxed">
-            "We used to throw away stale produce nearly every Friday. Daily Meal Recipe changed that immediately. I type in whatever vegetables we have left on Thursday, and cook a reliable family dinner in less than forty minutes."
-          </p>
-          
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full border border-white/10 bg-onyx overflow-hidden shrink-0">
-              <img 
-                src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80" 
-                alt="Sarah" 
-                className="w-full h-full object-cover md:grayscale" 
-                loading="lazy"
-                referrerPolicy="no-referrer"
-                onError={(e) => {
-                  e.currentTarget.onerror = null;
-                  e.currentTarget.src = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80";
-                }}
-              />
+      {/* Down-to-Earth Trust, Real Experiences & Our Vision Section */}
+      <section className="max-w-7xl xxl:max-w-[1400px] 3xl:max-w-[1800px] 4xl:max-w-[2400px] 5xl:max-w-[3200px] mx-1 sm:mx-6 lg:mx-auto bg-coal border border-white/5 p-5 sm:p-10 md:p-20 rounded-[24px] sm:rounded-[40px] space-y-16 md:space-y-28 relative overflow-hidden">
+        
+        {/* Decorative Glowing Orbs */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-amber-accent/5 blur-[120px] rounded-full pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-rose-500/[0.03] blur-[120px] rounded-full pointer-events-none" />
+
+        {/* Part A: Real Experiences Row (Testimonial and Image) */}
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-8 md:gap-12 relative z-10 w-full">
+          <div className="space-y-8 max-w-xl w-full">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-amber-accent">Real Experiences</span>
+            <h2 className="font-serif text-4xl md:text-5xl font-normal leading-tight text-white">
+              Practical cooking <br />
+              <span className="italic text-amber-accent">for busy weeks.</span>
+            </h2>
+            <p className="text-gray-400 font-light text-base leading-relaxed">
+              "We used to throw away stale produce nearly every Friday. Daily Meal Recipe changed that immediately. I type in whatever vegetables we have left on Thursday, and cook a reliable family dinner in less than forty minutes."
+            </p>
+            
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full border border-white/10 bg-onyx overflow-hidden shrink-0">
+                <img 
+                  src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&q=80" 
+                  alt="Sarah" 
+                  className="w-full h-full object-cover md:grayscale" 
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80";
+                  }}
+                />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-white uppercase tracking-wider">Sarah J.</p>
+                <p className="text-[10px] text-gray-500 uppercase">Home Cook & Planner Enthusiast</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-bold text-white uppercase tracking-wider">Sarah J.</p>
-              <p className="text-[10px] text-gray-500 uppercase">Home Cook & Planner Enthusiast</p>
+
+            <div className="pt-4 flex flex-wrap gap-4 items-center">
+              <button 
+                onClick={() => user ? navigate('/discover') : navigate('/auth')} 
+                className="px-8 py-4 bg-white hover:bg-amber-accent text-black rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer"
+              >
+                {user ? 'Browse Database' : 'Start Cooking For Free'}
+              </button>
+              <span className="text-[10px] text-white/30 uppercase font-bold tracking-widest">
+                Join index of over 2,000 active kitchens
+              </span>
             </div>
           </div>
 
-          <div className="pt-4 flex flex-wrap gap-4 items-center">
-            <button 
-              onClick={() => user ? navigate('/discover') : navigate('/auth')} 
-              className="px-8 py-4 bg-white hover:bg-amber-accent text-black rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer"
-            >
-              {user ? 'Browse Database' : 'Start Cooking For Free'}
-            </button>
-            <span className="text-[10px] text-white/30 uppercase font-bold tracking-widest">
-              Join index of over 2,000 active kitchens
-            </span>
+          <div className="w-full lg:w-1/2 relative bg-onyx/50 rounded-3xl overflow-hidden border border-white/5 p-2 shrink-0">
+            <img 
+              src="https://images.unsplash.com/photo-1544025162-d76694265947?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80" 
+              className="w-full aspect-[4/3] object-cover rounded-2xl border border-white/10 md:grayscale md:hover:grayscale-0 transition-all duration-700"
+              alt="Authentic kitchen counter cooking selection"
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = "https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=1000&q=80";
+              }}
+            />
           </div>
         </div>
 
-        <div className="w-full lg:w-1/2 relative bg-onyx/50 rounded-3xl overflow-hidden border border-white/5 p-2">
-          <img 
-            src="https://images.unsplash.com/photo-1544025162-d76694265947?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80" 
-            className="w-full aspect-[4/3] object-cover rounded-2xl border border-white/10 md:grayscale md:hover:grayscale-0 transition-all duration-700"
-            alt="Authentic kitchen counter cooking selection"
-            loading="lazy"
-            referrerPolicy="no-referrer"
-            onError={(e) => {
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = "https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=1000&q=80";
-            }}
-          />
-        </div>
-      </section>
+        {/* Divider line inside same container */}
+        <div className="w-full h-[1px] bg-white/5 relative z-10" />
 
-      {/* Structured Application Purpose & Mission Section */}
-      <section className="max-w-7xl xxl:max-w-[1400px] 3xl:max-w-[1800px] 4xl:max-w-[2400px] 5xl:max-w-[3200px] mx-auto px-1 sm:px-6 mt-12 sm:mt-20">
-        <div className="relative overflow-hidden border border-white/5 bg-onyx/[0.2] rounded-[24px] sm:rounded-[40px] p-6 sm:p-12 md:p-20 space-y-12 sm:space-y-16">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-amber-accent/5 blur-[120px] rounded-full pointer-events-none" />
-          <div className="absolute bottom-0 left-0 w-96 h-96 bg-rose-500/[0.03] blur-[120px] rounded-full pointer-events-none" />
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative z-10">
-            {/* Mission Statement & Vision Header */}
-            <div className="lg:col-span-5 space-y-6">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-accent/10 border border-amber-accent/25 text-amber-accent rounded-full text-[9px] font-bold uppercase tracking-widest leading-none">
-                <Sparkles className="w-3 h-3" />
-                <span>Our Vision</span>
+        {/* Part B: Our Vision & Purposed Application Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative z-10">
+          {/* Mission Statement & Vision Header */}
+          <div className="lg:col-span-5 space-y-6">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-accent/10 border border-amber-accent/25 text-amber-accent rounded-full text-[9px] font-bold uppercase tracking-widest leading-none">
+              <Sparkles className="w-3 h-3" />
+              <span>Our Vision</span>
+            </div>
+            <h2 className="font-serif text-4xl sm:text-5xl leading-tight text-white font-normal">
+              An integrated, <span className="italic text-amber-accent">zero-waste</span> culinary system.
+            </h2>
+            <p className="text-gray-400 font-light text-sm leading-relaxed">
+              Daily Meal Recipe was born out of a simple goal: to eliminate kitchen fatigue and vegetable spoilage. Most cooking apps throw complicated 30-step recipes at you that require buying twenty new seasonings. 
+            </p>
+            <p className="text-gray-400 font-light text-sm leading-relaxed">
+              Our purpose is to streamline your home kitchen. We provide a single dashboard to map leftovers into AI-designed meals, coordinate tasks collaboratively with your family, and keep your custom cookbooks securely backed up.
+            </p>
+            <div className="pt-4 flex flex-wrap gap-4 items-center">
+              <div className="text-[11px] font-mono text-white/50 bg-white/5 border border-white/5 px-3 py-2 rounded-xl">
+                🥣 <span className="text-white font-bold">Smart Generator</span> • Leftover Matching
               </div>
-              <h2 className="font-serif text-4xl sm:text-5xl leading-tight text-white font-normal">
-                An integrated, <span className="italic text-amber-accent">zero-waste</span> culinary system.
-              </h2>
-              <p className="text-gray-400 font-light text-sm leading-relaxed">
-                Daily Meal Recipe was born out of a simple goal: to eliminate kitchen fatigue and vegetable spoilage. Most cooking apps throw complicated 30-step recipes at you that require buying twenty new seasonings. 
-              </p>
-              <p className="text-gray-400 font-light text-sm leading-relaxed">
-                Our purpose is to streamline your home kitchen. We provide a single dashboard to map leftovers into AI-designed meals, coordinate tasks collaboratively with your family, and keep your custom cookbooks securely backed up.
-              </p>
-              <div className="pt-4 flex flex-wrap gap-4 items-center">
-                <div className="text-[11px] font-mono text-white/50 bg-white/5 border border-white/5 px-3 py-2 rounded-xl">
-                  🥣 <span className="text-white font-bold">Smart Generator</span> • Leftover Matching
-                </div>
-                <div className="text-[11px] font-mono text-white/50 bg-white/5 border border-white/5 px-3 py-2 rounded-xl">
-                  🛡️ <span className="text-white font-bold">Secure Vault</span> • PDF & XLS Cookbooks
-                </div>
+              <div className="text-[11px] font-mono text-white/50 bg-white/5 border border-white/5 px-3 py-2 rounded-xl">
+                🛡️ <span className="text-white font-bold">Secure Vault</span> • PDF & XLS Cookbooks
               </div>
             </div>
+          </div>
 
-            {/* Structured Columns of How the App Works */}
-            <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div className="p-6 bg-[#0F0F0F] border border-white/5 rounded-3xl space-y-4 hover:border-white/10 transition-all">
-                <span className="text-2xl font-serif text-amber-accent italic font-bold">01.</span>
-                <h3 className="font-serif text-xl font-normal text-white">Leftover Mapping</h3>
-                <p className="text-[11px] text-gray-500 font-light leading-relaxed">
-                  Type what's currently languishing in your vegetable drawer. Our artisanal culinary model instantly generates perfect cooking procedures, allergy adaptations, and exact durations.
-                </p>
-              </div>
+          {/* Structured Columns of How the App Works */}
+          <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="p-6 bg-[#0F0F0F] border border-white/5 rounded-3xl space-y-4 hover:border-white/10 transition-all">
+              <span className="text-2xl font-serif text-amber-accent italic font-bold">01.</span>
+              <h3 className="font-serif text-xl font-normal text-white">Leftover Mapping</h3>
+              <p className="text-[11px] text-gray-500 font-light leading-relaxed">
+                Type what's currently languishing in your vegetable drawer. Our artisanal culinary model instantly generates perfect cooking procedures, allergy adaptations, and exact durations.
+              </p>
+            </div>
 
-              <div className="p-6 bg-[#0F0F0F] border border-white/5 rounded-3xl space-y-4 hover:border-white/10 transition-all">
-                <span className="text-2xl font-serif text-amber-accent italic font-bold">02.</span>
-                <h3 className="font-serif text-xl font-normal text-white">Interactive Planner</h3>
-                <p className="text-[11px] text-gray-500 font-light leading-relaxed">
-                  Keep structured weekly schedules. Add custom recipes from our shared global index directly into breakfasts, lunches, or dinners, which then auto-aggregate missing elements into interactive shopping checklists.
-                </p>
-              </div>
+            <div className="p-6 bg-[#0F0F0F] border border-white/5 rounded-3xl space-y-4 hover:border-white/10 transition-all">
+              <span className="text-2xl font-serif text-amber-accent italic font-bold">02.</span>
+              <h3 className="font-serif text-xl font-normal text-white">Interactive Planner</h3>
+              <p className="text-[11px] text-gray-500 font-light leading-relaxed">
+                Keep structured weekly schedules. Add custom recipes from our shared global index directly into breakfasts, lunches, or dinners, which then auto-aggregate missing elements into interactive shopping checklists.
+              </p>
+            </div>
 
-              <div className="p-6 bg-[#0F0F0F] border border-white/5 rounded-3xl space-y-4 hover:border-white/10 transition-all">
-                <span className="text-2xl font-serif text-amber-accent italic font-bold">03.</span>
-                <h3 className="font-serif text-xl font-normal text-white">Collaborative Circles</h3>
-                <p className="text-[11px] text-gray-500 font-light leading-relaxed">
-                  Create group circles for your family room or roommate pod. Assign grocery chores, real-time checklist items, and meal milestones instantly with secure collaborative state.
-                </p>
-              </div>
+            <div className="p-6 bg-[#0F0F0F] border border-white/5 rounded-3xl space-y-4 hover:border-white/10 transition-all">
+              <span className="text-2xl font-serif text-amber-accent italic font-bold">03.</span>
+              <h3 className="font-serif text-xl font-normal text-white">Collaborative Circles</h3>
+              <p className="text-[11px] text-gray-500 font-light leading-relaxed">
+                Create group circles for your family room or roommate pod. Assign grocery chores, real-time checklist items, and meal milestones instantly with secure collaborative state.
+              </p>
+            </div>
 
-              <div className="p-6 bg-[#0F0F0F] border border-white/5 rounded-3xl space-y-4 hover:border-white/10 transition-all">
-                <span className="text-2xl font-serif text-amber-accent italic font-bold">04.</span>
-                <h3 className="font-serif text-xl font-normal text-white">The Gourmet Vault</h3>
-                <p className="text-[11px] text-gray-500 font-light leading-relaxed">
-                  Upload PDF cookbooks, XLSX grocery sheets, docx preparation notes, and high-fidelity food photographs. Track file histories, view previews, and keep culinary assets organized in one space.
-                </p>
-              </div>
+            <div className="p-6 bg-[#0F0F0F] border border-white/5 rounded-3xl space-y-4 hover:border-white/10 transition-all">
+              <span className="text-2xl font-serif text-amber-accent italic font-bold">04.</span>
+              <h3 className="font-serif text-xl font-normal text-white">The Gourmet Vault</h3>
+              <p className="text-[11px] text-gray-500 font-light leading-relaxed">
+                Upload PDF cookbooks, XLSX grocery sheets, docx preparation notes, and high-fidelity food photographs. Track file histories, view previews, and keep culinary assets organized in one space.
+              </p>
             </div>
           </div>
         </div>

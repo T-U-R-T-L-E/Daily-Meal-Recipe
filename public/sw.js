@@ -1,5 +1,5 @@
 // Service Worker for Daily Meal Recipe PWA installation
-const CACHE_NAME = 'daily-meal-v6-force-refresh';
+const CACHE_NAME = 'daily-meal-v7-api-bypass';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -35,6 +35,11 @@ self.addEventListener('fetch', (event) => {
   }
 
   const url = new URL(event.request.url);
+
+  // Always bypass Service Worker for backend API routes (/api/*)
+  if (url.pathname.startsWith('/api/')) {
+    return;
+  }
 
   // Always fetch the service worker itself directly from network to allow instant updates
   if (url.pathname.includes('/sw.js')) {

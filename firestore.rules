@@ -15,12 +15,12 @@ service cloud.firestore {
       return isSignedIn() && (
         request.auth.token.email == 'lewisiraki1@gmail.com' ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') == 'admin')
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
       ); 
     }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
-    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$'); }
 
     // User Profile Rules (Prevent Self-Assigned Roles)
     match /users/{userId} {
@@ -30,10 +30,11 @@ service cloud.firestore {
                data.email is string && data.email.size() <= 200 &&
                (!data.keys().hasAny(['role']) || data.role == 'user');
       }
-      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow get: if isValidId(userId) && isAdmin();
       allow list: if isAdmin();
       allow create: if isValidId(userId) && isOwner(userId) && isValidUserProfile(incoming());
-      allow update: if isValidId(userId) && ((isOwner(userId) && isValidUserProfile(incoming()) && (!incoming().keys().hasAny(['role']) || incoming().role == existing().get('role', 'user'))) || isAdmin());
+      allow update: if isValidId(userId) && ((isOwner(userId) && isValidUserProfile(incoming()) && (!incoming().keys().hasAny(['role']) || incoming().role == existing().role)) || isAdmin());
     }
 
     // Recipe Rules

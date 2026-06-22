@@ -59,6 +59,8 @@ export default function Discovery() {
   const [isLoadingSaved, setIsLoadingSaved] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalTitle, setAuthModalTitle] = useState("Gourmet Recipe Search");
+  const [authModalMessage, setAuthModalMessage] = useState("To search the global recipe index, utilize AI-powered search, generate surprise dishes, or upload photos to scan ingredients, please sign in to your Daily Meal Recipe account.");
   
   // Enhanced Search Features States
   const [isListening, setIsListening] = useState(false);
@@ -668,6 +670,8 @@ export default function Discovery() {
 
   const skipToRandom = async () => {
     if (!user) {
+      setAuthModalTitle("Curated Recipes");
+      setAuthModalMessage("Please sign in first to skip to random curated gourmet recipes.");
       setIsAuthModalOpen(true);
       return;
     }
@@ -727,6 +731,8 @@ export default function Discovery() {
   const handleSearch = async (e?: React.FormEvent, overrideTerm?: string) => {
     if (e) e.preventDefault();
     if (!user) {
+      setAuthModalTitle("Sign In Required");
+      setAuthModalMessage("Please sign in first so that you can search and discover delicious new recipes.");
       setIsAuthModalOpen(true);
       return;
     }
@@ -1726,8 +1732,8 @@ export default function Discovery() {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
-        title="Gourmet Recipe Search"
-        message="To search the global recipe index, utilize AI-powered search, generate surprise dishes, or upload photos to scan ingredients, please sign in to your Daily Meal Recipe account."
+        title={authModalTitle}
+        message={authModalMessage}
         actionName="search and discover recipes"
       />
     </div>
