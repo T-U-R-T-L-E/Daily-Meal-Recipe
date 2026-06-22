@@ -1064,6 +1064,9 @@ let lastQuotaErrorDetails: any = null;
 
 // Helper function to handle calling Gemini API with automatic exponential backoff to handle transient 503, 429, or UNAVAILABLE/RESOURCE_EXHAUSTED errors
 async function generateContentWithRetry(params: any, retries = 3, baseDelayMs = 2000): Promise<any> {
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error("API_KEY_MISSING: Gemini API key is not configured in the environment.");
+  }
   const now = Date.now();
   // Clear the offline bypass flag after 30 minutes to permit self-recovery or key adjustments
   if (isApiQuotaOffline) {
@@ -1763,13 +1766,15 @@ app.post("/api/ai/generate-recipe", async (req, res) => {
     try {
       const response = await generateContentWithRetry({
         model: "gemini-3.5-flash",
-        contents: [{ role: "user", parts: [{ text: `Generate a professional gourmet recipe using these ingredients: ${ingredients.join(", ")}. 
+        contents: [{ role: "user", parts: [{ text: `Generate a professional recipe using these ingredients: ${ingredients.join(", ")}. 
         Dietary restrictions: ${dietaryRestrictions || "None"}. 
         Cuisine style: ${cuisineType || "Any"}.
         Target servings: ${servings || 2}.
         ${specialInstructions}
         Strictly use English for all fields (name, description, instructions, ingredients, etc.).
         
+        STRICT MEAL POPULARITY REQUIREMENT: You MUST only generate highly popular, mainstream, globally recognized, and familiar dishes that are commonly cooked in households (such as popular pastas, tacos, roasted chicken, grilled steak, classic curries, pancakes, comforting soups, or salads). Do NOT generate rare, obscure, exotic, high-end fine-dining, or gourmet restaurant-only dishes that require obscure ingredients, complicated niche techniques, or are unfamiliar to the general public. Keep the dishes welcoming, household-friendly, and very popular.
+
         IMPORTANT: Prioritize using common, popular, and easy-to-find ingredients. 
         Avoid rare, obscure, or hard-to-source ingredients that the average person might not have heard of or cannot easily buy at a standard local grocery store.
         
@@ -2267,6 +2272,8 @@ app.post("/api/ai/search-recipes", async (req, res) => {
         
         STRICT RELEVANCE REQUIREMENT: Each and every one of the 5 returned recipes MUST explicitly and significantly feature "${searchQuery}" as a core, primary ingredient, or be a classic recipe of that dish. If "${searchQuery}" is a single key food ingredient (like 'rice', 'chicken', 'pasta', 'beef', etc.), the user is looking specifically for recipes where that ingredient is the focal point and primary star of the dish. Do NOT return unrelated meals or dishes that do not feature "${searchQuery}" in their main ingredients list.
 
+        STRICT MEAL POPULARITY REQUIREMENT: You MUST only generate highly popular, mainstream, globally recognized, and familiar dishes that are commonly cooked in households (such as popular pastas, tacos, roasted chicken, grilled steak, classic curries, pancakes, comforting soups, or salads). Do NOT generate rare, exotic, obscure, high-end fine-dining, or gourmet restaurant-only dishes that require obscure ingredients, complicated niche techniques, or are unfamiliar to the general public. Keep the dishes welcoming, household-friendly, and very popular.
+
         IMPORTANT: Prioritize using common, popular, and easy-to-find ingredients. 
         Avoid rare, obscure, or hard-to-source ingredients that the average person might not have heard of or cannot easily buy at a standard local grocery store.
 
@@ -2323,6 +2330,8 @@ app.post("/api/ai/search-recipes", async (req, res) => {
           ${specialInstructions}
           
           STRICT RELEVANCE REQUIREMENT: Each and every one of the 5 returned recipes MUST explicitly and significantly feature "${searchQuery}" as a core, primary ingredient, or be a classic recipe of that dish. If "${searchQuery}" is a single key food ingredient (like 'rice', 'chicken', 'pasta', 'beef', etc.), the user is looking specifically for recipes where that ingredient is the focal point and primary star of the dish. Do NOT return unrelated meals or dishes that do not feature "${searchQuery}" in their main ingredients list.
+
+          STRICT MEAL POPULARITY REQUIREMENT: You MUST only generate highly popular, mainstream, globally recognized, and familiar dishes that are commonly cooked in households (such as popular pastas, tacos, roasted chicken, grilled steak, classic curries, pancakes, comforting soups, or salads). Do NOT generate rare, exotic, obscure, high-end fine-dining, or gourmet restaurant-only dishes that require obscure ingredients, complicated niche techniques, or are unfamiliar to the general public. Keep the dishes welcoming, household-friendly, and very popular.
 
           For each recipe, include: name, description, category, cuisine, prepTime, cookTime, difficulty, servings, imageUrl,
           ingredients (with amount and item), 
@@ -2828,9 +2837,9 @@ async function setupVite() {
     });
 
     // Enforce HTTP connection timeout rules to safeguard against socket exhaustion and slow client attacks
-    server.keepAliveTimeout = 61000;  // 61 seconds (slightly higher than proxy/loadbalancers to preserve reuse)
-    server.headersTimeout = 62000;    // 62 seconds (prevents header stall attacks)
-    server.requestTimeout = 25000;    // 25 seconds (limits maximum processing time per client request)
+    server.keepAliveTimeout = 125000; // 125 seconds
+    server.headersTimeout = 126000;   // 126 seconds
+    server.requestTimeout = 120000;   // 120 seconds (limits maximum processing time per client request)
   } catch (err) {
     console.error("Critical failure during setupVite/server startup:", err);
     process.exit(1);

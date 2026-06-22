@@ -669,12 +669,6 @@ export default function Discovery() {
   };
 
   const skipToRandom = async () => {
-    if (!user) {
-      setAuthModalTitle("Curated Recipes");
-      setAuthModalMessage("Please sign in first to skip to random curated gourmet recipes.");
-      setIsAuthModalOpen(true);
-      return;
-    }
     if (loading || isAISearching) return;
     
     if (searchMode === 'world') {
@@ -730,12 +724,6 @@ export default function Discovery() {
 
   const handleSearch = async (e?: React.FormEvent, overrideTerm?: string) => {
     if (e) e.preventDefault();
-    if (!user) {
-      setAuthModalTitle("Sign In Required");
-      setAuthModalMessage("Please sign in first so that you can search and discover delicious new recipes.");
-      setIsAuthModalOpen(true);
-      return;
-    }
     setSurpriseResults(null);
 
     const termToUse = typeof overrideTerm === 'string' ? overrideTerm : searchTerm;
@@ -749,8 +737,8 @@ export default function Discovery() {
       saveRecentSearch(termToUse.trim());
     }
 
-    // Log query term directly to client-side Firestore search suggestions securely
-    if (termToUse && termToUse.trim().length >= 2) {
+    // Log query term directly to client-side Firestore search suggestions securely (only if verified user is signed in)
+    if (user && termToUse && termToUse.trim().length >= 2) {
       const queryClean = termToUse.trim();
       const suggestionDocId = queryClean.toLowerCase().replace(/[^a-z0-9]/g, "_");
       if (suggestionDocId) {
