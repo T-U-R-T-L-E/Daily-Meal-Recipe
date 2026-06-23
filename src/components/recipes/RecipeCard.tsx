@@ -3,11 +3,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { Clock, ChefHat, Heart, ArrowUpRight, AlertTriangle, Star, Share2, Check } from 'lucide-react';
 import { Recipe } from '../../types';
-import { cn, cleanRecipeImageUrl, getStableFoodImage } from '../../lib/utils';
+import { cn } from '../../lib/utils';
 import { useAuth } from '../../lib/useAuth';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { collection, query, where, getDocs, addDoc, deleteDoc, doc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { getRecipeWarnings } from '../../lib/recipeWarnings';
+import LazyCookImage from '../ui/LazyCookImage';
 
 interface Props {
   recipe: Recipe;
@@ -20,8 +21,6 @@ export default function RecipeCard({ recipe, index, activeTags = [] }: Props) {
   const [isFavorited, setIsFavorited] = useState(false);
   const [favoriteId, setFavoriteId] = useState<string | null>(null);
   const [isToggling, setIsToggling] = useState(false);
-  const [imageSrc, setImageSrc] = useState(() => cleanRecipeImageUrl(recipe.imageUrl, recipe.name, recipe.category, recipe.cuisine));
-  const [imgLoading, setImgLoading] = useState(true);
   const [copiedShare, setCopiedShare] = useState(false);
 
   const handleShare = async (e: React.MouseEvent) => {
@@ -63,11 +62,6 @@ export default function RecipeCard({ recipe, index, activeTags = [] }: Props) {
   };
 
   const warnings = getRecipeWarnings(recipe, activeTags, profile);
-
-  useEffect(() => {
-    setImageSrc(cleanRecipeImageUrl(recipe.imageUrl, recipe.name, recipe.category, recipe.cuisine));
-    setImgLoading(true);
-  }, [recipe.imageUrl, recipe.name, recipe.category, recipe.cuisine]);
 
   useEffect(() => {
     if (!user) return;
@@ -134,27 +128,14 @@ export default function RecipeCard({ recipe, index, activeTags = [] }: Props) {
       className="group bg-graphite rounded-[24px] overflow-hidden border border-white/5 transition-all hover:border-amber-accent/50 hover:shadow-[0_0_40px_rgba(245,158,11,0.1)]"
     >
       <Link to={`/recipe/${recipe.id}`} className="block relative aspect-[4/5] overflow-hidden bg-white/[0.01]">
-        {imgLoading && (
-          <div className="absolute inset-0 bg-white/[0.02] animate-pulse flex items-center justify-center">
-            <ChefHat className="w-8 h-8 text-amber-accent/20 animate-spin" />
-          </div>
-        )}
-        <motion.img
-          layoutId={`recipe-img-${recipe.id}`}
-          src={imageSrc}
+        <LazyCookImage
+          src={recipe.imageUrl}
           alt={recipe.name}
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          onLoad={() => setImgLoading(false)}
-          onError={() => {
-            console.warn(`Fallback image triggered for: ${recipe.name}`);
-            setImageSrc(getStableFoodImage(recipe.name, recipe.category, recipe.cuisine));
-            setImgLoading(false);
-          }}
-          className={cn(
-            "w-full h-full object-cover transition-all duration-700 group-hover:scale-110 md:grayscale md:group-hover:grayscale-0",
-            imgLoading ? "opacity-0" : "opacity-100"
-          )}
+          layoutId={`recipe-img-${recipe.id}`}
+          recipeName={recipe.name}
+          category={recipe.category}
+          cuisine={recipe.cuisine}
+          imageClassName="group-hover:scale-110 md:grayscale md:group-hover:grayscale-0"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-onyx via-transparent to-transparent opacity-80" />
         
