@@ -237,13 +237,17 @@ export default function RecipeCard({ recipe, index, activeTags = [] }: Props) {
               <ChefHat className="w-3 h-3 text-amber-accent" />
               {recipe.difficulty}
             </div>
-            {recipe.ratingsCount !== undefined && recipe.ratingsCount > 0 && (
-              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-amber-accent">
-                <Star className="w-3 h-3 text-amber-500 fill-amber-500 animate-pulse" />
-                <span>{typeof recipe.averageRating === 'number' ? recipe.averageRating.toFixed(1) : '5.0'}</span>
-                <span className="text-white/20">({recipe.ratingsCount})</span>
-              </div>
-            )}
+            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-amber-accent">
+              <Star className={cn("w-3 h-3", recipe.ratingsCount && recipe.ratingsCount > 0 ? "text-amber-500 fill-amber-500 animate-pulse" : "text-white/20")} />
+              {recipe.ratingsCount !== undefined && recipe.ratingsCount > 0 ? (
+                <>
+                  <span>{typeof recipe.averageRating === 'number' ? recipe.averageRating.toFixed(1) : '5.0'}</span>
+                  <span className="text-white/20">({recipe.ratingsCount})</span>
+                </>
+              ) : (
+                <span className="text-white/30 font-light font-sans tracking-wide">unrated</span>
+              )}
+            </div>
           </div>
           
           <div className="flex items-center gap-3">

@@ -45,6 +45,20 @@ export default function Subscription() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentModalType, setPaymentModalType] = useState<'subscribe' | 'link'>('subscribe');
   const [paymentMethodTab, setPaymentMethodTab] = useState<'card' | 'bank' | 'momo'>('card');
+  const [modalTheme, setModalTheme] = useState<'light' | 'dark'>('light');
+
+  useEffect(() => {
+    if (showPaymentModal) {
+      const activeTheme = (profile?.themePreference || localStorage.getItem('theme_pref') || 'dark') as 'light' | 'dark';
+      setModalTheme(activeTheme);
+    }
+  }, [showPaymentModal, profile]);
+
+  const isModalLight = modalTheme === 'light';
+  const modalHeadingColor = isModalLight ? '#000000' : '#ffffff';
+  const tabActiveStyle = isModalLight 
+    ? 'bg-neutral-900 text-white shadow-md' 
+    : 'bg-white text-black shadow-lg shadow-black/20';
   
   // Card Details Form Inputs
   const [cardNumber, setCardNumber] = useState('');
@@ -931,38 +945,83 @@ export default function Subscription() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.92, y: 15 }}
               transition={{ type: "spring", duration: 0.45 }}
-              className="relative w-full max-w-lg bg-[#0d0d0d] border border-white/10 rounded-[32px] overflow-hidden shadow-2xl z-10 font-sans text-left"
+              style={{
+                backgroundColor: isModalLight ? '#fafafa' : '#0d0d0d',
+                borderColor: isModalLight ? '#e5e5e5' : 'rgba(255,255,255,0.1)'
+              }}
+              className={`relative w-full max-w-lg border rounded-[32px] overflow-hidden shadow-2xl z-10 font-sans text-left ${
+                isModalLight ? 'gourmet-modal-light' : 'gourmet-modal-dark'
+              }`}
             >
               <div className="p-6 sm:p-8 space-y-6">
                 {/* Header */}
-                <div className="flex justify-between items-start pb-4 border-b border-white/5">
+                <div 
+                  style={{ borderColor: isModalLight ? '#e5e5e5' : 'rgba(255,255,255,0.05)' }}
+                  className="flex justify-between items-center pb-4 border-b"
+                >
                   <div className="space-y-1">
-                    <span className="text-[10px] font-bold text-amber-accent tracking-[0.25em] uppercase block">
+                    <span 
+                      style={{ color: isModalLight ? '#b45309' : '#f59e0b' }}
+                      className="text-[10px] font-bold tracking-[0.25em] uppercase block"
+                    >
                       {paymentModalType === 'subscribe' ? 'Upgrade Checkout' : 'Secure Authorization'}
                     </span>
-                    <h3 className="text-white text-lg font-black uppercase tracking-wider">
+                    <h3 
+                      style={{ color: modalHeadingColor }}
+                      className="text-lg font-black uppercase tracking-wider !text-inherit"
+                    >
                       {paymentModalType === 'subscribe' ? 'Meal Recipe Plus Plan ($5/mo)' : 'Link Safe Asset Reference'}
                     </h3>
                   </div>
-                  <button
-                    onClick={() => setShowPaymentModal(false)}
-                    disabled={processing}
-                    className="p-1.5 rounded-full hover:bg-white/5 text-white/40 hover:text-white transition-colors cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+                  
+                  {/* Controls & Close */}
+                  <div className="flex items-center gap-3">
+                    {/* Interactive Light/Dark Toggle within Modal */}
+                    <button
+                      type="button"
+                      onClick={() => setModalTheme(isModalLight ? 'dark' : 'light')}
+                      style={{
+                        backgroundColor: isModalLight ? '#171717' : '#ffffff',
+                        color: isModalLight ? '#ffffff' : '#171717',
+                        borderColor: isModalLight ? '#171717' : '#ffffff'
+                      }}
+                      className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border transition-all cursor-pointer whitespace-nowrap active:scale-95 text-xs"
+                    >
+                      {isModalLight ? '☾ Dark' : '☼ Light'}
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowPaymentModal(false)}
+                      disabled={processing}
+                      style={{ color: isModalLight ? '#8c8c8c' : 'rgba(255,255,255,0.4)' }}
+                      className="p-1.5 rounded-full hover:bg-neutral-800/10 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                    >
+                      <X className="w-5 h-5 animate-none" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Payment Method Tabs selector */}
-                <div className="grid grid-cols-3 gap-1 p-1 bg-white/[0.03] rounded-2xl border border-white/5 text-xs">
+                <div 
+                  style={{ 
+                    backgroundColor: isModalLight ? '#f4f4f5' : 'rgba(21, 21, 21, 0.6)', 
+                    borderColor: isModalLight ? '#e4e4e7' : 'rgba(255,255,255,0.05)' 
+                  }}
+                  className="grid grid-cols-3 gap-1 p-1 rounded-2xl border text-xs"
+                >
                   <button
                     type="button"
                     onClick={() => setPaymentMethodTab('card')}
                     className={`py-2 rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all cursor-pointer ${
                       paymentMethodTab === 'card' 
-                        ? 'bg-white text-black shadow-lg shadow-black/20' 
-                        : 'text-white/60 hover:text-white hover:bg-white/[0.02]'
+                        ? tabActiveStyle 
+                        : 'opacity-60 hover:opacity-100 hover:bg-neutral-500/10'
                     }`}
+                    style={{
+                      color: paymentMethodTab === 'card'
+                        ? (isModalLight ? '#ffffff' : '#000000')
+                        : (isModalLight ? '#404040' : '#ffffff')
+                    }}
                   >
                     Card Linker
                   </button>
@@ -971,9 +1030,14 @@ export default function Subscription() {
                     onClick={() => setPaymentMethodTab('bank')}
                     className={`py-2 rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all cursor-pointer ${
                       paymentMethodTab === 'bank' 
-                        ? 'bg-white text-black shadow-lg shadow-black/20' 
-                        : 'text-white/60 hover:text-white hover:bg-white/[0.02]'
+                        ? tabActiveStyle 
+                        : 'opacity-60 hover:opacity-100 hover:bg-neutral-500/10'
                     }`}
+                    style={{
+                      color: paymentMethodTab === 'bank'
+                        ? (isModalLight ? '#ffffff' : '#000000')
+                        : (isModalLight ? '#404040' : '#ffffff')
+                    }}
                   >
                     Bank Direct
                   </button>
@@ -982,9 +1046,14 @@ export default function Subscription() {
                     onClick={() => setPaymentMethodTab('momo')}
                     className={`py-2 rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all cursor-pointer ${
                       paymentMethodTab === 'momo' 
-                        ? 'bg-white text-black shadow-lg shadow-black/20' 
-                        : 'text-white/60 hover:text-white hover:bg-white/[0.02]'
+                        ? tabActiveStyle 
+                        : 'opacity-60 hover:opacity-100 hover:bg-neutral-500/10'
                     }`}
+                    style={{
+                      color: paymentMethodTab === 'momo'
+                        ? (isModalLight ? '#ffffff' : '#000000')
+                        : (isModalLight ? '#404040' : '#ffffff')
+                    }}
                   >
                     Mobile Money
                   </button>
@@ -992,14 +1061,26 @@ export default function Subscription() {
 
                 {/* Error and Success Indicators */}
                 {paymentFormError && (
-                  <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-300 text-xs flex gap-2 items-start leading-relaxed">
-                    <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                  <div 
+                    className={`p-3 rounded-xl text-xs flex gap-2 items-start leading-relaxed border ${
+                      isModalLight 
+                        ? 'bg-rose-50 border-rose-200 text-rose-800' 
+                        : 'bg-rose-500/10 border-rose-500/20 text-rose-300'
+                    }`}
+                  >
+                    <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5 animate-none" />
                     <span>{paymentFormError}</span>
                   </div>
                 )}
                 {paymentFormSuccess && (
-                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-300 text-xs flex gap-2 items-start leading-relaxed">
-                    <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <div 
+                    className={`p-3 rounded-xl text-xs flex gap-2 items-start leading-relaxed border ${
+                      isModalLight 
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+                        : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+                    }`}
+                  >
+                    <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5 animate-none" />
                     <span>{paymentFormSuccess}</span>
                   </div>
                 )}
@@ -1008,54 +1089,83 @@ export default function Subscription() {
                 {paymentMethodTab === 'card' && (
                   <div className="space-y-4">
                     {/* Interactive Virtual Card Rendering Preview */}
-                    <div className="relative p-5 h-28 rounded-2xl bg-gradient-to-br from-neutral-900 to-amber-950/20 border border-white/5 overflow-hidden flex flex-col justify-between">
-                      <div className="absolute top-0 right-0 p-4 opacity-5">
-                        <CreditCard className="w-16 h-16 text-amber" />
+                    <div 
+                      style={{
+                        background: isModalLight
+                          ? 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)'
+                          : 'linear-gradient(135deg, #111111 0%, #261802 100%)',
+                        borderColor: isModalLight ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)'
+                      }}
+                      className="relative p-5 h-32 rounded-2xl border overflow-hidden flex flex-col justify-between shadow-lg"
+                    >
+                      <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                        <CreditCard className="w-16 h-16 text-amber-accent" />
                       </div>
                       <div className="flex justify-between items-start">
                         <div>
                           <span className="text-[7px] text-white/30 tracking-wider block uppercase">ACTIVE GATEWAY PREVIEW</span>
-                          <span className="text-[11px] font-mono font-bold tracking-widest text-white uppercase">
+                          <span 
+                            style={{ color: '#ffffff' }}
+                            className="text-[11px] font-mono font-bold tracking-widest uppercase block"
+                          >
                             {detectCardBrand(cardNumber).toUpperCase()} SECURE
                           </span>
                         </div>
                         {/* Gold chip simulation */}
-                        <div className="w-6 h-4.5 rounded-sm bg-gradient-to-br from-amber-200/20 to-amber-500/10 border border-amber-300/10" />
+                        <div className="w-6 h-4.5 rounded-sm bg-gradient-to-br from-amber-200/40 to-amber-500/20 border border-amber-300/30" />
                       </div>
 
-                      <div className="font-mono text-sm tracking-widest text-white/90">
+                      <div 
+                        style={{ color: '#f5f5f5' }}
+                        className="font-mono text-sm tracking-widest"
+                      >
                         {cardNumber ? cardNumber.replace(/(\d{4})/g, '$1 ').trim() : '••••  ••••  ••••  ••••'}
                       </div>
 
                       <div className="flex justify-between items-end font-mono text-[9px] text-white/50">
                         <div>
                           <span className="text-[6px] tracking-wider block text-white/30">CARDHOLDER</span>
-                          <span className="uppercase truncate max-w-[120px] inline-block font-bold">{cardName || 'YOUR FULL NAME'}</span>
+                          <span className="uppercase truncate max-w-[120px] inline-block font-bold text-white">{cardName || 'YOUR FULL NAME'}</span>
                         </div>
                         <div>
                           <span className="text-[6px] tracking-wider block text-white/30">EXPIRES</span>
-                          <span className="font-bold">{cardExpiry || 'MM/YY'}</span>
+                          <span className="font-bold text-white">{cardExpiry || 'MM/YY'}</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Form entries */}
                     <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-3 font-sans">
                         <div className="col-span-2 space-y-1">
-                          <label className="text-[9px] font-black uppercase text-white/40 tracking-wider">Card Number</label>
+                          <label 
+                            style={{ color: isModalLight ? '#404040' : '#a3a3a3' }}
+                            className="text-[9px] font-black uppercase tracking-wider"
+                          >
+                            Card Number
+                          </label>
                           <input
                             type="text"
                             maxLength={19}
                             placeholder="4081 8888 8888 8888"
                             value={cardNumber}
                             onChange={(e) => setCardNumber(e.target.value.replace(/\s+/g, '').replace(/[^0-9]/g, ''))}
-                            className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-white/20 outline-none focus:border-amber-accent/50 transition-colors"
+                            style={{
+                              backgroundColor: isModalLight ? '#ffffff' : 'rgba(255,255,255,0.02)',
+                              color: isModalLight ? '#171717' : '#ffffff',
+                              borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.1)'
+                            }}
+                            className="w-full border rounded-xl px-3 py-2 text-xs placeholder-neutral-400 outline-none focus:border-amber-accent/50 transition-colors"
                           />
                         </div>
 
                         <div className="space-y-1">
-                          <label className="text-[9px] font-black uppercase text-white/40 tracking-wider">Expiry Date</label>
+                          <label 
+                            style={{ color: isModalLight ? '#404040' : '#a3a3a3' }}
+                            className="text-[9px] font-black uppercase tracking-wider"
+                          >
+                            Expiry Date
+                          </label>
                           <input
                             type="text"
                             maxLength={5}
@@ -1068,43 +1178,79 @@ export default function Subscription() {
                               }
                               setCardExpiry(text);
                             }}
-                            className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-white/20 outline-none focus:border-amber-accent/50 transition-colors"
+                            style={{
+                              backgroundColor: isModalLight ? '#ffffff' : 'rgba(255,255,255,0.02)',
+                              color: isModalLight ? '#171717' : '#ffffff',
+                              borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.1)'
+                            }}
+                            className="w-full border rounded-xl px-3 py-2 text-xs placeholder-neutral-400 outline-none focus:border-amber-accent/50 transition-colors"
                           />
                         </div>
 
                         <div className="space-y-1">
-                          <label className="text-[9px] font-black uppercase text-white/40 tracking-wider">CVV Code</label>
+                          <label 
+                            style={{ color: isModalLight ? '#404040' : '#a3a3a3' }}
+                            className="text-[9px] font-black uppercase tracking-wider"
+                          >
+                            CVV Code
+                          </label>
                           <input
                             type="password"
                             maxLength={4}
                             placeholder="123"
                             value={cardCvv}
                             onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, ''))}
-                            className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-white/20 outline-none focus:border-amber-accent/50 transition-colors"
+                            style={{
+                              backgroundColor: isModalLight ? '#ffffff' : 'rgba(255,255,255,0.02)',
+                              color: isModalLight ? '#171717' : '#ffffff',
+                              borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.1)'
+                            }}
+                            className="w-full border rounded-xl px-3 py-2 text-xs placeholder-neutral-400 outline-none focus:border-amber-accent/50 transition-colors"
                           />
                         </div>
 
                         <div className="col-span-2 space-y-1">
-                          <label className="text-[9px] font-black uppercase text-white/40 tracking-wider">Cardholder Name</label>
+                          <label 
+                            style={{ color: isModalLight ? '#404040' : '#a3a3a3' }}
+                            className="text-[9px] font-black uppercase tracking-wider"
+                          >
+                            Cardholder Name
+                          </label>
                           <input
                             type="text"
                             placeholder="e.g. John Doe"
                             value={cardName}
                             onChange={(e) => setCardName(e.target.value)}
-                            className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-white/20 outline-none focus:border-amber-accent/50 transition-colors"
+                            style={{
+                              backgroundColor: isModalLight ? '#ffffff' : 'rgba(255,255,255,0.02)',
+                              color: isModalLight ? '#171717' : '#ffffff',
+                              borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.1)'
+                            }}
+                            className="w-full border rounded-xl px-3 py-2 text-xs placeholder-neutral-400 outline-none focus:border-amber-accent/50 transition-colors"
                           />
                         </div>
                       </div>
 
                       {/* Simulated Error triggers for Developer simulation inside popover */}
-                      <div className="pt-3 border-t border-white/5 space-y-1">
-                        <span className="text-[8px] font-bold tracking-wider uppercase text-amber-500/70 block text-left">
+                      <div 
+                        style={{ borderColor: isModalLight ? '#e5e5e5' : 'rgba(255,255,255,0.05)' }}
+                        className="pt-3 border-t space-y-1"
+                      >
+                        <span 
+                          style={{ color: isModalLight ? '#b45309' : '#f59e0b' }}
+                          className="text-[8px] font-bold tracking-wider uppercase block text-left"
+                        >
                           🧪 Interactive Gateway Outcome (Simulation Suite)
                         </span>
                         <select
                           value={simulatedDeclineScenario}
                           onChange={(e) => setSimulatedDeclineScenario(e.target.value as any)}
-                          className="w-full bg-[#141414] border border-white/10 text-white/85 rounded-xl px-2.5 py-1.5 text-[10px] outline-none focus:border-amber-accent/30"
+                          style={{
+                            backgroundColor: isModalLight ? '#ffffff' : '#141414',
+                            color: isModalLight ? '#171717' : '#dfdfdf',
+                            borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.1)'
+                          }}
+                          className="w-full border rounded-xl px-2.5 py-1.5 text-[10px] outline-none"
                         >
                           <option value="success">✅ Simulate Successful Charge & Upgrade (Luhn Check Active)</option>
                           <option value="insufficient">💳 Simulate Decline: Insufficient Funds (Error 51)</option>
@@ -1116,110 +1262,162 @@ export default function Subscription() {
                   </div>
                 )}
 
-                {paymentMethodTab === 'bank' && (
-                  <div className="space-y-4">
-                    <p className="text-[10.5px] text-white/40 font-light leading-relaxed">
-                      Connect your active bank clearing system accounts to process instant automated recurring wire payments securely.
-                    </p>
+                  {paymentMethodTab === 'bank' && (
+                    <div className="space-y-4">
+                      <p 
+                        style={{ color: isModalLight ? '#525252' : 'rgba(255,255,255,0.4)' }}
+                        className="text-[10.5px] font-light leading-relaxed font-sans"
+                      >
+                        Connect your active bank clearing system accounts to process instant automated recurring wire payments securely.
+                      </p>
+                      
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <label 
+                            style={{ color: isModalLight ? '#404040' : '#a3a3a3' }}
+                            className="text-[9px] font-black uppercase tracking-wider"
+                          >
+                            Select Active Bank
+                          </label>
+                          <select
+                            value={bankName}
+                            onChange={(e) => setBankName(e.target.value)}
+                            style={{
+                              backgroundColor: isModalLight ? '#ffffff' : 'rgba(255,255,255,0.02)',
+                              color: isModalLight ? '#171717' : '#ffffff',
+                              borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.1)'
+                            }}
+                            className="w-full border rounded-xl px-3 py-2 text-xs outline-none"
+                          >
+                            <option value="Zenith Bank">Zenith Bank (Nigeria)</option>
+                            <option value="Standard Chartered">Standard Chartered</option>
+                            <option value="Access Bank">Access Bank PLC</option>
+                            <option value="Guaranty Trust Bank">GT Bank (Guaranty Trust)</option>
+                            <option value="United Bank for Africa">UBA (United Bank for Africa)</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label 
+                            style={{ color: isModalLight ? '#404040' : '#a3a3a3' }}
+                            className="text-[9px] font-black uppercase tracking-wider"
+                          >
+                            Bank Account Number (10 Digits)
+                          </label>
+                          <input
+                            type="text"
+                            maxLength={10}
+                            placeholder="0123456789"
+                            value={bankAccount}
+                            onChange={(e) => setBankAccount(e.target.value.replace(/\D/g, ''))}
+                            style={{
+                              backgroundColor: isModalLight ? '#ffffff' : 'rgba(255,255,255,0.02)',
+                              color: isModalLight ? '#171717' : '#ffffff',
+                              borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.1)'
+                            }}
+                            className="w-full border rounded-xl px-3 py-2 text-xs placeholder-neutral-400 outline-none transition-colors"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {paymentMethodTab === 'momo' && (
+                    <div className="space-y-4">
+                      <p 
+                        style={{ color: isModalLight ? '#525252' : 'rgba(255,255,255,0.4)' }}
+                        className="text-[10.5px] font-light leading-relaxed font-sans"
+                      >
+                        Unlock instant billing directly using integrated telecom wallet addresses (Mobile Money wallets).
+                      </p>
+
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <label 
+                            style={{ color: isModalLight ? '#404040' : '#a3a3a3' }}
+                            className="text-[9px] font-black uppercase tracking-wider"
+                          >
+                            Select Wallet Operator
+                          </label>
+                          <select
+                            value={momoNetwork}
+                            onChange={(e) => setMomoNetwork(e.target.value)}
+                            style={{
+                              backgroundColor: isModalLight ? '#ffffff' : 'rgba(255,255,255,0.02)',
+                              color: isModalLight ? '#171717' : '#ffffff',
+                              borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.1)'
+                            }}
+                            className="w-full border rounded-xl px-3 py-2 text-xs outline-none"
+                          >
+                            <option value="MTN">MTN Mobile Money</option>
+                            <option value="AirtelTigo">AirtelTigo Cash</option>
+                            <option value="Telecel">Telecel Cash</option>
+                            <option value="Orange">Orange Money</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label 
+                            style={{ color: isModalLight ? '#404040' : '#a3a3a3' }}
+                            className="text-[9px] font-black uppercase tracking-wider"
+                          >
+                            Registered Wallet Phone Prefix
+                          </label>
+                          <input
+                            type="text"
+                            maxLength={12}
+                            placeholder="e.g. 0244123456"
+                            value={momoNumber}
+                            onChange={(e) => setMomoNumber(e.target.value.replace(/\D/g, ''))}
+                            style={{
+                              backgroundColor: isModalLight ? '#ffffff' : 'rgba(255,255,255,0.02)',
+                              color: isModalLight ? '#171717' : '#ffffff',
+                              borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.1)'
+                            }}
+                            className="w-full border rounded-xl px-3 py-2 text-xs placeholder-neutral-400 outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Return trigger Submit */}
+                  <div className="space-y-3 pt-2">
+                    <button
+                      type="button"
+                      disabled={processing}
+                      onClick={handleProcessModalPayment}
+                      style={{
+                        backgroundColor: '#f59e0b',
+                        color: '#000000'
+                      }}
+                      className="w-full py-3.5 hover:bg-amber-600 rounded-xl font-black uppercase tracking-widest text-[9px] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {processing ? (
+                        <span className="flex items-center gap-2 font-black text-[9px] tracking-widest uppercase" style={{ color: '#000000' }}>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          Securing authorization trace...
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2 font-black text-[9px] tracking-widest uppercase" style={{ color: '#000000' }}>
+                          <Shield className="w-3.5 h-3.5 shrink-0" />
+                          {paymentModalType === 'subscribe' ? 'Authorize Subscription ($5/mo)' : 'Link Card Reference'}
+                        </span>
+                      )}
+                    </button>
                     
-                    <div className="space-y-3">
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black uppercase text-white/40 tracking-wider">Select Active Bank</label>
-                        <select
-                          value={bankName}
-                          onChange={(e) => setBankName(e.target.value)}
-                          className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3 py-2 text-xs text-white/80 outline-none focus:border-amber-accent/50"
-                        >
-                          <option value="Zenith Bank">Zenith Bank (Nigeria)</option>
-                          <option value="Standard Chartered">Standard Chartered</option>
-                          <option value="Access Bank">Access Bank PLC</option>
-                          <option value="Guaranty Trust Bank">GT Bank (Guaranty Trust)</option>
-                          <option value="United Bank for Africa">UBA (United Bank for Africa)</option>
-                        </select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black uppercase text-white/40 tracking-wider col-span-2">Bank Account Number (10 Digits)</label>
-                        <input
-                          type="text"
-                          maxLength={10}
-                          placeholder="0123456789"
-                          value={bankAccount}
-                          onChange={(e) => setBankAccount(e.target.value.replace(/\D/g, ''))}
-                          className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-white/20 outline-none focus:border-amber-accent/50 transition-colors"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {paymentMethodTab === 'momo' && (
-                  <div className="space-y-4">
-                    <p className="text-[10.5px] text-white/40 font-light leading-relaxed">
-                      Unlock instant billing directly using integrated telecom wallet addresses (Mobile Money wallets).
+                    <p 
+                      style={{ color: isModalLight ? '#737373' : '#717171' }}
+                      className="text-[9px] text-center font-mono leading-normal select-none"
+                    >
+                      Fully compliant encrypted gateway pipeline. Verified using local state algorithms.
                     </p>
-
-                    <div className="space-y-3">
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black uppercase text-white/40 tracking-wider">Select Wallet Operator</label>
-                        <select
-                          value={momoNetwork}
-                          onChange={(e) => setMomoNetwork(e.target.value)}
-                          className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3 py-2 text-xs text-white/80 outline-none"
-                        >
-                          <option value="MTN">MTN Mobile Money</option>
-                          <option value="AirtelTigo">AirtelTigo Cash</option>
-                          <option value="Telecel">Telecel Cash</option>
-                          <option value="Orange">Orange Money</option>
-                        </select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black uppercase text-white/40 tracking-wider">Registered Wallet Phone Prefix</label>
-                        <input
-                          type="text"
-                          maxLength={12}
-                          placeholder="e.g. 0244123456"
-                          value={momoNumber}
-                          onChange={(e) => setMomoNumber(e.target.value.replace(/\D/g, ''))}
-                          className="w-full bg-white/[0.02] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-white/20 outline-none"
-                        />
-                      </div>
-                    </div>
                   </div>
-                )}
-
-                {/* Return trigger Submit */}
-                <div className="space-y-3 pt-2">
-                  <button
-                    type="button"
-                    disabled={processing}
-                    onClick={handleProcessModalPayment}
-                    className="w-full py-3.5 bg-amber-accent text-black hover:bg-white rounded-xl font-black uppercase tracking-widest text-[9px] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                  >
-                    {processing ? (
-                      <span className="flex items-center gap-2">
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        Securing authorization trace...
-                      </span>
-                    ) : (
-                      <>
-                        <Shield className="w-3.5 h-3.5 shrink-0" />
-                        {paymentModalType === 'subscribe' ? 'Authorize Subscription ($5/mo)' : 'Link Card Reference'}
-                      </>
-                    )}
-                  </button>
-                  
-                  <p className="text-[9px] text-[#717171] text-center font-mono leading-normal select-none">
-                    Fully compliant encrypted gateway pipeline. Verified using local state algorithms.
-                  </p>
                 </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
+              </motion.div>
+            </div>
+          )}
       </AnimatePresence>
-
 
     </div>
   );

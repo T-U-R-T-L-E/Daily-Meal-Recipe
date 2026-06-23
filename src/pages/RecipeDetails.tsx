@@ -494,9 +494,15 @@ export default function RecipeDetails() {
             <div className="flex flex-col gap-2">
               <span className="text-xs uppercase tracking-wider font-bold text-amber-accent">Rating</span>
               <div className="text-white italic tracking-tight flex items-center gap-1.5">
-                <Star className="w-4 h-4 text-amber-500 fill-amber-500 animate-pulse" />
-                <span>{recipe.averageRating ? recipe.averageRating.toFixed(1) : '5.0'}</span>
-                <span className="text-xs text-white/40">({recipe.ratingsCount || 0})</span>
+                <Star className={cn("w-4 h-4", recipe.ratingsCount && recipe.ratingsCount > 0 ? "text-amber-500 fill-amber-500 animate-pulse" : "text-white/20")} />
+                {recipe.ratingsCount !== undefined && recipe.ratingsCount > 0 ? (
+                  <>
+                    <span>{recipe.averageRating ? recipe.averageRating.toFixed(1) : '5.0'}</span>
+                    <span className="text-xs text-white/40">({recipe.ratingsCount})</span>
+                  </>
+                ) : (
+                  <span className="text-xs text-white/40">No ratings yet</span>
+                )}
               </div>
             </div>
             <div className="flex flex-col gap-2">

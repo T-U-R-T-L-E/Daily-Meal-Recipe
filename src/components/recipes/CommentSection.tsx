@@ -61,16 +61,16 @@ export default function CommentSection({ recipeId }: CommentSectionProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const rawComment = newComment.trim();
-    if (!user || !rawComment || submitting) return;
+    if (!user || submitting) return;
 
-    if (!isValidString(rawComment, 1, 2000)) {
+    if (rawComment && !isValidString(rawComment, 1, 2000)) {
       alert("Invalid input: Comments must be between 1 and 2000 characters.");
       return;
     }
 
     setSubmitting(true);
     try {
-      const sanitizedComment = sanitizeString(rawComment);
+      const sanitizedComment = rawComment ? sanitizeString(rawComment) : "";
       const sanitizedUserName = sanitizeString(user.displayName || 'Anonymous Chef');
       
       const commentData = {
@@ -129,7 +129,7 @@ export default function CommentSection({ recipeId }: CommentSectionProps) {
         <div className="bg-amber-accent/10 p-3 rounded-2xl">
           <MessageSquare className="w-6 h-6 text-amber-accent" />
         </div>
-        <h3 className="font-serif text-4xl font-light text-white italic">Community Tips</h3>
+        <h3 className="font-serif text-4xl font-light text-white italic">Ratings & Reviews</h3>
       </div>
 
       {user ? (
@@ -165,13 +165,14 @@ export default function CommentSection({ recipeId }: CommentSectionProps) {
             <textarea
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Share a tip or variation..."
+              placeholder="Share a tip, review, or variation... (optional)"
               className="w-full bg-graphite border border-white/5 rounded-[32px] p-8 text-white font-light italic focus:outline-none focus:border-amber-accent/50 transition-all min-h-[150px] resize-none pr-24 shadow-inner"
             />
             <button
               type="submit"
-              disabled={!newComment.trim() || submitting}
+              disabled={submitting}
               className="absolute bottom-6 right-6 p-4 bg-amber-accent text-black rounded-2xl hover:bg-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-amber-accent/10"
+              title="Submit Rating and Review"
             >
               {submitting ? (
                 <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
@@ -245,15 +246,21 @@ export default function CommentSection({ recipeId }: CommentSectionProps) {
                     </div>
                   )}
                 </div>
-                <p className="text-gray-400 font-light italic leading-relaxed">
-                  "{comment.comment}"
-                </p>
+                {comment.comment ? (
+                  <p className="text-gray-400 font-light italic leading-relaxed">
+                    "{comment.comment}"
+                  </p>
+                ) : (
+                  <p className="text-gray-500 font-light text-xs italic leading-relaxed">
+                    Left a rating without a comment.
+                  </p>
+                )}
               </motion.div>
             ))}
           </div>
         ) : (
           <div className="text-center py-12 border-2 border-dashed border-white/5 rounded-[40px]">
-             <p className="text-white/20 font-serif text-xl italic">No tips yet. Be the first to help others!</p>
+             <p className="text-white/20 font-serif text-xl italic">No ratings or reviews yet. Be the first to rate!</p>
           </div>
         )}
       </div>

@@ -294,5 +294,115 @@ html.light select option {
   }
 }
 
+/* ==========================================
+   GOURMET MODAL THEME OVERRIDE SYSTEM
+   Preempts general layout overrides to ensure
+   100% readability in both themes.
+   ========================================== */
+
+/* 1. Dark Modal overrides (when modal is in dark mode, even on html.light page) */
+.gourmet-modal-dark,
+html.light .gourmet-modal-dark {
+  background-color: #0d0d0d !important;
+  color: #dfdfdf !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.gourmet-modal-dark h1,
+.gourmet-modal-dark h2,
+.gourmet-modal-dark h3,
+.gourmet-modal-dark h4,
+.gourmet-modal-dark h5,
+.gourmet-modal-dark h6,
+html.light .gourmet-modal-dark h1,
+html.light .gourmet-modal-dark h2,
+html.light .gourmet-modal-dark h3,
+html.light .gourmet-modal-dark h4,
+html.light .gourmet-modal-dark h5,
+html.light .gourmet-modal-dark h6 {
+  color: #ffffff !important;
+}
+
+.gourmet-modal-dark .text-white,
+html.light .gourmet-modal-dark .text-white {
+  color: #ffffff !important;
+}
+
+.gourmet-modal-dark input,
+.gourmet-modal-dark select,
+.gourmet-modal-dark textarea,
+html.light .gourmet-modal-dark input,
+html.light .gourmet-modal-dark select,
+html.light .gourmet-modal-dark textarea {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.gourmet-modal-dark input::placeholder,
+.gourmet-modal-dark textarea::placeholder,
+html.light .gourmet-modal-dark input::placeholder,
+html.light .gourmet-modal-dark textarea::placeholder {
+  color: #6b7280 !important;
+}
+
+.gourmet-modal-dark select option,
+html.light .gourmet-modal-dark select option {
+  background-color: #171717 !important;
+  color: #ffffff !important;
+}
+
+/* 2. Light Modal overrides (when modal is in light mode, even if html is set to dark mode) */
+.gourmet-modal-light,
+html.light .gourmet-modal-light {
+  background-color: #fafafa !important;
+  color: #374151 !important;
+  border-color: #e5e5e5 !important;
+}
+
+.gourmet-modal-light h1,
+.gourmet-modal-light h2,
+.gourmet-modal-light h3,
+.gourmet-modal-light h4,
+.gourmet-modal-light h5,
+.gourmet-modal-light h6,
+html.light .gourmet-modal-light h1,
+html.light .gourmet-modal-light h2,
+html.light .gourmet-modal-light h3,
+html.light .gourmet-modal-light h4,
+html.light .gourmet-modal-light h5,
+html.light .gourmet-modal-light h6 {
+  color: #111827 !important;
+}
+
+.gourmet-modal-light .text-white,
+html.light .gourmet-modal-light .text-white {
+  color: #111827 !important;
+}
+
+.gourmet-modal-light input,
+.gourmet-modal-light select,
+.gourmet-modal-light textarea,
+html.light .gourmet-modal-light input,
+html.light .gourmet-modal-light select,
+html.light .gourmet-modal-light textarea {
+  color: #111827 !important;
+  background-color: #ffffff !important;
+  border-color: #d1d5db !important;
+}
+
+.gourmet-modal-light input::placeholder,
+.gourmet-modal-light textarea::placeholder,
+html.light .gourmet-modal-light input::placeholder,
+html.light .gourmet-modal-light textarea::placeholder {
+  color: #9ca3af !important;
+}
+
+.gourmet-modal-light select option,
+html.light .gourmet-modal-light select option {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+
 
 

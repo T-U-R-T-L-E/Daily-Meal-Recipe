@@ -281,6 +281,15 @@ export default function Home() {
                     <span className="text-[10px] font-mono font-bold uppercase tracking-widest">{recipeOfTheDay.cuisine}</span>
                     <div className="w-1 h-1 rounded-full bg-white/30" />
                     <span className="text-[10px] font-mono font-bold uppercase tracking-widest">{recipeOfTheDay.difficulty}</span>
+                    <div className="w-1 h-1 rounded-full bg-white/30" />
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-widest flex items-center gap-1">
+                      <Star className={cn("w-3 h-3 inline", recipeOfTheDay.ratingsCount && recipeOfTheDay.ratingsCount > 0 ? "text-amber-500 fill-amber-500 animate-pulse" : "text-white/20")} />
+                      {recipeOfTheDay.ratingsCount && recipeOfTheDay.ratingsCount > 0 ? (
+                        <span>{recipeOfTheDay.averageRating ? recipeOfTheDay.averageRating.toFixed(1) : '5.0'} ({recipeOfTheDay.ratingsCount})</span>
+                      ) : (
+                        <span className="text-white/40">Not Yet Rated</span>
+                      )}
+                    </span>
                   </div>
                   <h3 className="font-serif text-2xl sm:text-4xl text-white italic leading-tight group-hover:translate-x-1 transition-transform duration-300">
                     {recipeOfTheDay.name}

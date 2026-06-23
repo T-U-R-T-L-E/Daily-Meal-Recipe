@@ -114,6 +114,15 @@ if (typeof window !== 'undefined') {
     return false;
   };
 
+  // Inject standard classic onerror listener to prevent cross-origin script errors from bubbling to platform telemetry
+  window.onerror = function(message, source, lineno, colno, error) {
+    const msgStr = String(message || '');
+    if (msgStr.includes('Script error.') || msgStr === 'Script error' || msgStr === '') {
+      return true; // Returns true to completely suppress the error event in the browser
+    }
+    return false;
+  };
+
   window.addEventListener('error', (event: ErrorEvent) => {
     const msg = event.message || (event.error && event.error.message) || '';
     if (msg.includes('Script error.') || msg === 'Script error' || msg === '') {
