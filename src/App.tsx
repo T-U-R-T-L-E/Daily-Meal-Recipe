@@ -219,6 +219,11 @@ function AppContent() {
   }
 
   if (user && location.pathname === '/auth') {
+    const justSignedUp = localStorage.getItem('just_signed_up_redirect');
+    if (justSignedUp === 'true') {
+      localStorage.removeItem('just_signed_up_redirect');
+      return <Navigate to="/subscription" replace />;
+    }
     const from = (location.state as any)?.from?.pathname || "/";
     return <Navigate to={from} replace />;
   }
@@ -229,6 +234,15 @@ function AppContent() {
         <CompleteProfile profile={profile} />
       </div>
     );
+  }
+
+  // Handle post-signup subscription redirection for users who just registered
+  if (user && profile) {
+    const justSignedUp = localStorage.getItem('just_signed_up_redirect');
+    if (justSignedUp === 'true' && location.pathname !== '/subscription') {
+      localStorage.removeItem('just_signed_up_redirect');
+      return <Navigate to="/subscription" replace />;
+    }
   }
 
   return (

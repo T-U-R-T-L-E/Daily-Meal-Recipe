@@ -96,6 +96,7 @@ export default function CompleteProfile({ profile }: CompleteProfileProps) {
     setError('');
 
     try {
+      localStorage.setItem('just_signed_up_redirect', 'true');
       const profileRef = doc(db, 'users', profile.uid);
       await updateDoc(profileRef, {
         role: role,

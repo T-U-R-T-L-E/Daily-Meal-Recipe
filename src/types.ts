@@ -85,6 +85,26 @@ export interface UserProfile {
     trialEndDate: string;
     subscribedDate?: string;
   };
+  paymentMethods?: SavedCard[];
+  billingHistory?: BillingReceipt[];
+}
+
+export interface SavedCard {
+  brand: string;
+  last4: string;
+  exp_month: number;
+  exp_year: number;
+  id: string;
+  card_type?: string;
+}
+
+export interface BillingReceipt {
+  id: string;
+  amount: number;
+  status: 'success' | 'failed' | 'trial_active';
+  date: string;
+  plan: string;
+  reference: string;
 }
 
 export interface MealPlan {

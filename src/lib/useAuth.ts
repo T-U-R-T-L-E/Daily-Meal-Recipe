@@ -82,7 +82,7 @@ export function useAuth() {
                 const now = Date.now();
                 const trialEnd = new Date(profileData.subscription.trialEndDate).getTime();
                 const daysLeftRaw = Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24));
-                if (daysLeftRaw > 14) {
+                if (daysLeftRaw > 15) {
                   // Capped to exactly 14 days from now
                   const correctedEndDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
                   profileData.subscription.trialEndDate = correctedEndDate;

@@ -810,11 +810,26 @@ export default function Profile() {
                   Manage
                 </Link>
               </div>
-              {profile.subscription?.status === 'trial' && (
-                <p className="text-white/40 text-xs italic">
-                  Free trial ends on: {new Date(profile.subscription.trialEndDate).toLocaleDateString()}
-                </p>
-              )}
+              {profile.subscription?.status === 'trial' && (() => {
+                const msLeft = profile.subscription.trialEndDate ? new Date(profile.subscription.trialEndDate).getTime() - Date.now() : 0;
+                const dLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
+                const hLeft = Math.ceil(msLeft / (1000 * 60 * 60));
+                
+                let timeStr = "";
+                if (msLeft <= 0) {
+                  timeStr = "Expired";
+                } else if (hLeft < 48) {
+                  timeStr = hLeft < 2 ? "1 hour left" : `${hLeft} hours left`;
+                } else {
+                  timeStr = `${Math.min(14, dLeft)} days left`;
+                }
+
+                return (
+                  <p className="text-white/40 text-xs italic">
+                    Free trial ends on: {profile.subscription.trialEndDate ? new Date(profile.subscription.trialEndDate).toLocaleDateString() : ""} ({timeStr})
+                  </p>
+                );
+              })()}
             </div>
           </section>
 

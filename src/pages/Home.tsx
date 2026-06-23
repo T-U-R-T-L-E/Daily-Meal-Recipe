@@ -484,7 +484,7 @@ export default function Home() {
 
           {/* Structured Columns of How the App Works */}
           <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="p-6 bg-[#0F0F0F] border border-white/5 rounded-3xl space-y-4 hover:border-white/10 transition-all">
+            <div className="p-6 bg-graphite border border-white/5 rounded-3xl space-y-4 hover:border-white/10 transition-all">
               <span className="text-2xl font-serif text-amber-accent italic font-bold">01.</span>
               <h3 className="font-serif text-xl font-normal text-white">Leftover Mapping</h3>
               <p className="text-[11px] text-gray-500 font-light leading-relaxed">
@@ -492,7 +492,7 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="p-6 bg-[#0F0F0F] border border-white/5 rounded-3xl space-y-4 hover:border-white/10 transition-all">
+            <div className="p-6 bg-graphite border border-white/5 rounded-3xl space-y-4 hover:border-white/10 transition-all">
               <span className="text-2xl font-serif text-amber-accent italic font-bold">02.</span>
               <h3 className="font-serif text-xl font-normal text-white">Interactive Planner</h3>
               <p className="text-[11px] text-gray-500 font-light leading-relaxed">
@@ -500,7 +500,7 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="p-6 bg-[#0F0F0F] border border-white/5 rounded-3xl space-y-4 hover:border-white/10 transition-all">
+            <div className="p-6 bg-graphite border border-white/5 rounded-3xl space-y-4 hover:border-white/10 transition-all">
               <span className="text-2xl font-serif text-amber-accent italic font-bold">03.</span>
               <h3 className="font-serif text-xl font-normal text-white">Collaborative Circles</h3>
               <p className="text-[11px] text-gray-500 font-light leading-relaxed">
@@ -508,7 +508,7 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="p-6 bg-[#0F0F0F] border border-white/5 rounded-3xl space-y-4 hover:border-white/10 transition-all">
+            <div className="p-6 bg-graphite border border-white/5 rounded-3xl space-y-4 hover:border-white/10 transition-all">
               <span className="text-2xl font-serif text-amber-accent italic font-bold">04.</span>
               <h3 className="font-serif text-xl font-normal text-white">The Gourmet Vault</h3>
               <p className="text-[11px] text-gray-500 font-light leading-relaxed">

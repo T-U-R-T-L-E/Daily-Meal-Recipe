@@ -116,18 +116,48 @@ if (typeof window !== 'undefined') {
 
   window.addEventListener('error', (event: ErrorEvent) => {
     const msg = event.message || (event.error && event.error.message) || '';
+    if (msg.includes('Script error.') || msg === 'Script error' || msg === '') {
+      try {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      } catch (e) {}
+      return;
+    }
     if (healIndexedDb(msg)) {
-      event.preventDefault();
-      event.stopPropagation();
+      try {
+        event.preventDefault();
+        event.stopPropagation();
+      } catch (e) {}
     }
   }, true);
 
   window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
     const error = event.reason;
     const msg = error ? (error.message || String(error)) : '';
+    if (msg.includes('Script error.') || msg === 'Script error') {
+      try {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      } catch (e) {}
+      return;
+    }
     if (healIndexedDb(msg)) {
-      event.preventDefault();
-      event.stopPropagation();
+      try {
+        event.preventDefault();
+        event.stopPropagation();
+      } catch (e) {}
     }
   }, true);
+
+  // Safely intercept and filter cross-origin script error telemetry
+  try {
+    const rawConsoleError = console.error;
+    console.error = function(...args: any[]) {
+      const logStr = args.map(a => String(a)).join(' ');
+      if (logStr.includes('Script error.') || logStr.includes('Script error')) {
+        return;
+      }
+      rawConsoleError.apply(console, args);
+    };
+  } catch (e) {}
 }

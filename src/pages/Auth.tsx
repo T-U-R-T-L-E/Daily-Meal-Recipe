@@ -77,6 +77,14 @@ export default function Auth() {
     const isIOSWebview = /iPad|iPhone|iPod/i.test(ua) && !/Safari/i.test(ua);
     return isAndroidWebview || isIOSWebview;
   });
+  const [isInIframe, setIsInIframe] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.self !== window.top;
+    } catch (e) {
+      return true;
+    }
+  });
 
   const PRESET_AVATARS = [
     { emoji: '🍳', label: 'Home Chef', bg: 'bg-amber-500/10 border-amber-500/20' },
@@ -318,6 +326,7 @@ export default function Auth() {
 
         // Save UserProfile collection on Firestore database
         await setDoc(doc(db, 'users', registeredUser.uid), userProfile);
+        localStorage.setItem('just_signed_up_redirect', 'true');
 
         // Send Email Verification automatically
         await sendEmailVerification(registeredUser);
@@ -549,8 +558,10 @@ export default function Auth() {
       console.error("Google Auth error:", err);
       if (err.code === 'auth/unauthorized-domain') {
         setUnauthorizedDomain(window.location.hostname || 'localhost');
+      } else if (err.code === 'auth/network-request-failed' || String(err).includes('network-request-failed')) {
+        setError('Connection restricted inside preview. Standard social popups are blocked by browser iframe security controls. Please register using the Email & Password fields, press the "⚡ Instant Fast-Pass Login" button, or open this page in a new window/tab to use Google Auth.');
       } else if (err.code !== 'auth/popup-closed-by-user') {
-        setError('Google authentication failed. Please retry.');
+        setError('Google authentication failed. Please use standard Email/Password, use the Fast-Pass option, or open in a new tab.');
       }
     } finally {
       setLoading(false);
@@ -620,8 +631,10 @@ export default function Auth() {
       console.error("Apple Auth error:", err);
       if (err.code === 'auth/unauthorized-domain') {
         setUnauthorizedDomain(window.location.hostname || 'localhost');
+      } else if (err.code === 'auth/network-request-failed' || String(err).includes('network-request-failed')) {
+        setError('Connection restricted inside preview. Standard social popups are blocked by browser iframe security controls. Please register using the Email & Password fields, press the "⚡ Instant Fast-Pass Login" button, or open this page in a new window/tab to use Apple login.');
       } else if (err.code !== 'auth/popup-closed-by-user') {
-        setError('Apple authentication failed. Please retry.');
+        setError('Apple authentication failed. Please use standard Email/Password, use the Fast-Pass option, or open in a new tab.');
       }
     } finally {
       setLoading(false);
@@ -1288,6 +1301,36 @@ export default function Auth() {
                 <span>Apple ID</span>
               </button>
             </div>
+
+            {/* Embedded Iframe Helper Warning & Sandbox Login Action */}
+            {isInIframe && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-4 p-4.5 rounded-[20px] bg-amber-500/[0.04] border border-amber-500/15 text-left space-y-3"
+              >
+                <div className="flex items-center gap-2 text-amber-accent">
+                  <Sparkles className="w-4 h-4 shrink-0 animate-pulse text-amber-500" />
+                  <h4 className="text-[10px] font-black uppercase tracking-widest font-sans">Embedded App Preview</h4>
+                </div>
+                <p className="text-[11px] text-gray-300 font-light leading-relaxed">
+                  Third-party cookie policies block Google and Apple login popups inside the embedded preview area.
+                </p>
+                <div className="space-y-2 pt-1 font-sans">
+                  <button
+                    type="button"
+                    onClick={handleFastPassLogin}
+                    disabled={loading}
+                    className="w-full py-2.5 bg-amber-accent hover:bg-white text-black font-black uppercase text-[10px] tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-amber-500/5 active:scale-[0.98] disabled:opacity-50"
+                  >
+                    {loading ? "Activating Fast-Pass..." : "⚡ Quick Sandbox Dev Login"}
+                  </button>
+                  <p className="text-[9px] text-gray-400 font-light text-center leading-normal">
+                    Or sign in securely using the standard Email & Password form above!
+                  </p>
+                </div>
+              </motion.div>
+            )}
 
             {/* Dynamic Embedded Webview Warning Alert (Precautionary MITM detection) */}
             {isWebview && (

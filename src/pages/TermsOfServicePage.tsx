@@ -55,7 +55,7 @@ Should you require account support, mail legal enquiries details to ${savedEmail
   }, []);
 
   return (
-    <div className="min-h-screen bg-onyx py-12 px-4 sm:px-6 text-slate-100">
+    <div className="min-h-screen bg-onyx py-12 px-4 sm:px-6 text-gray-300">
       <div className="max-w-3xl mx-auto space-y-8">
         
         {/* Nav actions */}
@@ -70,7 +70,7 @@ Should you require account support, mail legal enquiries details to ${savedEmail
 
           <Link 
             to="/compliance" 
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/5 hover:border-white/15 rounded-xl text-[10px] font-black uppercase tracking-wider text-slate-300 transition-all"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/5 hover:border-white/15 rounded-xl text-[10px] font-black uppercase tracking-wider text-gray-300 transition-all"
           >
             <span>Legal Desk Hub</span>
             <ExternalLink className="w-3 h-3" />
@@ -78,7 +78,7 @@ Should you require account support, mail legal enquiries details to ${savedEmail
         </div>
 
         {/* Paper Layout Card */}
-        <div className="relative p-8 sm:p-10 rounded-3xl bg-gradient-to-b from-stone-900 to-stone-950 border border-white/5 shadow-2xl overflow-hidden leading-relaxed">
+        <div className="relative p-8 sm:p-10 rounded-3xl bg-graphite border border-white/5 shadow-2xl overflow-hidden leading-relaxed">
           <div className="absolute top-0 right-0 w-60 h-60 bg-amber-accent/5 rounded-full blur-[100px] pointer-events-none" />
           
           <div className="space-y-6">
@@ -88,19 +88,19 @@ Should you require account support, mail legal enquiries details to ${savedEmail
               </div>
               <div className="space-y-1">
                 <h1 className="font-serif text-2xl font-light text-white">Terms of Service</h1>
-                <p className="text-[10px] uppercase font-mono tracking-widest text-slate-400">
+                <p className="text-[10px] uppercase font-mono tracking-widest text-gray-400">
                   Daily Meal Recipe Public Publication • Platform Rules of Engagement
                 </p>
               </div>
             </div>
 
             {/* Render with neat spacing */}
-            <div className="whitespace-pre-wrap font-sans text-xs sm:text-sm text-slate-300 hover:text-white leading-relaxed space-y-4 font-light">
+            <div className="whitespace-pre-wrap font-sans text-xs sm:text-sm text-gray-300 hover:text-white leading-relaxed space-y-4 font-light">
               {termsText}
             </div>
 
             {/* Extra Disclaimer Box */}
-            <div className="p-4 rounded-xl bg-white/[0.01] border border-white/5 text-[10px] text-slate-400 space-y-1.5">
+            <div className="p-4 rounded-xl bg-white/[0.01] border border-white/5 text-[10px] text-gray-400 space-y-1.5">
               <span className="font-bold text-white uppercase tracking-wider block">ALLERGEN HEALTH SAFETY LIMITS</span>
               <p>
                 By using {appName}, you explicitly acknowledge that recipe suggestions are provided as advisory suggestions only. Always cross-verify nutritional breakdowns and allergen flags manually. Do not configure dietary selections blindly.
@@ -110,7 +110,7 @@ Should you require account support, mail legal enquiries details to ${savedEmail
         </div>
 
         {/* Footer info */}
-        <div className="text-center text-[10px] text-slate-500 uppercase font-mono tracking-widest">
+        <div className="text-center text-[10px] text-gray-500 uppercase font-mono tracking-widest">
           © {new Date().getFullYear()} {appName} • All Rights Reserved.
         </div>
       </div>
