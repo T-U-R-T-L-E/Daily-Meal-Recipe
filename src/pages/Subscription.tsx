@@ -1019,6 +1019,11 @@ export default function Subscription() {
                     >
                       <span className="font-bold block text-[10px] uppercase tracking-wider opacity-60 mb-1">Reason for Failure:</span>
                       <span className="italic">"{paymentFormError}"</span>
+                      {paymentFormError.toLowerCase().includes('currency') && (
+                        <div className="mt-3 pt-2.5 border-t border-rose-500/20 text-[10px] opacity-90 leading-normal">
+                          💡 <span className="font-bold">Pro-Tip:</span> Your specific Paystack merchant key doesn't support the selected currency. Click <span className="font-bold">Return & Try Again</span> below, then change the <span className="font-bold">Billing Currency</span> dropdown to <span className="font-bold">USD</span> or your account's default local currency!
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex gap-3 justify-center max-w-sm mx-auto pt-2">
