@@ -40,6 +40,8 @@ export default function Subscription() {
   const [error, setError] = useState<string | null>(null);
   const [trialSuccessMsg, setTrialSuccessMsg] = useState<string | null>(null);
   const [paystackKey, setPaystackKey] = useState<string | null>(null);
+  const [isSecretKeyConfigured, setIsSecretKeyConfigured] = useState<boolean>(false);
+  const [activeCheckoutTab, setActiveCheckoutTab] = useState<'sandbox' | 'live'>('sandbox');
   const [selectedReceipt, setSelectedReceipt] = useState<BillingReceipt | null>(null);
 
   // States for Native Gourmet Interactive Checkout Popover
@@ -139,6 +141,9 @@ export default function Subscription() {
           if (data.paystackPublicKey) {
             setPaystackKey(data.paystackPublicKey);
           }
+          const hasSecret = !!data.isSecretKeyConfigured;
+          setIsSecretKeyConfigured(hasSecret);
+          setActiveCheckoutTab(hasSecret ? 'live' : 'sandbox');
         }
       } catch (err) {
         console.error("Failed to fetch Paystack config:", err);
@@ -1145,124 +1150,578 @@ export default function Subscription() {
                     </div>
                   </div>
                 ) : (
-                  /* ORIGINAL SELECTOR & FORMS */
+                  /* DUAL MODE CHECKOUT SELECTOR */
                   <>
                     <div className="space-y-5">
                       {/* Secure Info Banner */}
                       <div 
                         style={{ 
-                          borderColor: paystackKey ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-                          backgroundColor: paystackKey ? 'rgba(16, 185, 129, 0.04)' : 'rgba(245, 158, 11, 0.04)'
+                          borderColor: isSecretKeyConfigured ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                          backgroundColor: isSecretKeyConfigured ? 'rgba(16, 185, 129, 0.04)' : 'rgba(245, 158, 11, 0.04)'
                         }}
                         className="p-4 rounded-2xl border flex items-start gap-3 text-xs leading-relaxed font-sans"
                       >
-                        <Shield className={`w-5 h-5 shrink-0 mt-0.5 ${paystackKey ? 'text-emerald-500 animate-pulse' : 'text-amber-500'}`} />
-                        <div className="flex-1 space-y-1">
-                          <span className="font-bold uppercase tracking-wider block text-[11px]" style={{ color: paystackKey ? '#10b981' : '#f59e0b' }}>
-                            {paystackKey ? '🌟 Secure Paystack Gateway Live' : '⚡ Paystack Sandbox Ready'}
+                        <Shield className={`w-5 h-5 shrink-0 mt-0.5 ${isSecretKeyConfigured ? 'text-emerald-500' : 'text-amber-500'}`} />
+                        <div className="flex-1 space-y-1 text-left">
+                          <span className="font-bold uppercase tracking-wider block text-[11px]" style={{ color: isSecretKeyConfigured ? '#10b981' : '#f59e0b' }}>
+                            {isSecretKeyConfigured ? '🌟 Secure Paystack Gateway Live' : '⚡ Paystack Sandbox Active'}
                           </span>
-                          <span style={{ color: isModalLight ? '#334155' : '#cbd5e1' }}>
-                            Your official secure payment channel is active. Payments are processed in strict compliance with standard banking credentials and security filters.
+                          <span style={{ color: isModalLight ? '#334155' : '#cbd5e1' }} className="text-[11px]">
+                            {isSecretKeyConfigured 
+                              ? 'Your official secure payment channel is active. Payments are processed in strict compliance with standard banking credentials and security filters.'
+                              : 'The system is in safe Developer Sandbox mode. You can test card authorizations and subscription billing without entering real credentials.'}
                           </span>
                         </div>
                       </div>
 
-                      {/* Subscription Summary */}
+                      {/* Checkout Mode Selector Tabs */}
                       <div 
                         style={{ 
-                          borderColor: isModalLight ? '#e2e8f0' : 'rgba(255,255,255,0.08)',
-                          backgroundColor: isModalLight ? '#ffffff' : 'rgba(255,255,255,0.02)'
+                          backgroundColor: isModalLight ? '#f4f4f5' : 'rgba(21, 21, 21, 0.6)', 
+                          borderColor: isModalLight ? '#e4e4e7' : 'rgba(255,255,255,0.05)' 
                         }}
-                        className="rounded-2xl border p-5 space-y-4 font-sans shadow-sm"
+                        className="grid grid-cols-2 gap-1 p-1 rounded-2xl border text-xs"
                       >
-                        <div className="flex justify-between items-center pb-3 border-b border-dashed" style={{ borderColor: isModalLight ? '#e2e8f0' : 'rgba(255,255,255,0.08)' }}>
-                          <span style={{ color: isModalLight ? '#475569' : '#9ca3af' }} className="text-xs font-bold uppercase tracking-wider">
-                            Plan Level
-                          </span>
-                          <span style={{ color: '#f59e0b' }} className="text-sm font-black uppercase tracking-widest flex items-center gap-1">
-                            <Sparkles className="w-4 h-4 shrink-0 animate-pulse" />
-                            Gourmet Plus
-                          </span>
-                        </div>
-
-                        <div className="flex justify-between items-center py-1">
-                          <span style={{ color: isModalLight ? '#475569' : '#9ca3af' }} className="text-xs font-semibold">
-                            Account Profile
-                          </span>
-                          <span style={{ color: isModalLight ? '#0f172a' : '#ffffff' }} className="text-xs font-mono font-bold">
-                            {user?.email}
-                          </span>
-                        </div>
-
-                        <div className="flex justify-between items-center py-1">
-                          <span style={{ color: isModalLight ? '#475569' : '#9ca3af' }} className="text-xs font-semibold">
-                            Recurring Total
-                          </span>
-                          <span style={{ color: isModalLight ? '#0f172a' : '#ffffff' }} className="text-sm font-black text-amber-accent">
-                            $5.00 USD / mo
-                          </span>
-                        </div>
-
-                        <div className="pt-3 border-t border-dashed" style={{ borderColor: isModalLight ? '#e2e8f0' : 'rgba(255,255,255,0.08)' }}>
-                          <p style={{ color: isModalLight ? '#64748b' : '#9ca3af' }} className="text-[10.5px] leading-relaxed">
-                            Daily Plus Plan includes unlimited AI-powered gourmet recipe generation, full smart kitchen personalization filters, and unlimited custom saved favorites. Billed automatically at <strong>$5.00 USD every month</strong>. Cancel anytime with a single click.
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Primary Checkout Button */}
-                      <div className="space-y-3 pt-2">
                         <button
                           type="button"
-                          disabled={processing}
-                          onClick={handleRealPaystackPayment}
+                          onClick={() => setActiveCheckoutTab('live')}
+                          className={`py-2 rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all cursor-pointer ${
+                            activeCheckoutTab === 'live' 
+                              ? tabActiveStyle 
+                              : 'opacity-60 hover:opacity-100 hover:bg-neutral-500/10'
+                          }`}
                           style={{
-                            backgroundColor: '#10b981',
-                            color: '#ffffff'
+                            color: activeCheckoutTab === 'live'
+                              ? (isModalLight ? '#ffffff' : '#000000')
+                              : (isModalLight ? '#404040' : '#ffffff')
                           }}
-                          className="w-full py-4 hover:opacity-90 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-lg shadow-emerald-500/15 hover:scale-[1.01] active:scale-[0.99]"
                         >
-                          {processing ? (
-                            <span className="flex items-center gap-2 font-black text-[10px] tracking-widest uppercase text-white">
-                              <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                              Contacting Secure Gateway...
-                            </span>
+                          🌐 Live Checkout
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setActiveCheckoutTab('sandbox')}
+                          className={`py-2 rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all cursor-pointer ${
+                            activeCheckoutTab === 'sandbox' 
+                              ? tabActiveStyle 
+                              : 'opacity-60 hover:opacity-100 hover:bg-neutral-500/10'
+                          }`}
+                          style={{
+                            color: activeCheckoutTab === 'sandbox'
+                              ? (isModalLight ? '#ffffff' : '#000000')
+                              : (isModalLight ? '#404040' : '#ffffff')
+                          }}
+                        >
+                          🧪 Dev Sandbox
+                        </button>
+                      </div>
+
+                      {activeCheckoutTab === 'live' ? (
+                        /* LIVE CHECKOUT BODY */
+                        <div className="space-y-5">
+                          {/* Subscription Summary */}
+                          <div 
+                            style={{ 
+                              borderColor: isModalLight ? '#e2e8f0' : 'rgba(255,255,255,0.08)',
+                              backgroundColor: isModalLight ? '#ffffff' : 'rgba(255,255,255,0.02)'
+                            }}
+                            className="rounded-2xl border p-5 space-y-4 font-sans shadow-sm text-left"
+                          >
+                            <div className="flex justify-between items-center pb-3 border-b border-dashed" style={{ borderColor: isModalLight ? '#e2e8f0' : 'rgba(255,255,255,0.08)' }}>
+                              <span style={{ color: isModalLight ? '#475569' : '#9ca3af' }} className="text-xs font-bold uppercase tracking-wider">
+                                Plan Level
+                              </span>
+                              <span style={{ color: '#f59e0b' }} className="text-sm font-black uppercase tracking-widest flex items-center gap-1">
+                                <Sparkles className="w-4 h-4 shrink-0 animate-pulse" />
+                                Gourmet Plus
+                              </span>
+                            </div>
+
+                            <div className="flex justify-between items-center py-1">
+                              <span style={{ color: isModalLight ? '#475569' : '#9ca3af' }} className="text-xs font-semibold">
+                                Account Profile
+                              </span>
+                              <span style={{ color: isModalLight ? '#0f172a' : '#ffffff' }} className="text-xs font-mono font-bold">
+                                {user?.email}
+                              </span>
+                            </div>
+
+                            <div className="flex justify-between items-center py-1">
+                              <span style={{ color: isModalLight ? '#475569' : '#9ca3af' }} className="text-xs font-semibold">
+                                Recurring Total
+                              </span>
+                              <span style={{ color: isModalLight ? '#0f172a' : '#ffffff' }} className="text-sm font-black text-amber-accent">
+                                $5.00 USD / mo
+                              </span>
+                            </div>
+
+                            <div className="pt-3 border-t border-dashed" style={{ borderColor: isModalLight ? '#e2e8f0' : 'rgba(255,255,255,0.08)' }}>
+                              <p style={{ color: isModalLight ? '#64748b' : '#9ca3af' }} className="text-[10.5px] leading-relaxed">
+                                Daily Plus Plan includes unlimited AI-powered gourmet recipe generation, full smart kitchen personalization filters, and unlimited custom saved favorites. Billed automatically at <strong>$5.00 USD every month</strong>. Cancel anytime with a single click.
+                              </p>
+                            </div>
+                          </div>
+
+                          {isSecretKeyConfigured ? (
+                            /* Primary Checkout Button */
+                            <div className="space-y-3">
+                              <button
+                                type="button"
+                                disabled={processing}
+                                onClick={handleRealPaystackPayment}
+                                style={{
+                                  backgroundColor: '#10b981',
+                                  color: '#ffffff'
+                                }}
+                                className="w-full py-4 hover:opacity-90 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-lg shadow-emerald-500/15 hover:scale-[1.01] active:scale-[0.99]"
+                              >
+                                {processing ? (
+                                  <span className="flex items-center gap-2 font-black text-[10px] tracking-widest uppercase text-white">
+                                    <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                                    Contacting Secure Gateway...
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center gap-2 font-black text-[10px] tracking-widest uppercase text-white">
+                                    <ExternalLink className="w-4 h-4 shrink-0 text-white" />
+                                    Pay $5.00 Securely with Paystack
+                                  </span>
+                                )}
+                              </button>
+                            </div>
                           ) : (
-                            <span className="flex items-center gap-2 font-black text-[10px] tracking-widest uppercase text-white">
-                              <ExternalLink className="w-4 h-4 shrink-0 text-white" />
-                              Pay $5.00 Securely with Paystack
-                            </span>
+                            /* Live Mode Missing Credentials Warning Notice */
+                            <div 
+                              style={{ 
+                                borderColor: 'rgba(245, 158, 11, 0.2)',
+                                backgroundColor: 'rgba(245, 158, 11, 0.04)'
+                              }}
+                              className="p-4 rounded-2xl border text-xs leading-relaxed font-sans space-y-2 text-left"
+                            >
+                              <div className="flex items-center gap-2 text-amber-500 font-bold uppercase tracking-wider text-[11px]">
+                                <AlertTriangle className="w-4 h-4 shrink-0" />
+                                Live Keys Not Configured
+                              </div>
+                              <p style={{ color: isModalLight ? '#334155' : '#cbd5e1' }} className="text-[11px]">
+                                No <code>PAYSTACK_SECRET_KEY</code> was found in your backend environment secrets yet. To initiate real, live payments on the secure Paystack checkout portal, you must provide your API keys in the <strong>Settings menu</strong>.
+                              </p>
+                              <p style={{ color: isModalLight ? '#475569' : '#9ca3af' }} className="text-[10.5px] italic">
+                                For instant local verification and testing right now, please use the <strong>🧪 Dev Sandbox</strong> tab above!
+                              </p>
+                            </div>
                           )}
-                        </button>
+                        </div>
+                      ) : (
+                        /* DEVELOPER SANDBOX BODY */
+                        <div className="space-y-4">
+                          {/* Sandbox Payment Method Sub-tabs selector */}
+                          <div 
+                            style={{ 
+                              backgroundColor: isModalLight ? '#e4e4e7' : 'rgba(255,255,255,0.02)', 
+                              borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.05)' 
+                            }}
+                            className="grid grid-cols-3 gap-1 p-1 rounded-2xl border text-xs"
+                          >
+                            <button
+                              type="button"
+                              onClick={() => setPaymentMethodTab('card')}
+                              className={`py-1.5 rounded-xl font-bold uppercase tracking-wider text-[9px] transition-all cursor-pointer ${
+                                paymentMethodTab === 'card' 
+                                  ? tabActiveStyle 
+                                  : 'opacity-60 hover:opacity-100 hover:bg-neutral-500/10'
+                              }`}
+                              style={{
+                                color: paymentMethodTab === 'card'
+                                  ? (isModalLight ? '#ffffff' : '#000000')
+                                  : (isModalLight ? '#404040' : '#ffffff')
+                              }}
+                            >
+                              Card
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPaymentMethodTab('bank')}
+                              className={`py-1.5 rounded-xl font-bold uppercase tracking-wider text-[9px] transition-all cursor-pointer ${
+                                paymentMethodTab === 'bank' 
+                                  ? tabActiveStyle 
+                                  : 'opacity-60 hover:opacity-100 hover:bg-neutral-500/10'
+                              }`}
+                              style={{
+                                color: paymentMethodTab === 'bank'
+                                  ? (isModalLight ? '#ffffff' : '#000000')
+                                  : (isModalLight ? '#404040' : '#ffffff')
+                              }}
+                            >
+                              Bank
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPaymentMethodTab('momo')}
+                              className={`py-1.5 rounded-xl font-bold uppercase tracking-wider text-[9px] transition-all cursor-pointer ${
+                                paymentMethodTab === 'momo' 
+                                  ? tabActiveStyle 
+                                  : 'opacity-60 hover:opacity-100 hover:bg-neutral-500/10'
+                              }`}
+                              style={{
+                                color: paymentMethodTab === 'momo'
+                                  ? (isModalLight ? '#ffffff' : '#000000')
+                                  : (isModalLight ? '#404040' : '#ffffff')
+                              }}
+                            >
+                              MoMo
+                            </button>
+                          </div>
 
-                        {/* Back / Dismiss Modal Button */}
-                        <button
-                          type="button"
-                          onClick={() => setShowPaymentModal(false)}
-                          disabled={processing}
-                          style={{
-                            borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.15)',
-                            color: isModalLight ? '#1f2937' : '#f3f4f6'
-                          }}
-                          className="w-full py-3.5 hover:bg-neutral-500/5 rounded-2xl font-black uppercase tracking-widest text-[9.5px] transition-all flex items-center justify-center gap-1.5 cursor-pointer border disabled:opacity-50"
-                        >
-                          ← Cancel & Back to Plans
-                        </button>
-                      </div>
+                          {paymentMethodTab === 'card' && (
+                            <div className="space-y-4">
+                              {/* Interactive Virtual Card Rendering Preview */}
+                              <div 
+                                style={{
+                                  background: isModalLight
+                                    ? 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)'
+                                    : 'linear-gradient(135deg, #111111 0%, #261802 100%)',
+                                  borderColor: isModalLight ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)'
+                                }}
+                                className="relative p-5 h-32 rounded-2xl border overflow-hidden flex flex-col justify-between shadow-lg"
+                              >
+                                <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                                  <CreditCard className="w-16 h-16 text-amber-accent" />
+                                </div>
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <span className="text-[7px] text-white/30 tracking-wider block uppercase">ACTIVE GATEWAY PREVIEW</span>
+                                    <span 
+                                      style={{ color: '#ffffff' }}
+                                      className="text-[11px] font-mono font-bold tracking-widest uppercase block"
+                                    >
+                                      {detectCardBrand(cardNumber).toUpperCase()} SECURE
+                                    </span>
+                                  </div>
+                                  <div className="w-6 h-4.5 rounded-sm bg-gradient-to-br from-amber-200/40 to-amber-500/20 border border-amber-300/30" />
+                                </div>
 
-                      {/* Billing descriptor notice & terms */}
-                      <div className="space-y-3 pt-1">
-                        <p 
-                          style={{ color: isModalLight ? '#0369a1' : '#7dd3fc' }}
-                          className="text-[10px] leading-relaxed font-semibold text-center"
-                        >
-                          📌 <strong>Billing Descriptor:</strong> Charges will appear on your card ledger as <strong>DAILYMEALRECIPE</strong> for simple, transparent accounting.
-                        </p>
+                                <div 
+                                  style={{ color: '#f5f5f5' }}
+                                  className="font-mono text-sm tracking-widest"
+                                >
+                                  {cardNumber ? cardNumber.replace(/(\d{4})/g, '$1 ').trim() : '••••  ••••  ••••  ••••'}
+                                </div>
 
-                        <div 
-                          style={{ borderColor: isModalLight ? '#e2e8f0' : 'rgba(255,255,255,0.05)' }}
-                          className="pt-2.5 border-t text-[10px] flex flex-wrap justify-center gap-x-2 text-center"
-                        >
+                                <div className="flex justify-between items-end font-mono text-[9px] text-white/50">
+                                  <div>
+                                    <span className="text-[6px] tracking-wider block text-white/30">CARDHOLDER</span>
+                                    <span className="uppercase truncate max-w-[120px] inline-block font-bold text-white">{cardName || 'YOUR FULL NAME'}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-[6px] tracking-wider block text-white/30">EXPIRES</span>
+                                    <span className="font-bold text-white">{cardExpiry || 'MM/YY'}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Form entries */}
+                              <div className="space-y-3 text-left">
+                                <div className="grid grid-cols-2 gap-3 font-sans">
+                                  <div className="col-span-2 space-y-1">
+                                    <label 
+                                      style={{ color: isModalLight ? '#404040' : '#a3a3a3' }}
+                                      className="text-[9px] font-black uppercase tracking-wider"
+                                    >
+                                      Card Number
+                                    </label>
+                                    <input
+                                      type="text"
+                                      maxLength={19}
+                                      placeholder="4081 8888 8888 8888 (Use Luhn standard for success)"
+                                      value={cardNumber}
+                                      onChange={(e) => setCardNumber(e.target.value.replace(/\s+/g, '').replace(/[^0-9]/g, ''))}
+                                      style={{
+                                        backgroundColor: isModalLight ? '#ffffff' : 'rgba(255,255,255,0.02)',
+                                        color: isModalLight ? '#171717' : '#ffffff',
+                                        borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.1)'
+                                      }}
+                                      className="w-full border rounded-xl px-3 py-2 text-xs placeholder-neutral-400 outline-none focus:border-amber-accent/50 transition-colors"
+                                    />
+                                    <p className="text-[9px] opacity-40">Try: 4081888888888888 (valid sandbox test card sequence)</p>
+                                  </div>
+
+                                  <div className="space-y-1">
+                                    <label 
+                                      style={{ color: isModalLight ? '#404040' : '#a3a3a3' }}
+                                      className="text-[9px] font-black uppercase tracking-wider"
+                                    >
+                                      Expiry Date
+                                    </label>
+                                    <input
+                                      type="text"
+                                      maxLength={5}
+                                      placeholder="MM/YY"
+                                      value={cardExpiry}
+                                      onChange={(e) => {
+                                        let text = e.target.value.replace(/\s+/g, '');
+                                        if (text.length === 2 && !text.includes('/')) {
+                                          text += '/';
+                                        }
+                                        setCardExpiry(text);
+                                      }}
+                                      style={{
+                                        backgroundColor: isModalLight ? '#ffffff' : 'rgba(255,255,255,0.02)',
+                                        color: isModalLight ? '#171717' : '#ffffff',
+                                        borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.1)'
+                                      }}
+                                      className="w-full border rounded-xl px-3 py-2 text-xs placeholder-neutral-400 outline-none focus:border-amber-accent/50 transition-colors"
+                                    />
+                                  </div>
+
+                                  <div className="space-y-1">
+                                    <label 
+                                      style={{ color: isModalLight ? '#404040' : '#a3a3a3' }}
+                                      className="text-[9px] font-black uppercase tracking-wider"
+                                    >
+                                      CVV Code
+                                    </label>
+                                    <input
+                                      type="password"
+                                      maxLength={4}
+                                      placeholder="123"
+                                      value={cardCvv}
+                                      onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, ''))}
+                                      style={{
+                                        backgroundColor: isModalLight ? '#ffffff' : 'rgba(255,255,255,0.02)',
+                                        color: isModalLight ? '#171717' : '#ffffff',
+                                        borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.1)'
+                                      }}
+                                      className="w-full border rounded-xl px-3 py-2 text-xs placeholder-neutral-400 outline-none focus:border-amber-accent/50 transition-colors"
+                                    />
+                                  </div>
+
+                                  <div className="col-span-2 space-y-1">
+                                    <label 
+                                      style={{ color: isModalLight ? '#404040' : '#a3a3a3' }}
+                                      className="text-[9px] font-black uppercase tracking-wider"
+                                    >
+                                      Cardholder Name
+                                    </label>
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. John Doe"
+                                      value={cardName}
+                                      onChange={(e) => setCardName(e.target.value)}
+                                      style={{
+                                        backgroundColor: isModalLight ? '#ffffff' : 'rgba(255,255,255,0.02)',
+                                        color: isModalLight ? '#171717' : '#ffffff',
+                                        borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.1)'
+                                      }}
+                                      className="w-full border rounded-xl px-3 py-2 text-xs placeholder-neutral-400 outline-none focus:border-amber-accent/50 transition-colors"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {paymentMethodTab === 'bank' && (
+                            <div className="space-y-4 text-left">
+                              <p 
+                                style={{ color: isModalLight ? '#525252' : 'rgba(255,255,255,0.4)' }}
+                                className="text-[10.5px] font-light leading-relaxed font-sans"
+                              >
+                                Connect your active bank clearing system accounts to process instant automated recurring wire payments securely.
+                              </p>
+                              
+                              <div className="space-y-3">
+                                <div className="space-y-1">
+                                  <label 
+                                    style={{ color: isModalLight ? '#404040' : '#a3a3a3' }}
+                                    className="text-[9px] font-black uppercase tracking-wider"
+                                  >
+                                    Select Active Bank
+                                  </label>
+                                  <select
+                                    value={bankName}
+                                    onChange={(e) => setBankName(e.target.value)}
+                                    style={{
+                                      backgroundColor: isModalLight ? '#ffffff' : 'rgba(255,255,255,0.02)',
+                                      color: isModalLight ? '#171717' : '#ffffff',
+                                      borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.1)'
+                                    }}
+                                    className="w-full border rounded-xl px-3 py-2 text-xs outline-none"
+                                  >
+                                    <option value="Zenith Bank">Zenith Bank (Nigeria)</option>
+                                    <option value="Standard Chartered">Standard Chartered</option>
+                                    <option value="Access Bank">Access Bank PLC</option>
+                                    <option value="Guaranty Trust Bank">GT Bank (Guaranty Trust)</option>
+                                    <option value="United Bank for Africa">UBA (United Bank for Africa)</option>
+                                  </select>
+                                </div>
+
+                                <div className="space-y-1">
+                                  <label 
+                                    style={{ color: isModalLight ? '#404040' : '#a3a3a3' }}
+                                    className="text-[9px] font-black uppercase tracking-wider"
+                                  >
+                                    Bank Account Number (10 Digits)
+                                  </label>
+                                  <input
+                                    type="text"
+                                    maxLength={10}
+                                    placeholder="0123456789"
+                                    value={bankAccount}
+                                    onChange={(e) => setBankAccount(e.target.value.replace(/\D/g, ''))}
+                                    style={{
+                                      backgroundColor: isModalLight ? '#ffffff' : 'rgba(255,255,255,0.02)',
+                                      color: isModalLight ? '#171717' : '#ffffff',
+                                      borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.1)'
+                                    }}
+                                    className="w-full border rounded-xl px-3 py-2 text-xs placeholder-neutral-400 outline-none transition-colors"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {paymentMethodTab === 'momo' && (
+                            <div className="space-y-4 text-left">
+                              <p 
+                                style={{ color: isModalLight ? '#525252' : 'rgba(255,255,255,0.4)' }}
+                                className="text-[10.5px] font-light leading-relaxed font-sans"
+                              >
+                                Unlock instant billing directly using integrated telecom wallet addresses (Mobile Money wallets).
+                              </p>
+
+                              <div className="space-y-3">
+                                <div className="space-y-1">
+                                  <label 
+                                    style={{ color: isModalLight ? '#404040' : '#a3a3a3' }}
+                                    className="text-[9px] font-black uppercase tracking-wider"
+                                  >
+                                    Select Wallet Operator
+                                  </label>
+                                  <select
+                                    value={momoNetwork}
+                                    onChange={(e) => setMomoNetwork(e.target.value)}
+                                    style={{
+                                      backgroundColor: isModalLight ? '#ffffff' : 'rgba(255,255,255,0.02)',
+                                      color: isModalLight ? '#171717' : '#ffffff',
+                                      borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.1)'
+                                    }}
+                                    className="w-full border rounded-xl px-3 py-2 text-xs outline-none"
+                                  >
+                                    <option value="MTN">MTN Mobile Money</option>
+                                    <option value="AirtelTigo">AirtelTigo Cash</option>
+                                    <option value="Telecel">Telecel Cash</option>
+                                    <option value="Orange">Orange Money</option>
+                                  </select>
+                                </div>
+
+                                <div className="space-y-1">
+                                  <label 
+                                    style={{ color: isModalLight ? '#404040' : '#a3a3a3' }}
+                                    className="text-[9px] font-black uppercase tracking-wider"
+                                  >
+                                    Registered Wallet Phone Prefix
+                                  </label>
+                                  <input
+                                    type="text"
+                                    maxLength={12}
+                                    placeholder="e.g. 0244123456"
+                                    value={momoNumber}
+                                    onChange={(e) => setMomoNumber(e.target.value.replace(/\D/g, ''))}
+                                    style={{
+                                      backgroundColor: isModalLight ? '#ffffff' : 'rgba(255,255,255,0.02)',
+                                      color: isModalLight ? '#171717' : '#ffffff',
+                                      borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.1)'
+                                    }}
+                                    className="w-full border rounded-xl px-3 py-2 text-xs placeholder-neutral-400 outline-none"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Simulation Outcome Selector Panel */}
+                          <div 
+                            style={{ borderColor: isModalLight ? '#e5e5e5' : 'rgba(255,255,255,0.05)' }}
+                            className="pt-3 border-t space-y-1 text-left"
+                          >
+                            <span 
+                              style={{ color: isModalLight ? '#b45309' : '#f59e0b' }}
+                              className="text-[8px] font-bold tracking-wider uppercase block"
+                            >
+                              🧪 Interactive Gateway Outcome (Simulation Suite)
+                            </span>
+                            <select
+                              value={simulatedDeclineScenario}
+                              onChange={(e) => setSimulatedDeclineScenario(e.target.value as any)}
+                              style={{
+                                backgroundColor: isModalLight ? '#ffffff' : '#141414',
+                                color: isModalLight ? '#171717' : '#dfdfdf',
+                                borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.1)'
+                              }}
+                              className="w-full border rounded-xl px-2.5 py-1.5 text-[10px] outline-none"
+                            >
+                              <option value="success">✅ Simulate Successful Charge & Upgrade (Luhn Check Active)</option>
+                              <option value="insufficient">💳 Simulate Decline: Insufficient Funds (Error 51)</option>
+                              <option value="expired">⏳ Simulate Decline: Expired Card Check (Error 54)</option>
+                              <option value="incorrect_pin">🔒 Simulate Decline: Incorrect Card PIN (Error 55)</option>
+                              <option value="dispute">⚖️ Simulate Chargeback / Dispute Opened (charge.dispute.create)</option>
+                              <option value="payment_failed">⚠️ Simulate Recurring Billing Failed (invoice.payment_failed)</option>
+                              <option value="canceled">ℹ️ Simulate Subscription Canceled (subscription.disable)</option>
+                            </select>
+                          </div>
+
+                          {/* Sandbox Action Button */}
+                          <button
+                            type="button"
+                            disabled={processing}
+                            onClick={handleProcessModalPayment}
+                            style={{
+                              backgroundColor: '#f59e0b',
+                              color: '#000000'
+                            }}
+                            className="w-full py-4 hover:bg-amber-600 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-lg shadow-amber-500/15 hover:scale-[1.01] active:scale-[0.99]"
+                          >
+                            {processing ? (
+                              <span className="flex items-center gap-2 font-black text-[10px] tracking-widest uppercase text-black">
+                                <RefreshCw className="w-4 h-4 animate-spin text-black" />
+                                Processing Sandbox Payment...
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-2 font-black text-[10px] tracking-widest uppercase text-black">
+                                <Shield className="w-4 h-4 shrink-0 text-black" />
+                                Authorize Sandbox Payment ($5/mo)
+                              </span>
+                            )}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Back / Dismiss Modal Button */}
+                      <button
+                        type="button"
+                        onClick={() => setShowPaymentModal(false)}
+                        disabled={processing}
+                        style={{
+                          borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.15)',
+                          color: isModalLight ? '#1f2937' : '#f3f4f6'
+                        }}
+                        className="w-full py-3.5 hover:bg-neutral-500/5 rounded-2xl font-black uppercase tracking-widest text-[9.5px] transition-all flex items-center justify-center gap-1.5 cursor-pointer border disabled:opacity-50"
+                      >
+                        ← Cancel & Back to Plans
+                      </button>
+
+                    {/* Billing descriptor notice & terms */}
+                    <div className="space-y-3 pt-1">
+                      <p 
+                        style={{ color: isModalLight ? '#0369a1' : '#7dd3fc' }}
+                        className="text-[10px] leading-relaxed font-semibold text-center"
+                      >
+                        📌 <strong>Billing Descriptor:</strong> Charges will appear on your card ledger as <strong>DAILYMEALRECIPE</strong> for simple, transparent accounting.
+                      </p>
+
+                      <div 
+                        style={{ borderColor: isModalLight ? '#e2e8f0' : 'rgba(255,255,255,0.05)' }}
+                        className="pt-2.5 border-t text-[10px] flex flex-wrap justify-center gap-x-2 text-center"
+                      >
                           <span style={{ color: isModalLight ? '#64748b' : '#6b7280' }}>By continuing, you agree to our</span>
                           <a 
                             href="/terms" 
