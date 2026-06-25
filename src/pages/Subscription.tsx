@@ -21,7 +21,8 @@ import {
   Terminal,
   Cpu,
   Database,
-  RefreshCw
+  RefreshCw,
+  ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../lib/useAuth';
 import { db } from '../lib/firebase';
@@ -130,7 +131,21 @@ export default function Subscription() {
         setLoading(false);
       }
     }
+    async function fetchPaystackConfig() {
+      try {
+        const res = await fetch('/api/paystack/config');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.paystackPublicKey) {
+            setPaystackKey(data.paystackPublicKey);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch Paystack config:", err);
+      }
+    }
     loadProfile();
+    fetchPaystackConfig();
   }, [user]);
 
   // Option 1: Start 1-Month Free Trial immediately
@@ -405,6 +420,51 @@ export default function Subscription() {
       } catch (logErr) {
         console.error("Failed to log declined transaction in Firestore:", logErr);
       }
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // Real-time Paystack secure popup redirect checkout
+  const handleRealPaystackPayment = async () => {
+    if (!user || !profile) return;
+    setProcessing(true);
+    setPaymentFormError(null);
+    setPaymentFormSuccess(null);
+
+    try {
+      const response = await fetch('/api/paystack/initialize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey || ''
+        },
+        body: JSON.stringify({
+          email: user.email,
+          amount: paymentModalType === 'subscribe' ? 500 : 100, // $5.00 subscription, $1.00 linking verification
+          idempotencyKey: idempotencyKey
+        })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || `Failed to initialize secure Paystack checkout transaction.`);
+      }
+
+      const resData = await response.json();
+      if (resData.status === 'success' && resData.authorization_url) {
+        setPaymentFormSuccess("Redirecting to the secure live Paystack payment gateway... Please authorize your payment there.");
+        setTimeout(() => {
+          // Open the payment portal safely
+          window.open(resData.authorization_url, '_blank');
+          setProcessing(false);
+        }, 1500);
+      } else {
+        throw new Error("Paystack did not respond with a valid payment portal URL.");
+      }
+    } catch (err: any) {
+      const errMsg = err?.message || "Secure live initialization failed.";
+      setPaymentFormError(errMsg);
     } finally {
       setProcessing(false);
     }
@@ -1174,6 +1234,38 @@ export default function Subscription() {
                 ) : (
                   /* ORIGINAL SELECTOR & FORMS */
                   <>
+                    {/* Paystack Connection Status indicator */}
+                    <div 
+                      style={{ 
+                        borderColor: paystackKey ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                        backgroundColor: paystackKey ? 'rgba(16, 185, 129, 0.04)' : 'rgba(245, 158, 11, 0.04)'
+                      }}
+                      className="p-3.5 rounded-2xl border flex items-start gap-2.5 text-[10.5px] leading-relaxed font-mono"
+                    >
+                      <div className={`w-2 h-2 rounded-full mt-1 shrink-0 ${paystackKey ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                      <div className="flex-1 space-y-0.5">
+                        {paystackKey ? (
+                          <>
+                            <span className="font-bold uppercase tracking-wider block" style={{ color: '#10b981' }}>
+                              🌟 Paystack Live Connected
+                            </span>
+                            <span style={{ color: isModalLight ? '#334155' : '#cbd5e1' }}>
+                              Your Hostinger public environment variable is loaded successfully. You can complete this payment live on the official Paystack portal!
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="font-bold uppercase tracking-wider block" style={{ color: '#f59e0b' }}>
+                              ⚡ Developer Sandbox Mode
+                            </span>
+                            <span style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
+                              No public environment key is loaded. Use this custom form below to simulate various gateway event handlers (Disputes, Cancellations, Success, etc.).
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
                     {/* Payment Method Tabs selector */}
                     <div 
                       style={{ 
@@ -1533,25 +1625,53 @@ export default function Subscription() {
 
                     {/* Return trigger Submit */}
                     <div className="space-y-3 pt-2">
+                      {paystackKey && (
+                        <button
+                          type="button"
+                          disabled={processing}
+                          onClick={handleRealPaystackPayment}
+                          style={{
+                            backgroundColor: '#10b981',
+                            color: '#ffffff'
+                          }}
+                          className="w-full py-3.5 hover:opacity-90 rounded-xl font-black uppercase tracking-widest text-[9.5px] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-md shadow-emerald-500/15 hover:scale-[1.01] active:scale-[0.99]"
+                        >
+                          {processing ? (
+                            <span className="flex items-center gap-2 font-black text-[9.5px] tracking-widest uppercase" style={{ color: '#ffffff' }}>
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                              Contacting Paystack Gateway...
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-2 font-black text-[9.5px] tracking-widest uppercase" style={{ color: '#ffffff' }}>
+                              <ExternalLink className="w-3.5 h-3.5 shrink-0 text-white" />
+                              Pay Live with Paystack Secure Checkout
+                            </span>
+                          )}
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         disabled={processing}
                         onClick={handleProcessModalPayment}
                         style={{
-                          backgroundColor: '#f59e0b',
-                          color: '#000000'
+                          backgroundColor: paystackKey ? 'transparent' : '#f59e0b',
+                          color: paystackKey ? (isModalLight ? '#000000' : '#ffffff') : '#000000',
+                          borderColor: paystackKey ? (isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.15)') : 'transparent'
                         }}
-                        className="w-full py-3.5 hover:bg-amber-600 rounded-xl font-black uppercase tracking-widest text-[9px] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                        className={`w-full py-3.5 rounded-xl font-black uppercase tracking-widest text-[9px] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 ${
+                          paystackKey ? 'border border-dashed hover:bg-neutral-500/5' : 'hover:bg-amber-600'
+                        }`}
                       >
                         {processing ? (
-                          <span className="flex items-center gap-2 font-black text-[9px] tracking-widest uppercase" style={{ color: '#000000' }}>
+                          <span className="flex items-center gap-2 font-black text-[9px] tracking-widest uppercase" style={{ color: paystackKey ? 'inherit' : '#000000' }}>
                             <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                             Securing authorization trace...
                           </span>
                         ) : (
-                          <span className="flex items-center gap-2 font-black text-[9px] tracking-widest uppercase" style={{ color: '#000000' }}>
+                          <span className="flex items-center gap-2 font-black text-[9px] tracking-widest uppercase" style={{ color: paystackKey ? 'inherit' : '#000000' }}>
                             <Shield className="w-3.5 h-3.5 shrink-0" />
-                            {paymentModalType === 'subscribe' ? 'Authorize Subscription ($5/mo)' : 'Link Card Reference'}
+                            {paystackKey ? 'Or Simulate Local Developer Sandbox' : (paymentModalType === 'subscribe' ? 'Authorize Subscription ($5/mo)' : 'Link Card Reference')}
                           </span>
                         )}
                       </button>

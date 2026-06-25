@@ -927,7 +927,7 @@ app.get("/api/db/pgbouncer", (req, res) => {
 // Paystack API integration endpoints
 app.get("/api/paystack/config", (req, res) => {
   res.json({
-    paystackPublicKey: process.env.VITE_PAYSTACK_PUBLIC_KEY || "pk_live_dd94d769ea493fe72268c532c904788b5fd6e58d"
+    paystackPublicKey: process.env.VITE_PAYSTACK_PUBLIC_KEY || ""
   });
 });
 
