@@ -179,7 +179,8 @@ export default function Subscription() {
         body: JSON.stringify({
           email: user.email,
           amount: paymentModalType === 'subscribe' ? 500 : 100, // $5.00 subscription, $1.00 linking verification
-          idempotencyKey: idempotencyKey
+          idempotencyKey: idempotencyKey,
+          callbackUrl: window.location.origin + '/subscription'
         })
       });
 

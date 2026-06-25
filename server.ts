@@ -934,7 +934,7 @@ app.get("/api/paystack/config", (req, res) => {
 
 app.post("/api/paystack/initialize", async (req, res) => {
   try {
-    const { email, amount, reference } = req.body;
+    const { email, amount, reference, callbackUrl } = req.body;
     const idempotencyKey = (req.headers["idempotency-key"] || req.headers["x-idempotency-key"] || req.body.idempotencyKey) as string | undefined;
 
     if (idempotencyKey && adminDb) {
@@ -969,6 +969,7 @@ app.post("/api/paystack/initialize", async (req, res) => {
         amount: amount || 500, // 500 minor units ($5.00)
         currency: "USD",
         reference: reference || `ref-${Math.floor(Math.random() * 1000000000) + 1}`,
+        callback_url: callbackUrl || undefined,
       })
     });
 
