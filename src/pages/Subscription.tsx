@@ -61,6 +61,56 @@ export default function Subscription() {
   const [paymentFormSuccess, setPaymentFormSuccess] = useState<string | null>(null);
   const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
 
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
+  const [verificationSuccess, setVerificationSuccess] = useState<string | null>(null);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function checkVerificationCallback() {
+      if (!user) return;
+      const params = new URLSearchParams(window.location.search);
+      const reference = params.get('reference') || params.get('trxref');
+      
+      if (reference) {
+        setVerifyingPayment(true);
+        setVerificationError(null);
+        setVerificationSuccess(null);
+        try {
+          const response = await fetch('/api/paystack/verify', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ reference })
+          });
+
+          const resData = await response.json();
+          if (!response.ok || resData.status !== 'success') {
+            throw new Error(resData.error || 'Failed to verify transaction with the Paystack secure gateway.');
+          }
+
+          setVerificationSuccess(`Your payment of $${((resData.data?.amount || 500) / 100).toFixed(2)} was verified successfully! Reference: ${reference}.`);
+          
+          // Refresh user profile snap
+          const docSnap = await getDoc(doc(db, 'users', user.uid));
+          if (docSnap.exists()) {
+            setProfile(docSnap.data() as UserProfile);
+          }
+          
+          // Remove query params to prevent double submissions on page refresh
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, newUrl);
+        } catch (err: any) {
+          console.error("Verification error:", err);
+          setVerificationError(err?.message || 'Payment verification failed. Please contact customer support.');
+        } finally {
+          setVerifyingPayment(false);
+        }
+      }
+    }
+    checkVerificationCallback();
+  }, [user]);
+
   useEffect(() => {
     async function loadProfile() {
       if (!user) return;
@@ -193,9 +243,8 @@ export default function Subscription() {
       if (resData.status === 'success' && resData.authorization_url) {
         setPaymentFormSuccess("Redirecting to the secure live Paystack payment gateway... Please authorize your payment there.");
         setTimeout(() => {
-          // Open the payment portal safely
-          window.open(resData.authorization_url, '_blank');
-          setProcessing(false);
+          // Redirect to the payment portal
+          window.location.href = resData.authorization_url;
         }, 1500);
       } else {
         throw new Error("Paystack did not respond with a valid payment portal URL.");
@@ -314,6 +363,77 @@ export default function Subscription() {
     }
     return `${trialDaysLeft} days remaining`;
   };
+
+  if (verifyingPayment) {
+    return (
+      <div className="max-w-5xl mx-auto py-16 px-4 flex flex-col items-center justify-center text-center min-h-[60vh] space-y-6">
+        <div className="relative">
+          <div className="w-20 h-20 rounded-full border border-amber-accent/20 flex items-center justify-center">
+            <RefreshCw className="w-10 h-10 text-amber-accent animate-spin" />
+          </div>
+          <div className="absolute inset-0 w-20 h-20 rounded-full border-t border-amber-accent animate-pulse" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="font-serif text-3xl italic text-white font-light">Verifying Your Payment</h2>
+          <p className="text-gray-400 text-sm font-light max-w-md mx-auto leading-relaxed">
+            Please hold on while we securely confirm your billing reference with the Paystack live gateway. Do not close or refresh this page.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (verificationSuccess) {
+    return (
+      <div className="max-w-5xl mx-auto py-16 px-4 flex flex-col items-center justify-center text-center min-h-[60vh] space-y-6">
+        <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+          <CheckCircle2 className="w-10 h-10" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="font-serif text-3xl italic text-white font-light">Subscription Activated!</h2>
+          <p className="text-emerald-400 text-sm font-medium max-w-md mx-auto leading-relaxed">
+            {verificationSuccess}
+          </p>
+          <p className="text-gray-400 text-xs font-light max-w-sm mx-auto">
+            Your Premium advantages are now fully active on your account. Welcome to Gourmet Kitchen Plus.
+          </p>
+        </div>
+        <button
+          onClick={() => setVerificationSuccess(null)}
+          className="px-8 py-3.5 bg-amber-accent text-black rounded-full font-black uppercase text-[10px] tracking-wider hover:bg-white hover:text-black transition-all cursor-pointer shadow-lg active:scale-95"
+        >
+          Explore Gourmet Kitchen Plus
+        </button>
+      </div>
+    );
+  }
+
+  if (verificationError) {
+    return (
+      <div className="max-w-5xl mx-auto py-16 px-4 flex flex-col items-center justify-center text-center min-h-[60vh] space-y-6">
+        <div className="w-20 h-20 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
+          <AlertTriangle className="w-10 h-10" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="font-serif text-3xl italic text-white font-light">Verification Failed</h2>
+          <p className="text-rose-400 text-sm font-medium max-w-md mx-auto leading-relaxed">
+            {verificationError}
+          </p>
+          <p className="text-gray-400 text-xs font-light max-w-sm mx-auto">
+            We couldn't verify your transaction. If money was deducted, please contact support with your payment reference.
+          </p>
+        </div>
+        <div className="flex gap-3 justify-center">
+          <button
+            onClick={() => setVerificationError(null)}
+            className="px-8 py-3.5 bg-amber-accent text-black rounded-full font-black uppercase text-[10px] tracking-wider hover:bg-white hover:text-black transition-all cursor-pointer shadow-lg active:scale-95"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-16 py-8 px-4 selection:bg-amber-accent/20">

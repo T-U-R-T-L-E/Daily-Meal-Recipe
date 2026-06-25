@@ -1028,8 +1028,72 @@ app.post("/api/paystack/verify", async (req, res) => {
       throw new Error(data.message || "Transaction verification failed or incomplete");
     }
 
+    const customerEmail = data.data.customer.email;
+    let userUpgraded = false;
+    let userId = null;
+
+    if (adminDb && customerEmail) {
+      const usersSnap = await adminDb.collection("users").where("email", "==", customerEmail).limit(1).get();
+      if (!usersSnap.empty) {
+        const userDoc = usersSnap.docs[0];
+        userId = userDoc.id;
+        const userData = userDoc.data();
+
+        const updatedSubscription = {
+          status: "active",
+          subscribedDate: new Date().toISOString(),
+          trialEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+        };
+
+        const cardDetail = data.data.authorization ? {
+          id: "card-" + Date.now(),
+          brand: data.data.authorization.brand || "visa",
+          last4: data.data.authorization.last4 || "4081",
+          exp_month: Number(data.data.authorization.exp_month) || 12,
+          exp_year: Number(data.data.authorization.exp_year) || 2030,
+          card_type: data.data.authorization.card_type || "visa"
+        } : {
+          id: "card-" + Date.now(),
+          brand: "visa",
+          last4: "4081",
+          exp_month: 12,
+          exp_year: 2030,
+          card_type: "visa"
+        };
+
+        const existingMethods = userData.paymentMethods || [];
+        const isDuplicate = existingMethods.some((c: any) => c.brand === cardDetail.brand && c.last4 === cardDetail.last4);
+        const updatedPaymentMethods = isDuplicate ? existingMethods : [...existingMethods, cardDetail];
+
+        const existingHistory = userData.billingHistory || [];
+        const hasReference = existingHistory.some((h: any) => h.reference === reference);
+        let updatedBillingHistory = existingHistory;
+        if (!hasReference) {
+          const historyItem = {
+            id: "bill-" + Date.now(),
+            amount: (data.data.amount || 500) / 100,
+            status: "success",
+            date: new Date().toISOString(),
+            plan: "Plus Monthly Subscription Plan",
+            reference: reference
+          };
+          updatedBillingHistory = [historyItem, ...existingHistory];
+        }
+
+        await adminDb.collection("users").doc(userId).update({
+          subscription: updatedSubscription,
+          paymentMethods: updatedPaymentMethods,
+          billingHistory: updatedBillingHistory
+        });
+        userUpgraded = true;
+        console.log(`[Paystack Verification SUCCESS] Upgraded Firestore User Doc ID "${userId}" (${customerEmail}) via API verification.`);
+      }
+    }
+
     res.json({
       status: "success",
+      userUpgraded,
+      userId,
       data: {
         amount: data.data.amount,
         currency: data.data.currency,
