@@ -371,7 +371,7 @@ app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
   }
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, PATCH, DELETE");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, X-User-Id, Accept");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, X-User-Id, Accept, Idempotency-Key, idempotency-key, x-paystack-signature");
   res.setHeader("Access-Control-Allow-Credentials", "true");
   
   // Instantly resolve CORS preflight options requests successfully
