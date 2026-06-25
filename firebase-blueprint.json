@@ -249,6 +249,21 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["text", "count"]
+    },
+    "UnmatchedPayment": {
+      "title": "Unmatched Payment",
+      "description": "Payment transactions received with emails not matching any registered user",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "amount": { "type": "number" },
+        "reference": { "type": "string" },
+        "currency": { "type": "string" },
+        "event": { "type": "string" },
+        "payload": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "amount", "reference", "createdAt"]
     }
   },
   "firestore": {
@@ -265,6 +280,7 @@
     "/files/{fileId}": { "schema": "FileRecord", "description": "Uploaded, synced culinary/gourmet assets, recipes, and documents" },
     "/files/{fileId}/chunks/{chunkId}": { "schema": "FileChunk", "description": "A portion of file binary represented as base64 in Firestore" },
     "/nutritionLogs/{logId}": { "schema": "NutritionLog", "description": "Daily food, hydration, and energy journal" },
-    "/search_suggestions/{suggestionId}": { "schema": "SearchSuggestion", "description": "Global list of searched queries and counts" }
+    "/search_suggestions/{suggestionId}": { "schema": "SearchSuggestion", "description": "Global list of searched queries and counts" },
+    "/unmatched_payments/{paymentId}": { "schema": "UnmatchedPayment", "description": "Billing transactions with unregistered user emails" }
   }
 }

@@ -30,6 +30,7 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { UserProfile, SavedCard, BillingReceipt } from '../types';
 import { Shimmer } from '../components/recipes/RecipeSkeleton';
 import { useErrorUX, InlineErrorHelper } from '../lib/ErrorUXContext';
+import { initiatePaystackTransaction, verifyPaystackTransaction } from '../lib/paystack';
 
 export default function Subscription() {
   const { user } = useAuth();
@@ -102,16 +103,8 @@ export default function Subscription() {
         setVerificationError(null);
         setVerificationSuccess(null);
         try {
-          const response = await fetch('/api/paystack/verify', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ reference })
-          });
-
-          const resData = await response.json();
-          if (!response.ok || resData.status !== 'success') {
+          const resData = await verifyPaystackTransaction(reference);
+          if (resData.status !== 'success') {
             throw new Error(resData.error || 'Failed to verify transaction with the Paystack secure gateway.');
           }
 
@@ -249,35 +242,22 @@ export default function Subscription() {
       const config = currencyConfigs[selectedCurrency];
       const selectedAmount = paymentModalType === 'subscribe' ? config.subscribeAmount : config.linkAmount;
 
-      const response = await fetch('/api/paystack/initialize', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Idempotency-Key': idempotencyKey || ''
-        },
-        body: JSON.stringify({
-          email: user.email,
-          amount: selectedAmount,
-          currency: selectedCurrency,
-          idempotencyKey: idempotencyKey,
-          callbackUrl: window.location.origin + '/subscription'
-        })
-      });
+      const resData = await initiatePaystackTransaction(
+        user.email || '',
+        selectedAmount,
+        selectedCurrency,
+        idempotencyKey || '',
+        window.location.origin + '/subscription'
+      );
 
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || `Failed to initialize secure Paystack checkout transaction.`);
-      }
-
-      const resData = await response.json();
-      if (resData.status === 'success' && resData.authorization_url) {
+      if (resData.status !== 'failed' && resData.authorization_url) {
         setPaymentFormSuccess("Redirecting to the secure live Paystack payment gateway... Please authorize your payment there.");
         setTimeout(() => {
           // Redirect to the payment portal
-          window.location.href = resData.authorization_url;
+          window.location.href = resData.authorization_url!;
         }, 1500);
       } else {
-        throw new Error("Paystack did not respond with a valid payment portal URL.");
+        throw new Error(resData.error || "Paystack did not respond with a valid payment portal URL.");
       }
     } catch (err: any) {
       const errMsg = err?.message || "Secure live initialization failed.";
@@ -1030,6 +1010,9 @@ export default function Subscription() {
                       <button
                         onClick={() => {
                           setPaymentFormError(null);
+                          // Generate a completely new idempotency key for the retry attempt
+                          const uniqueKey = (paymentModalType === 'subscribe' ? "idem-sub-" : "idem-link-") + Date.now() + "-" + Math.random().toString(36).substr(2, 9);
+                          setIdempotencyKey(uniqueKey);
                         }}
                         className="flex-grow py-3.5 bg-amber-500 text-black rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-white hover:text-black transition-all cursor-pointer shadow-lg active:scale-95"
                       >

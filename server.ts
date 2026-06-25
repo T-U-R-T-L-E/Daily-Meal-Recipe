@@ -952,12 +952,14 @@ app.post("/api/paystack/initialize", async (req, res) => {
       }
     }
 
-    const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY || "";
+    const paystackSecretKey = (process.env.PAYSTACK_SECRET_KEY || "").trim();
     if (!paystackSecretKey) {
-      throw new Error("PAYSTACK_SECRET_KEY is not configured in environment variables.");
+      throw new Error("PAYSTACK_SECRET_KEY is not configured in environment variables. Please set it in the Settings menu.");
     }
 
     const finalCurrency = currency || process.env.PAYSTACK_CURRENCY || "KES";
+
+    console.log(`[Paystack Init] Initiating payment request for ${email}. Amount: ${amount}, Currency: ${finalCurrency}`);
 
     // Call Paystack API to initialize transaction
     const response = await fetch("https://api.paystack.co/transaction/initialize", {
@@ -975,9 +977,22 @@ app.post("/api/paystack/initialize", async (req, res) => {
       })
     });
 
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`[Paystack Init FAIL] Status: ${response.status} ${response.statusText}. Response body:`, errText);
+      let parsedErr: any = null;
+      try {
+        parsedErr = JSON.parse(errText);
+      } catch (e) {
+        // Not JSON
+      }
+      const errorMsg = parsedErr?.message || `Paystack error (HTTP ${response.status}): ${response.statusText || 'Unknown Error'}`;
+      throw new Error(errorMsg);
+    }
+
     const data = await response.json();
-    if (!data.status) {
-      throw new Error(data.message || "Failed to initialize Paystack transaction");
+    if (!data.status || !data.data) {
+      throw new Error(data.message || "Paystack failed to initialize valid transaction payload.");
     }
 
     const responseData = {
@@ -1224,7 +1239,39 @@ app.post("/api/paystack/webhook", async (req, res) => {
     // Query for the matching user inside Firestore by email (mirroring standard server-to-server webhook lookup)
     const usersSnap = await adminDb.collection("users").where("email", "==", customerEmail).limit(1).get();
     if (usersSnap.empty) {
-      return res.status(404).json({ error: `User with email ${customerEmail} not found in Firestore registry.` });
+      console.warn(`[Paystack Webhook] Payment received but no registered user account matches email: ${customerEmail}`);
+      // Log this to an isolated collection to handle mismatched profiles gracefully
+      const referenceId = eventData?.reference || ("unmatched-" + Date.now());
+      await adminDb.collection("unmatched_payments").doc(referenceId).set({
+        email: customerEmail,
+        amount: (eventData?.amount || 0) / 100,
+        reference: referenceId,
+        currency: eventData?.currency || "USD",
+        event: eventName,
+        payload: event,
+        createdAt: FieldValue.serverTimestamp()
+      });
+
+      const responseUnmatched = {
+        status: "success",
+        message: "Payment event received, but no registered user account matches this email. Recorded securely in unmatched_payments collection for manual settlement.",
+        customerEmail,
+        reference: referenceId
+      };
+
+      if (idempotencyKey && adminDb) {
+        try {
+          await adminDb.collection("idempotency_keys").doc(idempotencyKey).set({
+            status: 200,
+            body: responseUnmatched,
+            createdAt: new Date().toISOString()
+          });
+        } catch (err) {
+          console.error("Failed to save unmatched response to idempotency collection:", err);
+        }
+      }
+
+      return res.status(200).json(responseUnmatched);
     }
 
     const userDoc = usersSnap.docs[0];
