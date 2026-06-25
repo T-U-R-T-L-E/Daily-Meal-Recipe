@@ -80,6 +80,7 @@ export interface UserProfile {
   role?: 'admin' | 'user' | 'seller';
   isProfileComplete?: boolean;
   themePreference?: 'dark' | 'light';
+  preferredCurrency?: 'KES' | 'USD' | 'NGN' | 'GHS' | 'ZAR';
   subscription?: {
     status: 'active' | 'trial' | 'past_due' | 'canceled' | 'unpaid' | 'expired' | 'none';
     trialEndDate: string;

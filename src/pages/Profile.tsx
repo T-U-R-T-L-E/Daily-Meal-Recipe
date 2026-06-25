@@ -931,6 +931,38 @@ export default function Profile() {
             </div>
           </section>
 
+          {/* Preferred Billing Currency */}
+          <section className="space-y-6">
+            <div className="flex items-center gap-3">
+              <CreditCard className="w-5 h-5 text-amber-accent" />
+              <h3 className="font-serif text-3xl font-light text-white italic">Billing Currency</h3>
+            </div>
+            <div className="relative">
+              <select
+                value={profile.preferredCurrency || 'KES'}
+                onChange={(e) => setProfile({ ...profile, preferredCurrency: e.target.value as any })}
+                className="w-full bg-onyx text-white border border-white/10 rounded-2xl p-5 text-xs font-semibold uppercase tracking-wider focus:outline-none focus:ring-1 focus:ring-amber-accent transition-all cursor-pointer select-none"
+                style={{
+                  WebkitAppearance: 'none',
+                  MozAppearance: 'none',
+                  appearance: 'none',
+                }}
+              >
+                <option value="KES" className="bg-onyx text-white font-sans">KES - Kenyan Shilling (M-PESA & Local Cards)</option>
+                <option value="USD" className="bg-onyx text-white font-sans">USD - United States Dollar (International Cards)</option>
+                <option value="NGN" className="bg-onyx text-white font-sans">NGN - Nigerian Naira (Cards & Bank Transfers)</option>
+                <option value="GHS" className="bg-onyx text-white font-sans">GHS - Ghanaian Cedi (Cards & Mobile Money)</option>
+                <option value="ZAR" className="bg-onyx text-white font-sans">ZAR - South African Rand (Cards & EFT)</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-white/40">
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+              </div>
+            </div>
+            <p className="text-[9px] text-white/20 italic">
+              Choose your default payment currency. If your card fails with a "Currency not supported by merchant" error, switch this setting to match your card's region or try USD.
+            </p>
+          </section>
+
           <button 
             onClick={saveProfile}
             disabled={saving}

@@ -49,6 +49,12 @@ export default function Subscription() {
   const [modalTheme, setModalTheme] = useState<'light' | 'dark'>('light');
   const [selectedCurrency, setSelectedCurrency] = useState<'KES' | 'USD' | 'NGN' | 'GHS' | 'ZAR'>('KES');
 
+  useEffect(() => {
+    if (profile?.preferredCurrency) {
+      setSelectedCurrency(profile.preferredCurrency);
+    }
+  }, [profile]);
+
   const currencyConfigs = {
     KES: { symbol: 'KES ', subscribeAmount: 65000, linkAmount: 13000, displaySubscribe: '650.00 KES', displayLink: '130.00 KES', textAmount: '650.00 KES' },
     USD: { symbol: '$', subscribeAmount: 500, linkAmount: 100, displaySubscribe: '5.00 USD', displayLink: '1.00 USD', textAmount: '$5.00 USD' },
