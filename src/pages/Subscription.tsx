@@ -47,6 +47,26 @@ export default function Subscription() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentModalType, setPaymentModalType] = useState<'subscribe' | 'link'>('subscribe');
   const [modalTheme, setModalTheme] = useState<'light' | 'dark'>('light');
+  const [selectedCurrency, setSelectedCurrency] = useState<'KES' | 'USD' | 'NGN' | 'GHS' | 'ZAR'>('KES');
+
+  const currencyConfigs = {
+    KES: { symbol: 'KES ', subscribeAmount: 65000, linkAmount: 13000, displaySubscribe: '650.00 KES', displayLink: '130.00 KES', textAmount: '650.00 KES' },
+    USD: { symbol: '$', subscribeAmount: 500, linkAmount: 100, displaySubscribe: '5.00 USD', displayLink: '1.00 USD', textAmount: '$5.00 USD' },
+    NGN: { symbol: '₦', subscribeAmount: 750000, linkAmount: 150000, displaySubscribe: '7,500.00 NGN', displayLink: '1,500.00 NGN', textAmount: '₦7,500.00 NGN' },
+    GHS: { symbol: 'GH₵ ', subscribeAmount: 7500, linkAmount: 1500, displaySubscribe: '75.00 GHS', displayLink: '15.00 GHS', textAmount: 'GH₵75.00 GHS' },
+    ZAR: { symbol: 'R ', subscribeAmount: 9000, linkAmount: 1800, displaySubscribe: '90.00 ZAR', displayLink: '18.00 ZAR', textAmount: 'R90.00 ZAR' }
+  };
+
+  const getCurrencySymbol = (currencyCode?: string) => {
+    switch (currencyCode?.toUpperCase()) {
+      case 'KES': return 'KES ';
+      case 'NGN': return '₦';
+      case 'GHS': return 'GH₵ ';
+      case 'ZAR': return 'R ';
+      case 'USD':
+      default: return '$';
+    }
+  };
 
   useEffect(() => {
     if (showPaymentModal) {
@@ -220,6 +240,9 @@ export default function Subscription() {
     setPaymentFormSuccess(null);
 
     try {
+      const config = currencyConfigs[selectedCurrency];
+      const selectedAmount = paymentModalType === 'subscribe' ? config.subscribeAmount : config.linkAmount;
+
       const response = await fetch('/api/paystack/initialize', {
         method: 'POST',
         headers: {
@@ -228,7 +251,8 @@ export default function Subscription() {
         },
         body: JSON.stringify({
           email: user.email,
-          amount: paymentModalType === 'subscribe' ? 500 : 100, // $5.00 subscription, $1.00 linking verification
+          amount: selectedAmount,
+          currency: selectedCurrency,
           idempotencyKey: idempotencyKey,
           callbackUrl: window.location.origin + '/subscription'
         })
@@ -656,7 +680,7 @@ export default function Subscription() {
                         {item.plan}
                       </td>
                       <td className="whitespace-nowrap px-6 py-4 font-mono font-bold text-amber-accent">
-                        ${Number(item.amount).toFixed(2)}
+                        {getCurrencySymbol(item.currency)}{Number(item.amount).toFixed(2)}
                       </td>
                       <td className="whitespace-nowrap px-6 py-4">
                         {item.status === 'failed' ? (
@@ -746,7 +770,7 @@ export default function Subscription() {
                 <span className="text-[9px] uppercase font-bold text-[#8f8b83] tracking-widest block">ORDER DETAILS</span>
                 <div className="flex justify-between items-baseline text-xs">
                   <span className="font-bold">{selectedReceipt.plan}</span>
-                  <span className="font-bold">${Number(selectedReceipt.amount).toFixed(2)}</span>
+                  <span className="font-bold">{getCurrencySymbol(selectedReceipt.currency)}{Number(selectedReceipt.amount).toFixed(2)}</span>
                 </div>
                 
                 <div className="border-b border-dashed border-[#d1cbc4] w-full pt-1" />
@@ -754,15 +778,15 @@ export default function Subscription() {
                 <div className="space-y-1.5 text-xs">
                   <div className="flex justify-between text-[#8f8b83]">
                     <span>Subtotal:</span>
-                    <span>${(selectedReceipt.amount * 0.95).toFixed(2)}</span>
+                    <span>{getCurrencySymbol(selectedReceipt.currency)}{(selectedReceipt.amount * 0.95).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-[#8f8b83]">
                     <span>VAT / Taxes (5%):</span>
-                    <span>${(selectedReceipt.amount * 0.05).toFixed(2)}</span>
+                    <span>{getCurrencySymbol(selectedReceipt.currency)}{(selectedReceipt.amount * 0.05).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm font-extrabold text-[#1c1917] pt-1">
-                    <span>Total USD:</span>
-                    <span>${Number(selectedReceipt.amount).toFixed(2)}</span>
+                    <span>Total {selectedReceipt.currency || 'USD'}:</span>
+                    <span>{getCurrencySymbol(selectedReceipt.currency)}{Number(selectedReceipt.amount).toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -1054,20 +1078,44 @@ export default function Subscription() {
                           </span>
                         </div>
 
+                        {/* SELECT BILLING CURRENCY */}
+                        <div className="flex flex-col gap-1.5 py-1">
+                          <span style={{ color: isModalLight ? '#475569' : '#9ca3af' }} className="text-xs font-semibold">
+                            Select Billing Currency
+                          </span>
+                          <select
+                            value={selectedCurrency}
+                            disabled={processing}
+                            onChange={(e) => setSelectedCurrency(e.target.value as any)}
+                            style={{
+                              backgroundColor: isModalLight ? '#f8fafc' : 'rgba(255, 255, 255, 0.05)',
+                              color: isModalLight ? '#0f172a' : '#ffffff',
+                              borderColor: isModalLight ? '#cbd5e1' : 'rgba(255, 255, 255, 0.1)'
+                            }}
+                            className="w-full rounded-xl px-3 py-2 text-xs border font-medium focus:outline-none focus:ring-1 focus:ring-amber-accent"
+                          >
+                            <option value="KES">KES - Kenyan Shilling (Supports M-PESA & Cards)</option>
+                            <option value="USD">USD - US Dollar (International Credit Cards)</option>
+                            <option value="NGN">NGN - Nigerian Naira (Supports Cards & Bank Transfer)</option>
+                            <option value="GHS">GHS - Ghanaian Cedi (Supports Cards & Mobile Money)</option>
+                            <option value="ZAR">ZAR - South African Rand (Supports Cards & EFT)</option>
+                          </select>
+                        </div>
+
                         <div className="flex justify-between items-center py-1">
                           <span style={{ color: isModalLight ? '#475569' : '#9ca3af' }} className="text-xs font-semibold">
                             Total Due Now
                           </span>
                           <span style={{ color: isModalLight ? '#0f172a' : '#ffffff' }} className="text-sm font-black text-amber-accent">
-                            {paymentModalType === 'subscribe' ? '$5.00 USD / mo' : '$1.00 USD'}
+                            {paymentModalType === 'subscribe' ? currencyConfigs[selectedCurrency].displaySubscribe : currencyConfigs[selectedCurrency].displayLink}
                           </span>
                         </div>
 
                         <div className="pt-3 border-t border-dashed" style={{ borderColor: isModalLight ? '#e2e8f0' : 'rgba(255,255,255,0.08)' }}>
                           <p style={{ color: isModalLight ? '#64748b' : '#9ca3af' }} className="text-[10.5px] leading-relaxed">
                             {paymentModalType === 'subscribe' 
-                              ? 'Daily Plus Plan includes unlimited AI-powered gourmet recipe generation, full smart kitchen personalization filters, and unlimited custom saved favorites. Billed automatically at $5.00 USD every month. Cancel anytime.' 
-                              : 'An authorization invoice charge to safely link and verify your active card credentials. This payment is processed securely via Paystack.'}
+                              ? `Daily Plus Plan includes unlimited AI-powered gourmet recipe generation, full smart kitchen personalization filters, and unlimited custom saved favorites. Billed automatically at ${currencyConfigs[selectedCurrency].displaySubscribe} every month. Cancel anytime.` 
+                              : `An authorization invoice charge to safely link and verify your active card credentials. Billed as ${currencyConfigs[selectedCurrency].displayLink}. This payment is processed securely via Paystack.`}
                           </p>
                         </div>
                       </div>
@@ -1092,7 +1140,9 @@ export default function Subscription() {
                           ) : (
                             <span className="flex items-center gap-2 font-black text-[10px] tracking-widest uppercase text-white">
                               <ExternalLink className="w-4 h-4 shrink-0 text-white" />
-                              {paymentModalType === 'subscribe' ? 'Pay $5.00 Securely with Paystack' : 'Authorize $1.00 with Paystack'}
+                              {paymentModalType === 'subscribe' 
+                                ? `Pay ${currencyConfigs[selectedCurrency].displaySubscribe} Securely with Paystack` 
+                                : `Authorize ${currencyConfigs[selectedCurrency].displayLink} with Paystack`}
                             </span>
                           )}
                         </button>

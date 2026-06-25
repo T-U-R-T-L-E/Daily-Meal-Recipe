@@ -934,7 +934,7 @@ app.get("/api/paystack/config", (req, res) => {
 
 app.post("/api/paystack/initialize", async (req, res) => {
   try {
-    const { email, amount, reference, callbackUrl } = req.body;
+    const { email, amount, currency, reference, callbackUrl } = req.body;
     const idempotencyKey = (req.headers["idempotency-key"] || req.headers["x-idempotency-key"] || req.body.idempotencyKey) as string | undefined;
 
     if (idempotencyKey && adminDb) {
@@ -957,6 +957,8 @@ app.post("/api/paystack/initialize", async (req, res) => {
       throw new Error("PAYSTACK_SECRET_KEY is not configured in environment variables.");
     }
 
+    const finalCurrency = currency || process.env.PAYSTACK_CURRENCY || "KES";
+
     // Call Paystack API to initialize transaction
     const response = await fetch("https://api.paystack.co/transaction/initialize", {
       method: "POST",
@@ -966,8 +968,8 @@ app.post("/api/paystack/initialize", async (req, res) => {
       },
       body: JSON.stringify({
         email,
-        amount: amount || 500, // 500 minor units ($5.00)
-        currency: "USD",
+        amount: amount || 500,
+        currency: finalCurrency,
         reference: reference || `ref-${Math.floor(Math.random() * 1000000000) + 1}`,
         callback_url: callbackUrl || undefined,
       })
@@ -1075,7 +1077,8 @@ app.post("/api/paystack/verify", async (req, res) => {
             status: "success",
             date: new Date().toISOString(),
             plan: "Plus Monthly Subscription Plan",
-            reference: reference
+            reference: reference,
+            currency: data.data.currency || "USD"
           };
           updatedBillingHistory = [historyItem, ...existingHistory];
         }
@@ -1266,7 +1269,8 @@ app.post("/api/paystack/webhook", async (req, res) => {
         status: "success",
         date: new Date().toISOString(),
         plan: "Plus Monthly Subscription Plan (Via Webhook)",
-        reference: eventData.reference || ("webh-" + Date.now())
+        reference: eventData.reference || ("webh-" + Date.now()),
+        currency: eventData.currency || "USD"
       };
       const updatedBillingHistory = [historyItem, ...existingHistory];
 

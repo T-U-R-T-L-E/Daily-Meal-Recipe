@@ -106,6 +106,7 @@ export interface BillingReceipt {
   date: string;
   plan: string;
   reference: string;
+  currency?: string;
 }
 
 export interface MealPlan {
