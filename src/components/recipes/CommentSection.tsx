@@ -20,9 +20,10 @@ interface Comment {
 
 interface CommentSectionProps {
   recipeId: string;
+  onRatingSubmitted?: (avg: number, count: number) => void;
 }
 
-export default function CommentSection({ recipeId }: CommentSectionProps) {
+export default function CommentSection({ recipeId, onRatingSubmitted }: CommentSectionProps) {
   const { user } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -112,6 +113,10 @@ export default function CommentSection({ recipeId }: CommentSectionProps) {
           ratingsCount: count,
           averageRating: avg
         });
+
+        if (onRatingSubmitted) {
+          onRatingSubmitted(avg, count);
+        }
       } catch (calcErr) {
         console.warn("Failed to update recipe average rating:", calcErr);
       }

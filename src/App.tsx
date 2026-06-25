@@ -4,8 +4,9 @@
  */
 
 import { useState, useEffect, lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from './lib/useAuth';
+import { useSubscription } from './lib/useSubscription';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 
@@ -245,9 +246,91 @@ function AppContent() {
     }
   }
 
+function SubscriptionBanner() {
+  const { user } = useAuth();
+  const sub = useSubscription();
+  const location = useLocation();
+
+  if (!user || sub.loading) return null;
+
+  // Render nothing if active & not past_due or canceled
+  if (sub.status === 'active' || (sub.status === 'trial' && sub.isActive)) {
+    return null;
+  }
+
+  // If past due:
+  if (sub.isPastDue) {
+    return (
+      <div className="bg-amber-500/10 border-b border-amber-500/20 text-amber-200 px-6 py-3 text-xs md:text-sm font-medium flex items-center justify-between gap-4 animate-fade-in z-30">
+        <div className="flex items-center gap-2.5">
+          <span className="text-base">⚠️</span>
+          <span>
+            <strong>Payment Past Due:</strong> Your last card charge failed. We've kept your premium access active temporarily, but please update your payment method to avoid service lock.
+          </span>
+        </div>
+        {location.pathname !== '/subscription' && (
+          <Link
+            to="/subscription"
+            className="shrink-0 bg-amber-500 hover:bg-amber-400 text-black px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all select-none"
+          >
+            Update Card
+          </Link>
+        )}
+      </div>
+    );
+  }
+
+  // If canceled with time remaining:
+  if (sub.isCanceled && sub.isActive && sub.endDate) {
+    return (
+      <div className="bg-blue-500/10 border-b border-blue-500/20 text-blue-200 px-6 py-3 text-xs md:text-sm font-medium flex items-center justify-between gap-4 animate-fade-in z-30">
+        <div className="flex items-center gap-2.5">
+          <span className="text-base">ℹ️</span>
+          <span>
+            <strong>Subscription Canceled:</strong> Your premium access remains active for <strong>{sub.daysLeft} days</strong> (until {new Date(sub.endDate).toLocaleDateString()}).
+          </span>
+        </div>
+        {location.pathname !== '/subscription' && (
+          <Link
+            to="/subscription"
+            className="shrink-0 bg-blue-500 hover:bg-blue-400 text-black px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all select-none"
+          >
+            Reactivate
+          </Link>
+        )}
+      </div>
+    );
+  }
+
+  // If unpaid:
+  if (sub.isUnpaid) {
+    return (
+      <div className="bg-red-500/10 border-b border-red-500/20 text-red-200 px-6 py-3 text-xs md:text-sm font-medium flex items-center justify-between gap-4 animate-fade-in z-30">
+        <div className="flex items-center gap-2.5">
+          <span className="text-base">🔒</span>
+          <span>
+            <strong>Premium Access Locked:</strong> Your subscription has been suspended due to unpaid invoices. Reactivate your subscription to unlock all premium culinary features.
+          </span>
+        </div>
+        {location.pathname !== '/subscription' && (
+          <Link
+            to="/subscription"
+            className="shrink-0 bg-red-500 hover:bg-red-400 text-white px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all select-none"
+          >
+            Reactivate
+          </Link>
+        )}
+      </div>
+    );
+  }
+
+  return null;
+}
+
   return (
     <div className="min-h-screen bg-onyx flex flex-col text-gray-300">
         <Navbar onOpenDownload={() => setIsDownloadOpen(true)} />
+        <SubscriptionBanner />
         <main className={`flex-1 w-full max-w-7xl xxl:max-w-[1400px] 3xl:max-w-[1800px] 4xl:max-w-[2400px] 5xl:max-w-[3200px] mx-auto ${location.pathname === '/' ? 'px-1 xs:px-2' : 'px-3 xs:px-4'} sm:px-6 pt-6 pb-20 md:py-12`}>
           <AnimatePresence mode="wait">
             <Suspense fallback={<PageLoadingFallback />}>

@@ -1181,7 +1181,17 @@ export default function RecipeDetails() {
 
       <div className="pt-24 border-t border-white/5">
         <div className="max-w-4xl mx-auto">
-          <CommentSection recipeId={recipe.id} />
+          <CommentSection 
+            key={recipe.ratingsCount || 0}
+            recipeId={recipe.id} 
+            onRatingSubmitted={(avg, count) => {
+              setRecipe(prev => prev ? {
+                ...prev,
+                ratingsCount: count,
+                averageRating: avg
+              } : null);
+            }}
+          />
         </div>
       </div>
 

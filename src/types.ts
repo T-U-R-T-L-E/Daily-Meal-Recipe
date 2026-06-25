@@ -81,9 +81,10 @@ export interface UserProfile {
   isProfileComplete?: boolean;
   themePreference?: 'dark' | 'light';
   subscription?: {
-    status: 'active' | 'trial' | 'expired' | 'none';
+    status: 'active' | 'trial' | 'past_due' | 'canceled' | 'unpaid' | 'expired' | 'none';
     trialEndDate: string;
     subscribedDate?: string;
+    endDate?: string;
   };
   paymentMethods?: SavedCard[];
   billingHistory?: BillingReceipt[];
