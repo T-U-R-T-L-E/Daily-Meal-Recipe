@@ -31,6 +31,7 @@ import { UserProfile, SavedCard, BillingReceipt } from '../types';
 import { Shimmer } from '../components/recipes/RecipeSkeleton';
 import { useErrorUX, InlineErrorHelper } from '../lib/ErrorUXContext';
 import { initiatePaystackTransaction, verifyPaystackTransaction } from '../lib/paystack';
+import { faultTolerantFetch } from '../lib/api';
 
 export default function Subscription() {
   const { user } = useAuth();
@@ -146,7 +147,7 @@ export default function Subscription() {
     }
     async function fetchPaystackConfig() {
       try {
-        const res = await fetch('/api/paystack/config');
+        const res = await faultTolerantFetch('/api/paystack/config');
         if (res.ok) {
           const data = await res.json();
           if (data.paystackPublicKey) {
