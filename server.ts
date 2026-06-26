@@ -1060,6 +1060,7 @@ app.post("/api/paystack/verify", async (req, res) => {
           status: "active",
           subscribedDate: new Date().toISOString(),
           trialEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+          nextPaymentDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         };
 
         const cardDetail = data.data.authorization ? {
@@ -1286,6 +1287,7 @@ app.post("/api/paystack/webhook", async (req, res) => {
         status: "active",
         subscribedDate: new Date().toISOString(),
         trialEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+        nextPaymentDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       };
 
       // Extract authorization card detail safely

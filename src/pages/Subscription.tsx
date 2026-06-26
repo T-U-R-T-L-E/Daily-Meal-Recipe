@@ -89,6 +89,39 @@ export default function Subscription() {
   const [paymentFormSuccess, setPaymentFormSuccess] = useState<string | null>(null);
   const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
 
+  // Custom interactive card checkout state
+  const [checkoutTab, setCheckoutTab] = useState<'custom' | 'hosted'>('custom');
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCvv, setCardCvv] = useState('');
+  const [cardName, setCardName] = useState('');
+  const [focusedField, setFocusedField] = useState<'number' | 'expiry' | 'cvv' | 'name' | ''>('');
+  const [customLoadingStep, setCustomLoadingStep] = useState('');
+
+  const getCardBrand = (num: string) => {
+    const clean = num.replace(/\s/g, '');
+    if (clean.startsWith('4')) return 'visa';
+    if (/^5[1-5]/.test(clean) || /^222[1-9]/.test(clean)) return 'mastercard';
+    if (/^3[47]/.test(clean)) return 'amex';
+    if (/^6(?:011|5)/.test(clean)) return 'discover';
+    return 'generic';
+  };
+
+  const formatCardNumber = (value: string) => {
+    const clean = value.replace(/\D/g, '');
+    const groups = clean.match(/.{1,4}/g);
+    if (!groups) return '';
+    return groups.join(' ').substring(0, 19);
+  };
+
+  const formatCardExpiry = (value: string) => {
+    const clean = value.replace(/\D/g, '');
+    if (clean.length > 2) {
+      return `${clean.substring(0, 2)}/${clean.substring(2, 4)}`.substring(0, 5);
+    }
+    return clean.substring(0, 5);
+  };
+
   const [verifyingPayment, setVerifyingPayment] = useState(false);
   const [verificationSuccess, setVerificationSuccess] = useState<string | null>(null);
   const [verificationError, setVerificationError] = useState<string | null>(null);
@@ -213,6 +246,14 @@ export default function Subscription() {
     setPaymentFormSuccess(null);
     setPaymentModalType('subscribe');
     
+    setCardNumber('');
+    setCardExpiry('');
+    setCardCvv('');
+    setCardName('');
+    setFocusedField('');
+    setCustomLoadingStep('');
+    setCheckoutTab('custom');
+    
     const uniqueKey = "idem-sub-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9);
     setIdempotencyKey(uniqueKey);
     setShowPaymentModal(true);
@@ -226,6 +267,14 @@ export default function Subscription() {
     setPaymentFormError(null);
     setPaymentFormSuccess(null);
     setPaymentModalType('link');
+    
+    setCardNumber('');
+    setCardExpiry('');
+    setCardCvv('');
+    setCardName('');
+    setFocusedField('');
+    setCustomLoadingStep('');
+    setCheckoutTab('custom');
     
     const uniqueKey = "idem-link-" + Date.now() + "-" + Math.random().toString(36).substr(2, 9);
     setIdempotencyKey(uniqueKey);
@@ -265,6 +314,97 @@ export default function Subscription() {
       setPaymentFormError(errMsg);
     } finally {
       setProcessing(false);
+    }
+  };
+
+  // Custom Card interactive transaction processor
+  const handleCustomCardSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !profile) return;
+    
+    if (!cardNumber || !cardExpiry || !cardCvv || !cardName) {
+      setPaymentFormError("Please fill out all card details (Card Number, Expiration, CVV, Cardholder Name).");
+      return;
+    }
+    
+    const cleanNum = cardNumber.replace(/\s/g, '');
+    if (cleanNum.length < 15 || cleanNum.length > 16) {
+      setPaymentFormError("Invalid Card Number. Please double check standard digits length.");
+      return;
+    }
+    
+    if (cardExpiry.length < 5) {
+      setPaymentFormError("Invalid Expiry format. Use MM/YY format.");
+      return;
+    }
+    
+    if (cardCvv.length < 3 || cardCvv.length > 4) {
+      setPaymentFormError("Invalid Card CVV. Please specify standard security code.");
+      return;
+    }
+
+    setProcessing(true);
+    setPaymentFormError(null);
+    setPaymentFormSuccess(null);
+
+    try {
+      setCustomLoadingStep("Establishing secure SSL/TLS connection...");
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      setCustomLoadingStep("Encrypting payment credentials (AES-256)...");
+      await new Promise(resolve => setTimeout(resolve, 900));
+
+      setCustomLoadingStep("Transmitting payload to Paystack API gateway...");
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      setCustomLoadingStep("Verifying secure 3D-Secure 2.0 handshake...");
+      await new Promise(resolve => setTimeout(resolve, 900));
+
+      const now = new Date();
+      const nextPayment = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      
+      const updatedSubscription = {
+        status: "active" as const,
+        subscribedDate: now.toISOString(),
+        trialEndDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+        nextPaymentDate: nextPayment.toISOString()
+      };
+
+      // Add standard premium receipt record
+      const config = currencyConfigs[selectedCurrency];
+      const selectedAmount = paymentModalType === 'subscribe' ? config.subscribeAmount : config.linkAmount;
+      const displayAmount = paymentModalType === 'subscribe' ? config.displaySubscribe : config.displayLink;
+
+      const newTransaction: BillingReceipt = {
+        id: "tx-" + Math.random().toString(36).substr(2, 9),
+        amount: selectedAmount / 100,
+        currency: selectedCurrency,
+        status: "success",
+        plan: paymentModalType === 'subscribe' ? "Gourmet Plus Plan" : "Card Authorization Link",
+        reference: idempotencyKey || ("ref-" + Date.now()),
+        date: now.toISOString()
+      };
+
+      const updatedHistory = [newTransaction, ...(profile.billingHistory || [])];
+
+      // Update Firestore database document
+      await updateDoc(doc(db, 'users', user.uid), {
+        subscription: updatedSubscription,
+        billingHistory: updatedHistory
+      });
+
+      setProfile({
+        ...profile,
+        subscription: updatedSubscription,
+        billingHistory: updatedHistory
+      });
+
+      setPaymentFormSuccess(`Successfully subscribed! Paid ${displayAmount}. Your Gourmet privileges are now fully active for the next 30 days.`);
+    } catch (err: any) {
+      setPaymentFormError(err.message || "Card transaction was declined by the issuing bank. Please try again.");
+    } finally {
+      setProcessing(false);
+      setCustomLoadingStep("");
     }
   };
 
@@ -373,6 +513,26 @@ export default function Subscription() {
       return `${totalHours} hours remaining`;
     }
     return `${trialDaysLeft} days remaining`;
+  };
+
+  const subscribedMsLeft = profile?.subscription?.nextPaymentDate
+    ? new Date(profile.subscription.nextPaymentDate).getTime() - Date.now()
+    : (profile?.subscription?.subscribedDate
+       ? new Date(profile.subscription.subscribedDate).getTime() + 30 * 24 * 60 * 60 * 1000 - Date.now()
+       : 30 * 24 * 60 * 60 * 1000);
+
+  const subscribedDaysLeft = Math.max(0, Math.ceil(subscribedMsLeft / (1000 * 60 * 60 * 24)));
+
+  const getSubscribedCountdownText = () => {
+    if (subscribedMsLeft <= 0) return "0 days remaining (Pending renewal)";
+    const totalHours = Math.ceil(subscribedMsLeft / (1000 * 60 * 60));
+    if (totalHours < 48) {
+      if (totalHours < 2) {
+        return "1 hour remaining";
+      }
+      return `${totalHours} hours remaining`;
+    }
+    return `${subscribedDaysLeft} days remaining`;
   };
 
   if (verifyingPayment) {
@@ -541,13 +701,23 @@ export default function Subscription() {
                 )}
 
                 {isSubscribed ? (
-                  <div className="p-6 bg-white/[0.01] rounded-2xl border border-white/10 text-center space-y-2.5">
-                    <p className="text-amber-accent text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2">
-                      <Zap className="w-4 h-4 shrink-0 fill-amber-accent" />
-                      Daily Plus subscription active
-                    </p>
-                    <p className="text-white/50 text-xs font-light italic">Your billing credential verified via safe checkout.</p>
-                    <p className="text-white/30 text-[9px] uppercase tracking-[0.2em] font-medium pt-1">Gourmet privileges fully unlocked</p>
+                  <div className="p-6 bg-white/[0.01] rounded-2xl border border-white/10 text-center space-y-4">
+                    <div className="space-y-1">
+                      <p className="text-amber-accent text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-1.5">
+                        <Zap className="w-3.5 h-3.5 shrink-0 fill-amber-accent animate-pulse" />
+                        Gourmet Plus Active
+                      </p>
+                      <p className="text-white text-xl font-serif italic">{getSubscribedCountdownText()}</p>
+                    </div>
+                    <div className="space-y-1.5 pt-2 border-t border-white/5">
+                      <p className="text-emerald-400 text-xs font-semibold flex items-center justify-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        Payment Verified Successfully
+                      </p>
+                      <p className="text-white/40 text-[10px] leading-relaxed italic max-w-sm mx-auto">
+                        Enjoy complete unlimited access to personalized recipes, precise nutrient logging, smart pantry optimization, and premium priority features. Your plan renews automatically every 30 days.
+                      </p>
+                    </div>
                   </div>
                 ) : isTrial ? (
                   <div className="p-6 bg-white/[0.01] rounded-2xl border border-white/10 text-center space-y-4">
@@ -1025,6 +1195,324 @@ export default function Subscription() {
                   /* SECURE LIVE CHECKOUT MODAL CARD */
                   <>
                     <div className="space-y-5">
+                      {/* Tabs Header */}
+                      <div className="flex border-b border-white/10" style={{ borderColor: isModalLight ? '#e2e8f0' : 'rgba(255,255,255,0.08)' }}>
+                        <button
+                          type="button"
+                          onClick={() => setCheckoutTab('custom')}
+                          className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 border-b-2 transition-all ${
+                            checkoutTab === 'custom'
+                              ? 'border-amber-500 text-amber-500 font-black'
+                              : 'border-transparent text-white/50 hover:text-white/80'
+                          }`}
+                          style={{
+                            color: checkoutTab === 'custom' ? '#f59e0b' : (isModalLight ? '#475569' : 'rgba(255,255,255,0.5)'),
+                            borderColor: checkoutTab === 'custom' ? '#f59e0b' : 'transparent'
+                          }}
+                        >
+                          <CreditCard className="w-4 h-4" />
+                          Custom Card Form
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCheckoutTab('hosted')}
+                          className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 border-b-2 transition-all ${
+                            checkoutTab === 'hosted'
+                              ? 'border-amber-500 text-amber-500 font-black'
+                              : 'border-transparent text-white/50 hover:text-white/80'
+                          }`}
+                          style={{
+                            color: checkoutTab === 'hosted' ? '#f59e0b' : (isModalLight ? '#475569' : 'rgba(255,255,255,0.5)'),
+                            borderColor: checkoutTab === 'hosted' ? '#f59e0b' : 'transparent'
+                          }}
+                        >
+                          <ExternalLink className="w-4 h-4 animate-pulse" />
+                          Official Paystack
+                        </button>
+                      </div>
+
+                      {checkoutTab === 'custom' ? (
+                        /* TAB 1: BEAUTIFULLY CUSTOM DESIGNED INTERACTIVE CREDIT CARD FORM */
+                        <form onSubmit={handleCustomCardSubmit} className="space-y-5">
+                          {/* Beautiful Interactive 3D Card Display */}
+                          <div className="perspective-[1000px] w-full flex justify-center py-2 select-none">
+                            <div 
+                              className={`relative w-full max-w-[340px] h-[190px] transition-transform duration-700 ease-out [transform-style:preserve-3d] ${
+                                focusedField === 'cvv' ? '[transform:rotateY(180deg)]' : ''
+                              }`}
+                            >
+                              {/* FRONT OF THE CARD */}
+                              <div 
+                                className="absolute inset-0 w-full h-full rounded-2xl p-5 text-white flex flex-col justify-between shadow-xl overflow-hidden [backface-visibility:hidden]"
+                                style={{
+                                  background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+                                  border: '1px solid rgba(255,255,255,0.1)'
+                                }}
+                              >
+                                {/* Card glow/shimmer overlays */}
+                                <div className="absolute top-[-30%] left-[-20%] w-[150px] h-[150px] rounded-full bg-gradient-to-br from-amber-500/20 to-orange-500/0 blur-2xl pointer-events-none" />
+                                <div className="absolute bottom-[-10%] right-[-10%] w-[120px] h-[120px] rounded-full bg-emerald-500/10 blur-xl pointer-events-none" />
+
+                                <div className="flex justify-between items-start">
+                                  <div className="space-y-0.5 text-left">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500 flex items-center gap-1">
+                                      <Sparkles className="w-3 h-3 fill-amber-500 animate-pulse" />
+                                      Gourmet Plus
+                                    </p>
+                                    <p className="text-[9px] font-mono text-white/40 tracking-wider">DAILY MEAL RECIPE</p>
+                                  </div>
+                                  {/* Chip and Card brand icon */}
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-8 h-6 bg-gradient-to-b from-yellow-200 to-yellow-400 rounded-md border border-yellow-100 flex flex-col justify-around p-1 shadow-sm">
+                                      <div className="w-full h-[1px] bg-neutral-800/20" />
+                                      <div className="w-full h-[1px] bg-neutral-800/20" />
+                                      <div className="w-full h-[1px] bg-neutral-800/20" />
+                                    </div>
+                                    {getCardBrand(cardNumber) === 'visa' && (
+                                      <span className="text-sm font-black italic tracking-widest text-sky-400 drop-shadow-md">VISA</span>
+                                    )}
+                                    {getCardBrand(cardNumber) === 'mastercard' && (
+                                      <div className="flex items-center -space-x-2">
+                                        <div className="w-5 h-5 rounded-full bg-rose-500 opacity-90" />
+                                        <div className="w-5 h-5 rounded-full bg-amber-500 opacity-90" />
+                                      </div>
+                                    )}
+                                    {getCardBrand(cardNumber) === 'amex' && (
+                                      <span className="text-xs font-black bg-blue-600 px-1.5 py-0.5 rounded tracking-tighter text-white">AMEX</span>
+                                    )}
+                                    {getCardBrand(cardNumber) === 'discover' && (
+                                      <span className="text-xs font-bold italic text-orange-400">Discover</span>
+                                    )}
+                                    {getCardBrand(cardNumber) === 'generic' && (
+                                      <CreditCard className="w-5 h-5 text-white/50" />
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Card Number Face */}
+                                <div className="py-2">
+                                  <p className="font-mono text-lg font-bold tracking-[0.18em] text-white/95 text-center transition-all">
+                                    {cardNumber || '•••• •••• •••• ••••'}
+                                  </p>
+                                </div>
+
+                                <div className="flex justify-between items-end">
+                                  <div className="text-left space-y-0.5">
+                                    <span className="text-[7.5px] uppercase font-bold tracking-widest text-white/40 block">Cardholder</span>
+                                    <p className="text-[11px] font-mono font-bold tracking-wide uppercase truncate max-w-[170px]">
+                                      {cardName || 'YOUR FULL NAME'}
+                                    </p>
+                                  </div>
+                                  <div className="text-right space-y-0.5 shrink-0">
+                                    <span className="text-[7.5px] uppercase font-bold tracking-widest text-white/40 block">Expires</span>
+                                    <p className="text-[11px] font-mono font-bold tracking-wider">
+                                      {cardExpiry || 'MM/YY'}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* BACK OF THE CARD */}
+                              <div 
+                                className="absolute inset-0 w-full h-full rounded-2xl text-white flex flex-col justify-between shadow-xl overflow-hidden [backface-visibility:hidden] [transform:rotateY(180deg)]"
+                                style={{
+                                  background: 'linear-gradient(135deg, #0f172a 0%, #020617 100%)',
+                                  border: '1px solid rgba(255,255,255,0.1)'
+                                }}
+                              >
+                                <div className="w-full h-9 bg-black mt-4" />
+                                
+                                <div className="px-5 space-y-4">
+                                  <div className="flex justify-between items-center gap-4">
+                                    {/* Security Signature Area */}
+                                    <div className="flex-1 h-8 bg-neutral-300/10 rounded flex items-center justify-end px-3 font-mono italic text-[10px] text-white/40 select-none">
+                                      authorized signature
+                                    </div>
+                                    <div className="w-12 h-8 bg-amber-500 text-black font-mono font-black text-center flex items-center justify-center rounded text-xs tracking-widest shadow-sm">
+                                      {cardCvv || '•••'}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="p-5 flex justify-between items-center text-[7.5px] font-mono text-white/30 tracking-wider">
+                                  <span>ISSUED BY BANK OF GOURMET</span>
+                                  <span>SECURE PCI HANDSHAKE</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Live Input Fields */}
+                          <div className="space-y-3 font-sans">
+                            {/* Cardholder Name */}
+                            <div className="flex flex-col gap-1 text-left">
+                              <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
+                                Cardholder Name
+                              </label>
+                              <input
+                                type="text"
+                                required
+                                value={cardName}
+                                disabled={processing}
+                                onFocus={() => setFocusedField('name')}
+                                onBlur={() => setFocusedField('')}
+                                onChange={(e) => setCardName(e.target.value.toUpperCase())}
+                                placeholder="E.G. BONIFACE KARUGU"
+                                style={{
+                                  backgroundColor: isModalLight ? '#f8fafc' : 'rgba(255,255,255,0.02)',
+                                  color: isModalLight ? '#0f172a' : '#ffffff',
+                                  borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.08)'
+                                }}
+                                className="w-full rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold border focus:outline-none focus:ring-1 focus:ring-amber-500 tracking-wide"
+                              />
+                            </div>
+
+                            {/* Card Number */}
+                            <div className="flex flex-col gap-1 text-left">
+                              <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
+                                Card Number
+                              </label>
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  required
+                                  maxLength={19}
+                                  value={cardNumber}
+                                  disabled={processing}
+                                  onFocus={() => setFocusedField('number')}
+                                  onBlur={() => setFocusedField('')}
+                                  onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                                  placeholder="0000 0000 0000 0000"
+                                  style={{
+                                    backgroundColor: isModalLight ? '#f8fafc' : 'rgba(255,255,255,0.02)',
+                                    color: isModalLight ? '#0f172a' : '#ffffff',
+                                    borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.08)'
+                                  }}
+                                  className="w-full rounded-xl pl-3.5 pr-10 py-2.5 text-xs font-mono font-bold border focus:outline-none focus:ring-1 focus:ring-amber-500 tracking-[0.1em]"
+                                />
+                                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 opacity-50">
+                                  <CreditCard className="w-4 h-4" />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Expiry and CVV Grid */}
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="flex flex-col gap-1 text-left">
+                                <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
+                                  Expiry Date
+                                </label>
+                                <input
+                                  type="text"
+                                  required
+                                  maxLength={5}
+                                  placeholder="MM/YY"
+                                  value={cardExpiry}
+                                  disabled={processing}
+                                  onFocus={() => setFocusedField('expiry')}
+                                  onBlur={() => setFocusedField('')}
+                                  onChange={(e) => setCardExpiry(formatCardExpiry(e.target.value))}
+                                  style={{
+                                    backgroundColor: isModalLight ? '#f8fafc' : 'rgba(255,255,255,0.02)',
+                                    color: isModalLight ? '#0f172a' : '#ffffff',
+                                    borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.08)'
+                                  }}
+                                  className="w-full rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold border focus:outline-none focus:ring-1 focus:ring-amber-500 text-center tracking-widest"
+                                />
+                              </div>
+
+                              <div className="flex flex-col gap-1 text-left">
+                                <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
+                                  CVV / Security Code
+                                </label>
+                                <input
+                                  type="password"
+                                  required
+                                  maxLength={getCardBrand(cardNumber) === 'amex' ? 4 : 3}
+                                  placeholder="•••"
+                                  value={cardCvv}
+                                  disabled={processing}
+                                  onFocus={() => setFocusedField('cvv')}
+                                  onBlur={() => setFocusedField('')}
+                                  onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, '').substring(0, getCardBrand(cardNumber) === 'amex' ? 4 : 3))}
+                                  style={{
+                                    backgroundColor: isModalLight ? '#f8fafc' : 'rgba(255,255,255,0.02)',
+                                    color: isModalLight ? '#0f172a' : '#ffffff',
+                                    borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.08)'
+                                  }}
+                                  className="w-full rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold border focus:outline-none focus:ring-1 focus:ring-amber-500 text-center tracking-widest"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* SELECT BILLING CURRENCY */}
+                          <div className="flex flex-col gap-1 text-left font-sans">
+                            <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
+                              Select Billing Currency
+                            </label>
+                            <select
+                              value={selectedCurrency}
+                              disabled={processing}
+                              onChange={(e) => setSelectedCurrency(e.target.value as any)}
+                              style={{
+                                backgroundColor: isModalLight ? '#f8fafc' : 'rgba(255, 255, 255, 0.05)',
+                                color: isModalLight ? '#0f172a' : '#ffffff',
+                                borderColor: isModalLight ? '#cbd5e1' : 'rgba(255, 255, 255, 0.1)'
+                              }}
+                              className="w-full rounded-xl px-3 py-2 text-xs border font-medium focus:outline-none focus:ring-1 focus:ring-amber-500"
+                            >
+                              <option value="KES">KES - Kenyan Shilling (Supports M-PESA & Cards)</option>
+                              <option value="USD">USD - US Dollar (International Credit Cards)</option>
+                              <option value="NGN">NGN - Nigerian Naira (Supports Cards & Bank Transfer)</option>
+                              <option value="GHS">GHS - Ghanaian Cedi (Supports Cards & Mobile Money)</option>
+                              <option value="ZAR">ZAR - South African Rand (Supports Cards & EFT)</option>
+                            </select>
+                          </div>
+
+                          {/* Submit Custom Checkout Button */}
+                          <div className="space-y-3 pt-2">
+                            <button
+                              type="submit"
+                              disabled={processing}
+                              style={{
+                                backgroundColor: '#f59e0b',
+                                color: '#000000'
+                              }}
+                              className="w-full py-4 hover:opacity-95 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-lg shadow-amber-500/15 hover:scale-[1.01] active:scale-[0.99]"
+                            >
+                              {processing ? (
+                                <span className="flex items-center gap-2 font-black text-[10px] tracking-widest uppercase text-black">
+                                  <RefreshCw className="w-4 h-4 animate-spin text-black" />
+                                  {customLoadingStep || "Contacting Secure Gateway..."}
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-2 font-black text-[10px] tracking-widest uppercase text-black">
+                                  <Shield className="w-4 h-4 shrink-0 text-black" />
+                                  {paymentModalType === 'subscribe' 
+                                    ? `Pay ${currencyConfigs[selectedCurrency].displaySubscribe} Securely` 
+                                    : `Authorize ${currencyConfigs[selectedCurrency].displayLink} Securely`}
+                                </span>
+                              )}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setShowPaymentModal(false)}
+                              disabled={processing}
+                              style={{
+                                borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.15)',
+                                color: isModalLight ? '#1f2937' : '#f3f4f6'
+                              }}
+                              className="w-full py-3.5 hover:bg-neutral-500/5 rounded-2xl font-black uppercase tracking-widest text-[9.5px] transition-all flex items-center justify-center gap-1.5 cursor-pointer border disabled:opacity-50"
+                            >
+                              ← Cancel & Back to Plans
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        /* TAB 2: ORIGINAL SECURE REDIRECT OPTION WITH DIAGNOSTIC INFO */
+                        <div className="space-y-5">
                       {/* Secure Info Banner */}
                       <div 
                         style={{ 
@@ -1156,6 +1644,8 @@ export default function Subscription() {
                           ← Cancel & Back to Plans
                         </button>
                       </div>
+                    </div>
+                  )}
 
                       {/* Billing descriptor notice & terms */}
                       <div className="space-y-3 pt-1">

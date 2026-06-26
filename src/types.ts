@@ -86,6 +86,7 @@ export interface UserProfile {
     trialEndDate: string;
     subscribedDate?: string;
     endDate?: string;
+    nextPaymentDate?: string;
   };
   paymentMethods?: SavedCard[];
   billingHistory?: BillingReceipt[];
