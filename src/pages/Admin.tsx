@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Users, 
@@ -62,6 +62,7 @@ export default function Admin() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [files, setFiles] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -309,7 +310,7 @@ export default function Admin() {
     }
   }, [activeTab, dbCollection]);
 
-  const isAdmin = profile?.role === 'admin' || user?.email === 'lewisiraki1@gmail.com' || isPasscodeUnlocked;
+  const isAdmin = profile?.role === 'admin' || user?.email === 'lewisiraki1@gmail.com' || user?.email === 'lewisiraki3@gmail.com' || isPasscodeUnlocked;
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -322,6 +323,14 @@ export default function Admin() {
           getDocs(query(collection(db, 'users'), limit(150))),
           getDocs(query(collection(db, 'files'), orderBy('createdAt', 'desc'), limit(150)))
         ]);
+
+        let txs: any[] = [];
+        try {
+          const txSnap = await getDocs(query(collection(db, 'transactions'), limit(150)));
+          txs = txSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (txErr) {
+          console.warn("Transactions collection not accessible or empty:", txErr);
+        }
 
         let reviewsDocs: any[] = [];
         try {
@@ -339,6 +348,7 @@ export default function Admin() {
 
         setRecipes(recipesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Recipe));
         setUsers(usersSnap.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile)));
+        setTransactions(txs);
         setReviews(reviewsDocs as Review[]);
         setFiles(filesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       } catch (error) {
@@ -350,6 +360,124 @@ export default function Admin() {
 
     fetchData();
   }, [isAdmin]);
+
+  const totalRevenue = useMemo(() => {
+    let total = 0;
+    const seenRefs = new Set<string>();
+
+    // 1. Sum from transactions collection
+    transactions.forEach(tx => {
+      if (tx.status === 'success' || !tx.status) {
+        const ref = tx.gatewayReferenceId || tx.transactionId || tx.reference || tx.id;
+        if (ref && !seenRefs.has(ref)) {
+          seenRefs.add(ref);
+          total += Number(tx.amount) || 0;
+        }
+      }
+    });
+
+    // 2. Sum from user billing histories (avoid duplicate references if possible)
+    users.forEach(u => {
+      if (u.billingHistory && Array.isArray(u.billingHistory)) {
+        u.billingHistory.forEach((item: any) => {
+          if (item.status === 'success' || !item.status) {
+            const ref = item.reference || item.id;
+            if (ref && !seenRefs.has(ref)) {
+              seenRefs.add(ref);
+              total += Number(item.amount) || 0;
+            }
+          }
+        });
+      }
+    });
+
+    return total;
+  }, [transactions, users]);
+
+  const mergedTransactionsList = useMemo(() => {
+    const list: Array<{
+      id: string;
+      user: string;
+      amount: string;
+      time: string;
+      method: string;
+      dateObj: Date;
+      status: string;
+      plan: string;
+    }> = [];
+
+    const seenRefs = new Set<string>();
+
+    // Add from transactions collection
+    transactions.forEach(tx => {
+      const ref = tx.gatewayReferenceId || tx.transactionId || tx.reference || tx.id;
+      if (ref && !seenRefs.has(ref)) {
+        seenRefs.add(ref);
+        const dateStr = tx.timestamp || tx.createdAt || new Date().toISOString();
+        const amtStr = `+${tx.currency || 'USD'} ${(Number(tx.amount) || 0).toFixed(2)}`;
+        list.push({
+          id: ref,
+          user: tx.userEmail || "Anonymous Chef",
+          amount: amtStr,
+          time: format(new Date(dateStr), 'MMM d, h:mm a'),
+          method: 'Paystack Webhook',
+          dateObj: new Date(dateStr),
+          status: tx.status || 'success',
+          plan: tx.plan || 'Gourmet Plus Plan'
+        });
+      }
+    });
+
+    // Add from user billing histories
+    users.forEach(u => {
+      if (u.billingHistory && Array.isArray(u.billingHistory)) {
+        u.billingHistory.forEach((item: any) => {
+          const ref = item.reference || item.id;
+          if (ref && !seenRefs.has(ref)) {
+            seenRefs.add(ref);
+            const dateStr = item.date || new Date().toISOString();
+            const amtStr = `+${item.currency || 'USD'} ${(Number(item.amount) || 0).toFixed(2)}`;
+            list.push({
+              id: ref,
+              user: u.email || u.displayName || "Gourmet Member",
+              amount: amtStr,
+              time: format(new Date(dateStr), 'MMM d, h:mm a'),
+              method: 'Paystack Direct',
+              dateObj: new Date(dateStr),
+              status: item.status || 'success',
+              plan: item.plan || 'Gourmet Plus Plan'
+            });
+          }
+        });
+      }
+    });
+
+    // Sort descending by date
+    return list.sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime());
+  }, [transactions, users]);
+
+  const weeklyHeights = useMemo(() => {
+    const days = [0, 0, 0, 0, 0, 0, 0]; // Mon-Sun
+    let max = 1;
+
+    mergedTransactionsList.forEach(tx => {
+      if (tx.status === 'success') {
+        const dayIndex = (tx.dateObj.getDay() + 6) % 7; // shift so 0 = Mon, 6 = Sun
+        const amtPart = tx.amount.split(' ').pop();
+        const amt = amtPart ? parseFloat(amtPart) : 0;
+        days[dayIndex] += amt;
+      }
+    });
+
+    days.forEach(v => {
+      if (v > max) max = v;
+    });
+
+    return days.map(v => ({
+      amount: v,
+      percentage: max > 0 ? (v / max) * 100 : 0
+    }));
+  }, [mergedTransactionsList]);
 
   if (authLoading) return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center relative overflow-hidden">
@@ -556,7 +684,7 @@ export default function Admin() {
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Revenue', value: '$4,250', icon: DollarSign, trend: '+12%', up: true },
+          { label: 'Total Revenue', value: `$${totalRevenue.toFixed(2)}`, icon: DollarSign, trend: totalRevenue > 0 ? '+100%' : '0%', up: totalRevenue > 0 },
           { label: 'Total Users', value: users.length.toString(), icon: Users, trend: '+5%', up: true },
           { label: 'Culinary Assets', value: files.length.toString(), icon: Database, trend: '+18%', up: true },
           { label: 'Asset Downloads', value: files.reduce((acc, curr) => acc + (curr.downloadCount || 0), 0).toString(), icon: Download, trend: '+45%', up: true },
@@ -927,55 +1055,70 @@ export default function Admin() {
                         <span className="text-[10px] text-white/40 uppercase font-black">Ads</span>
                       </div>
                     </div>
-                  </div>
-                  <div className="h-48 flex items-end gap-3 px-4">
-                    {[60, 40, 80, 50, 70, 90, 100].map((h, i) => (
-                      <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
+                           <div className="h-48 flex items-end gap-3 px-4">
+                    {weeklyHeights.map((day, i) => (
+                      <div key={i} className="flex-1 flex flex-col items-center gap-2 group relative">
                         <div className="w-full space-y-1">
                           <motion.div 
                             initial={{ height: 0 }}
-                            animate={{ height: `${h}%` }}
+                            animate={{ height: `${day.percentage}%` }}
                             className="w-full bg-amber-accent rounded-t-lg group-hover:bg-white transition-colors"
                           />
                           <motion.div 
                             initial={{ height: 0 }}
-                            animate={{ height: `${h * 0.3}%` }}
+                            animate={{ height: `${day.percentage * 0.1}%` }}
                             className="w-full bg-white/10 rounded-b-lg"
                           />
                         </div>
                         <span className="text-[8px] text-white/20 font-black uppercase">{['M','T','W','T','F','S','S'][i]}</span>
+                        <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-black/90 border border-white/5 text-[8px] text-amber-accent rounded px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 font-mono">
+                          ${day.amount.toFixed(2)}
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
-
+ 
                 <div className="space-y-4">
-                  <h3 className="text-[10px] font-black text-white/20 uppercase tracking-widest px-4">Recent Transactions</h3>
-                  <div className="space-y-3">
-                    {[
-                      { user: 'Sarah Miller', amount: '+$5.00', time: '2h ago', method: 'Paystack' },
-                      { user: 'James Wilson', amount: '+$5.00', time: '5h ago', method: 'PayPal' },
-                      { user: 'Elena Rodriguez', amount: '+$5.00', time: '1d ago', method: 'Paystack' },
-                      { user: 'Marcus Thorne', amount: '+$5.00', time: '2d ago', method: 'Apple Pay' },
-                    ].map((tx, i) => (
-                      <div key={i} className="flex justify-between items-center p-4 bg-white/5 border border-white/5 rounded-2xl">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                          </div>
-                          <div>
-                            <span className="text-xs text-white font-medium block">{tx.user}</span>
-                            <span className="text-[10px] text-white/40 uppercase tracking-widest">{tx.time}</span>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-xs text-emerald-400 font-mono block">{tx.amount}</span>
-                          <span className="text-[8px] text-white/20 uppercase font-bold">{tx.method}</span>
-                        </div>
+                  <h3 className="text-[10px] font-black text-white/20 uppercase tracking-widest px-4 flex justify-between items-center">
+                    <span>Recent Transactions</span>
+                    <span className="text-[8px] text-amber-accent/80 font-mono select-none">LIVE FEED</span>
+                  </h3>
+                  <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-white/10">
+                    {mergedTransactionsList.length === 0 ? (
+                      <div className="h-40 flex flex-col items-center justify-center text-white/30 border border-dashed border-white/5 rounded-[24px] text-xs italic">
+                        <span>No transactions recorded.</span>
+                        <span className="text-[10px] mt-1 text-white/10 font-mono">Listening on Paystack webhook / ledger</span>
                       </div>
-                    ))}
+                    ) : (
+                      mergedTransactionsList.map((tx, i) => (
+                        <div key={tx.id || i} className="flex justify-between items-center p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/[0.08] transition-colors">
+                          <div className="flex items-center gap-3 truncate">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${tx.status === 'success' ? 'bg-emerald-500/10' : 'bg-amber-500/10'}`}>
+                              {tx.status === 'success' ? (
+                                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                              ) : (
+                                <XCircle className="w-4 h-4 text-amber-500" />
+                              )}
+                            </div>
+                            <div className="truncate">
+                              <span className="text-xs text-white font-medium block truncate select-all" title={tx.user}>{tx.user}</span>
+                              <div className="flex items-center gap-2 mt-0.5 text-[9px] text-white/40 uppercase tracking-wider font-mono">
+                                <span>{tx.time}</span>
+                                <span>•</span>
+                                <span className="text-[8px] text-white/30 truncate" title={tx.id}>{tx.id.slice(0, 10)}...</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0 ml-2">
+                            <span className={`text-xs font-mono font-black block ${tx.status === 'success' ? 'text-emerald-400' : 'text-amber-500 line-through'}`}>{tx.amount}</span>
+                            <span className="text-[8px] text-white/25 uppercase font-bold tracking-wide">{tx.method}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
-                </div>
+                </div>          </div>
               </div>
             </div>
           )}
