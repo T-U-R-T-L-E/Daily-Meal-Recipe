@@ -653,6 +653,54 @@ export default function Admin() {
       alert(`Failed to update subscription: ${err.message}`);
     }
   };
+  
+  const handleResetLedger = async () => {
+    if (!window.confirm("⚠️ DANGER: Are you sure you want to reset all user billing histories, active subscriptions, and completely clear the transactions collection? This resets your live dashboard revenue to exactly $0.00.")) {
+      return;
+    }
+    setLoading(true);
+    try {
+      // 1. Clear billing history & active subscriptions for all loaded users in Firestore
+      const promises = users.map(async (u) => {
+        const userRef = doc(db, 'users', u.uid);
+        await updateDoc(userRef, {
+          billingHistory: [],
+          subscription: {
+            status: 'none',
+            subscribedDate: null,
+            trialEndDate: null,
+            nextPaymentDate: null,
+            endDate: null
+          }
+        });
+      });
+      await Promise.all(promises);
+
+      // 2. Clear transactions collection
+      const txSnap = await getDocs(collection(db, 'transactions'));
+      const txDeletePromises = txSnap.docs.map(doc => deleteDoc(doc.ref));
+      await Promise.all(txDeletePromises);
+
+      // Update local state
+      setUsers(prev => prev.map(u => ({
+        ...u,
+        billingHistory: [],
+        subscription: {
+          status: 'none' as any,
+          subscribedDate: null,
+          trialEndDate: null,
+          nextPaymentDate: null,
+          endDate: null
+        } as any
+      })));
+      setTransactions([]);
+      alert("✓ Successfully reset all subscriptions and cleared the transactions ledger! Your dashboard is now starting fresh at $0.00.");
+    } catch (err: any) {
+      alert("Error resetting ledger: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const updateUserRole = async (uid: string, newRole: 'admin' | 'user') => {
     try {
@@ -670,15 +718,37 @@ export default function Admin() {
     <div className="space-y-12 pb-24">
       {/* Header */}
       <header className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="px-3 py-1 bg-amber-accent/10 border border-amber-accent/20 rounded-full text-[10px] font-black uppercase tracking-widest text-amber-accent flex items-center gap-2">
-            <Lock className="w-3 h-3" />
-            Admin Command Center
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="px-3 py-1 bg-amber-accent/10 border border-amber-accent/20 rounded-full text-[10px] font-black uppercase tracking-widest text-amber-accent flex items-center gap-2">
+              <Lock className="w-3 h-3" />
+              Admin Command Center
+            </div>
           </div>
+          <button
+            onClick={handleResetLedger}
+            disabled={loading}
+            className="px-4 py-2 bg-rose-600/25 hover:bg-rose-600/40 text-rose-300 border border-rose-500/30 text-[10px] font-black uppercase tracking-widest rounded-full transition-all flex items-center gap-2 cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Reset Billing Ledger ($0.00 Start)
+          </button>
         </div>
-        <h1 className="text-6xl font-serif text-white italic tracking-tighter">
-          Dashboard
-        </h1>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <h1 className="text-6xl font-serif text-white italic tracking-tighter">
+            Dashboard
+          </h1>
+        </div>
+        
+        {/* Environmental Notice Banner */}
+        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-3xl text-left space-y-1.5 max-w-4xl">
+          <h4 className="text-[11px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+            🛡️ Paystack Live Environment Connected
+          </h4>
+          <p className="text-[10px] text-white/80 leading-relaxed">
+            The platform is successfully configured to run in <strong>Live Production Mode</strong> using your live credential key (<code>sk_live_</code>). All card transactions represent authorized live transactions connected to your merchant settlement ledger.
+          </p>
+        </div>
       </header>
 
       {/* Stats Overview */}

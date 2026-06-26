@@ -1021,9 +1021,333 @@ app.post("/api/paystack/initialize", async (req, res) => {
   }
 });
 
-app.post("/api/paystack/verify", async (req, res) => {
+// Helper to upgrade user subscription in Firestore upon successful Paystack payment
+async function upgradeUserSubscriptionInFirestore(
+  email: string,
+  reference: string,
+  amountInKobo: number,
+  currency: string,
+  authorization: any
+): Promise<boolean> {
+  if (!adminDb || !email) return false;
   try {
-    const { reference } = req.body;
+    const usersSnap = await adminDb.collection("users").where("email", "==", email).limit(1).get();
+    if (!usersSnap.empty) {
+      const userDoc = usersSnap.docs[0];
+      const userId = userDoc.id;
+      const userData = userDoc.data();
+
+      const updatedSubscription = {
+        status: "active",
+        subscribedDate: new Date().toISOString(),
+        trialEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+        nextPaymentDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      };
+
+      const cardDetail = authorization ? {
+        id: "card-" + Date.now(),
+        brand: authorization.brand || "visa",
+        last4: authorization.last4 || "4081",
+        exp_month: Number(authorization.exp_month) || 12,
+        exp_year: Number(authorization.exp_year) || 2030,
+        card_type: authorization.card_type || "visa"
+      } : {
+        id: "card-" + Date.now(),
+        brand: "visa",
+        last4: "4081",
+        exp_month: 12,
+        exp_year: 2030,
+        card_type: "visa"
+      };
+
+      const existingMethods = userData.paymentMethods || [];
+      const isDuplicate = existingMethods.some((c: any) => c.brand === cardDetail.brand && c.last4 === cardDetail.last4);
+      const updatedPaymentMethods = isDuplicate ? existingMethods : [...existingMethods, cardDetail];
+
+      const existingHistory = userData.billingHistory || [];
+      const hasReference = existingHistory.some((h: any) => h.reference === reference);
+      let updatedBillingHistory = existingHistory;
+      if (!hasReference) {
+        const historyItem = {
+          id: "bill-" + Date.now(),
+          amount: amountInKobo / 100,
+          status: "success",
+          date: new Date().toISOString(),
+          plan: "Plus Monthly Subscription Plan",
+          reference: reference,
+          currency: currency || "USD"
+        };
+        updatedBillingHistory = [historyItem, ...existingHistory];
+      }
+
+      await adminDb.collection("users").doc(userId).update({
+        subscription: updatedSubscription,
+        paymentMethods: updatedPaymentMethods,
+        billingHistory: updatedBillingHistory
+      });
+
+      console.log(`[upgradeUserSubscriptionInFirestore SUCCESS] User upgraded successfully: ${email}`);
+      return true;
+    }
+  } catch (err) {
+    console.error("[upgradeUserSubscriptionInFirestore ERROR] Failed to upgrade user subscription:", err);
+  }
+  return false;
+}
+
+app.post("/api/paystack/charge", async (req, res) => {
+  try {
+    const { email, amount, currency, card, pin } = req.body;
+    const paystackSecretKey = (process.env.PAYSTACK_SECRET_KEY || "").trim();
+    if (!paystackSecretKey) {
+      throw new Error("PAYSTACK_SECRET_KEY is not configured in environment variables.");
+    }
+
+    if (!email || !amount || !card) {
+      return res.status(400).json({ error: "Missing required parameters: email, amount, card" });
+    }
+
+    console.log(`[Paystack Direct Charge] Charging card for ${email}. Amount: ${amount}, Currency: ${currency}`);
+
+    const payload: any = {
+      email,
+      amount,
+      currency: currency || "USD",
+      card: {
+        number: card.number,
+        cvv: card.cvv,
+        expiry_month: card.expiry_month,
+        expiry_year: card.expiry_year
+      }
+    };
+
+    if (pin) {
+      payload.pin = pin;
+    }
+
+    const response = await fetch("https://api.paystack.co/charge", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${paystackSecretKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+    console.log(`[Paystack Direct Charge Response] Status: ${response.status}`, JSON.stringify(data));
+
+    if (!response.ok || !data.status) {
+      return res.status(400).json({
+        status: "failed",
+        error: data.message || "Paystack direct charge failed to process."
+      });
+    }
+
+    const txData = data.data;
+    if (txData.status === "success") {
+      // Upgrade the user in Firestore synchronously on backend
+      await upgradeUserSubscriptionInFirestore(email, txData.reference, txData.amount, txData.currency, txData.authorization);
+      return res.json({
+        status: "success",
+        reference: txData.reference,
+        message: txData.gateway_response || "Payment successful!"
+      });
+    }
+
+    // Handle other statuses (e.g., send_pin, send_otp, send_birthday, send_phone, open_iframe)
+    return res.json({
+      status: txData.status,
+      reference: txData.reference,
+      message: txData.displayText || txData.message || `Status: ${txData.status}`,
+      redirect_url: txData.redirect_url || txData.ot_url || null
+    });
+
+  } catch (error) {
+    console.error("Paystack Direct Charge Endpoint Error:", error);
+    res.status(500).json({ error: error instanceof Error ? error.message : "Failed to process card payment" });
+  }
+});
+
+app.post("/api/paystack/charge/submit-pin", async (req, res) => {
+  try {
+    const { pin, reference, email } = req.body;
+    const paystackSecretKey = (process.env.PAYSTACK_SECRET_KEY || "").trim();
+    if (!paystackSecretKey) {
+      throw new Error("PAYSTACK_SECRET_KEY is not configured.");
+    }
+
+    if (!pin || !reference) {
+      return res.status(400).json({ error: "Missing required parameters: pin, reference" });
+    }
+
+    console.log(`[Paystack Submit PIN] Ref: ${reference}`);
+
+    const response = await fetch("https://api.paystack.co/charge/submit_pin", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${paystackSecretKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ pin, reference })
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data.status) {
+      return res.status(400).json({ status: "failed", error: data.message || "Submit PIN failed." });
+    }
+
+    const txData = data.data;
+    if (txData.status === "success") {
+      await upgradeUserSubscriptionInFirestore(email, txData.reference, txData.amount, txData.currency, txData.authorization);
+      return res.json({ status: "success", reference: txData.reference });
+    }
+
+    return res.json({
+      status: txData.status,
+      reference: txData.reference,
+      message: txData.displayText || txData.message || `Status: ${txData.status}`
+    });
+  } catch (error) {
+    console.error("Paystack Submit PIN Endpoint Error:", error);
+    res.status(500).json({ error: error instanceof Error ? error.message : "Failed to submit PIN" });
+  }
+});
+
+app.post("/api/paystack/charge/submit-otp", async (req, res) => {
+  try {
+    const { otp, reference, email } = req.body;
+    const paystackSecretKey = (process.env.PAYSTACK_SECRET_KEY || "").trim();
+    if (!paystackSecretKey) {
+      throw new Error("PAYSTACK_SECRET_KEY is not configured.");
+    }
+
+    if (!otp || !reference) {
+      return res.status(400).json({ error: "Missing required parameters: otp, reference" });
+    }
+
+    console.log(`[Paystack Submit OTP] Ref: ${reference}`);
+
+    const response = await fetch("https://api.paystack.co/charge/submit_otp", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${paystackSecretKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ otp, reference })
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data.status) {
+      return res.status(400).json({ status: "failed", error: data.message || "Submit OTP failed." });
+    }
+
+    const txData = data.data;
+    if (txData.status === "success") {
+      await upgradeUserSubscriptionInFirestore(email, txData.reference, txData.amount, txData.currency, txData.authorization);
+      return res.json({ status: "success", reference: txData.reference });
+    }
+
+    return res.json({
+      status: txData.status,
+      reference: txData.reference,
+      message: txData.displayText || txData.message || `Status: ${txData.status}`
+    });
+  } catch (error) {
+    console.error("Paystack Submit OTP Endpoint Error:", error);
+    res.status(500).json({ error: error instanceof Error ? error.message : "Failed to submit OTP" });
+  }
+});
+
+app.post("/api/paystack/charge/submit-birthday", async (req, res) => {
+  try {
+    const { birthday, reference, email } = req.body;
+    const paystackSecretKey = (process.env.PAYSTACK_SECRET_KEY || "").trim();
+    if (!paystackSecretKey) {
+      throw new Error("PAYSTACK_SECRET_KEY is not configured.");
+    }
+
+    if (!birthday || !reference) {
+      return res.status(400).json({ error: "Missing required parameters: birthday, reference" });
+    }
+
+    const response = await fetch("https://api.paystack.co/charge/submit_birthday", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${paystackSecretKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ birthday, reference })
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data.status) {
+      return res.status(400).json({ status: "failed", error: data.message || "Submit birthday failed." });
+    }
+
+    const txData = data.data;
+    if (txData.status === "success") {
+      await upgradeUserSubscriptionInFirestore(email, txData.reference, txData.amount, txData.currency, txData.authorization);
+      return res.json({ status: "success", reference: txData.reference });
+    }
+
+    return res.json({
+      status: txData.status,
+      reference: txData.reference,
+      message: txData.displayText || txData.message || `Status: ${txData.status}`
+    });
+  } catch (error) {
+    console.error("Paystack Submit Birthday Endpoint Error:", error);
+    res.status(500).json({ error: error instanceof Error ? error.message : "Failed to submit birthday" });
+  }
+});
+
+app.post("/api/paystack/charge/submit-phone", async (req, res) => {
+  try {
+    const { phone, reference, email } = req.body;
+    const paystackSecretKey = (process.env.PAYSTACK_SECRET_KEY || "").trim();
+    if (!paystackSecretKey) {
+      throw new Error("PAYSTACK_SECRET_KEY is not configured.");
+    }
+
+    if (!phone || !reference) {
+      return res.status(400).json({ error: "Missing required parameters: phone, reference" });
+    }
+
+    const response = await fetch("https://api.paystack.co/charge/submit_phone", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${paystackSecretKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ phone, reference })
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data.status) {
+      return res.status(400).json({ status: "failed", error: data.message || "Submit phone failed." });
+    }
+
+    const txData = data.data;
+    if (txData.status === "success") {
+      await upgradeUserSubscriptionInFirestore(email, txData.reference, txData.amount, txData.currency, txData.authorization);
+      return res.json({ status: "success", reference: txData.reference });
+    }
+
+    return res.json({
+      status: txData.status,
+      reference: txData.reference,
+      message: txData.displayText || txData.message || `Status: ${txData.status}`
+    });
+  } catch (error) {
+    console.error("Paystack Submit Phone Endpoint Error:", error);
+    res.status(500).json({ error: error instanceof Error ? error.message : "Failed to submit phone" });
+  }
+});
+
+app.all("/api/paystack/verify", async (req, res) => {
+  try {
+    const reference = (req.body?.reference || req.query?.reference) as string;
     if (!reference) {
       return res.status(400).json({ error: "Reference parameter is required" });
     }
@@ -1050,62 +1374,17 @@ app.post("/api/paystack/verify", async (req, res) => {
     let userId = null;
 
     if (adminDb && customerEmail) {
+      userUpgraded = await upgradeUserSubscriptionInFirestore(
+        customerEmail,
+        reference,
+        data.data.amount,
+        data.data.currency,
+        data.data.authorization
+      );
+      
       const usersSnap = await adminDb.collection("users").where("email", "==", customerEmail).limit(1).get();
       if (!usersSnap.empty) {
-        const userDoc = usersSnap.docs[0];
-        userId = userDoc.id;
-        const userData = userDoc.data();
-
-        const updatedSubscription = {
-          status: "active",
-          subscribedDate: new Date().toISOString(),
-          trialEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-          nextPaymentDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        };
-
-        const cardDetail = data.data.authorization ? {
-          id: "card-" + Date.now(),
-          brand: data.data.authorization.brand || "visa",
-          last4: data.data.authorization.last4 || "4081",
-          exp_month: Number(data.data.authorization.exp_month) || 12,
-          exp_year: Number(data.data.authorization.exp_year) || 2030,
-          card_type: data.data.authorization.card_type || "visa"
-        } : {
-          id: "card-" + Date.now(),
-          brand: "visa",
-          last4: "4081",
-          exp_month: 12,
-          exp_year: 2030,
-          card_type: "visa"
-        };
-
-        const existingMethods = userData.paymentMethods || [];
-        const isDuplicate = existingMethods.some((c: any) => c.brand === cardDetail.brand && c.last4 === cardDetail.last4);
-        const updatedPaymentMethods = isDuplicate ? existingMethods : [...existingMethods, cardDetail];
-
-        const existingHistory = userData.billingHistory || [];
-        const hasReference = existingHistory.some((h: any) => h.reference === reference);
-        let updatedBillingHistory = existingHistory;
-        if (!hasReference) {
-          const historyItem = {
-            id: "bill-" + Date.now(),
-            amount: (data.data.amount || 500) / 100,
-            status: "success",
-            date: new Date().toISOString(),
-            plan: "Plus Monthly Subscription Plan",
-            reference: reference,
-            currency: data.data.currency || "USD"
-          };
-          updatedBillingHistory = [historyItem, ...existingHistory];
-        }
-
-        await adminDb.collection("users").doc(userId).update({
-          subscription: updatedSubscription,
-          paymentMethods: updatedPaymentMethods,
-          billingHistory: updatedBillingHistory
-        });
-        userUpgraded = true;
-        console.log(`[Paystack Verification SUCCESS] Upgraded Firestore User Doc ID "${userId}" (${customerEmail}) via API verification.`);
+        userId = usersSnap.docs[0].id;
       }
     }
 

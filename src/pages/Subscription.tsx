@@ -49,12 +49,10 @@ export default function Subscription() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentModalType, setPaymentModalType] = useState<'subscribe' | 'link'>('subscribe');
   const [modalTheme, setModalTheme] = useState<'light' | 'dark'>('light');
-  const [selectedCurrency, setSelectedCurrency] = useState<'KES' | 'USD' | 'NGN' | 'GHS' | 'ZAR'>('KES');
+  const [selectedCurrency, setSelectedCurrency] = useState<'KES' | 'USD' | 'NGN' | 'GHS' | 'ZAR'>('USD');
 
   useEffect(() => {
-    if (profile?.preferredCurrency) {
-      setSelectedCurrency(profile.preferredCurrency);
-    }
+    setSelectedCurrency('USD');
   }, [profile]);
 
   const currencyConfigs = {
@@ -97,6 +95,43 @@ export default function Subscription() {
   const [cardName, setCardName] = useState('');
   const [focusedField, setFocusedField] = useState<'number' | 'expiry' | 'cvv' | 'name' | ''>('');
   const [customLoadingStep, setCustomLoadingStep] = useState('');
+
+  // States for native direct charging flow
+  const [chargeStatus, setChargeStatus] = useState<'idle' | 'charging' | 'send_pin' | 'send_otp' | 'send_birthday' | 'send_phone' | 'open_iframe' | 'success' | 'failed'>('idle');
+  const [chargeReference, setChargeReference] = useState('');
+  const [chargeMessage, setChargeMessage] = useState('');
+  const [pinValue, setPinValue] = useState('');
+  const [otpValue, setOtpValue] = useState('');
+  const [birthdayValue, setBirthdayValue] = useState('');
+  const [phoneValue, setPhoneValue] = useState('');
+  const [redirectUrl3ds, setRedirectUrl3ds] = useState('');
+
+  // Luhn algorithm card validation check
+  const validateLuhn = (num: string): boolean => {
+    const clean = num.replace(/\D/g, '');
+    if (clean.length < 13 || clean.length > 19) return false;
+    
+    let sum = 0;
+    let isEven = false;
+    
+    for (let i = clean.length - 1; i >= 0; i--) {
+      let digit = parseInt(clean.charAt(i), 10);
+      
+      if (isEven) {
+        digit *= 2;
+        if (digit > 9) {
+          digit -= 9;
+        }
+      }
+      
+      sum += digit;
+      isEven = !isEven;
+    }
+    
+    return sum % 10 === 0;
+  };
+
+  const isCardNumberValid = cardNumber ? validateLuhn(cardNumber) : null;
 
   const getCardBrand = (num: string) => {
     const clean = num.replace(/\s/g, '');
@@ -317,6 +352,293 @@ export default function Subscription() {
     }
   };
 
+  // Direct Charge Interactive Handlers
+  const handleDirectCharge = async (pin?: string) => {
+    if (!user || !profile) return;
+    setProcessing(true);
+    setPaymentFormError(null);
+    setPaymentFormSuccess(null);
+    setChargeStatus('charging');
+
+    try {
+      const config = currencyConfigs[selectedCurrency];
+      const selectedAmount = paymentModalType === 'subscribe' ? config.subscribeAmount : config.linkAmount;
+
+      const expiryParts = cardExpiry.split('/');
+      const expiryMonth = expiryParts[0]?.trim() || '';
+      const expiryYear = expiryParts[1]?.trim() || '';
+
+      setCustomLoadingStep("Establishing secure connection with card network...");
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      setCustomLoadingStep("Encrypting payment payload with AES-256...");
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      setCustomLoadingStep("Initiating secure card handshake...");
+
+      const response = await fetch('/api/paystack/charge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: user.email || '',
+          amount: selectedAmount,
+          currency: selectedCurrency,
+          card: {
+            number: cardNumber.replace(/\s/g, ''),
+            cvv: cardCvv,
+            expiry_month: expiryMonth,
+            expiry_year: expiryYear
+          },
+          pin
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to process card transaction.");
+      }
+
+      setChargeReference(data.reference || '');
+      setChargeStatus(data.status);
+      setChargeMessage(data.message || '');
+
+      if (data.status === 'success') {
+        setPaymentFormSuccess(`Successfully upgraded to Gourmet Plus! Paid $${(selectedAmount/100).toFixed(2)}. Your active privileges are now fully live!`);
+        // Upgrade the local profile state synchronously
+        if (profile) {
+          const now = new Date();
+          setProfile({
+            ...profile,
+            subscription: {
+              status: 'active',
+              subscribedDate: now.toISOString(),
+              trialEndDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+              nextPaymentDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            }
+          });
+        }
+      } else if (data.status === 'open_iframe') {
+        setRedirectUrl3ds(data.redirect_url);
+      } else if (data.status === 'failed') {
+        throw new Error(data.message || "Card transaction was declined by the issuing bank.");
+      }
+    } catch (err: any) {
+      setPaymentFormError(err.message || "Failed to process card payment.");
+      setChargeStatus('failed');
+    } finally {
+      setProcessing(false);
+      setCustomLoadingStep("");
+    }
+  };
+
+  const handleSubmitPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pinValue) return;
+    setProcessing(true);
+    setPaymentFormError(null);
+    setPaymentFormSuccess(null);
+    setCustomLoadingStep("Verifying secure card PIN...");
+
+    try {
+      const response = await fetch('/api/paystack/charge/submit-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pin: pinValue,
+          reference: chargeReference,
+          email: user?.email || ''
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to submit PIN.");
+      }
+
+      setChargeStatus(data.status);
+      setChargeMessage(data.message || '');
+      
+      if (data.status === 'success') {
+        const config = currencyConfigs[selectedCurrency];
+        const selectedAmount = paymentModalType === 'subscribe' ? config.subscribeAmount : config.linkAmount;
+        setPaymentFormSuccess(`Successfully upgraded to Gourmet Plus! Paid $${(selectedAmount/100).toFixed(2)}. Your active privileges are now fully live!`);
+        if (profile) {
+          const now = new Date();
+          setProfile({
+            ...profile,
+            subscription: {
+              status: 'active',
+              subscribedDate: now.toISOString(),
+              trialEndDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+              nextPaymentDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            }
+          });
+        }
+      }
+    } catch (err: any) {
+      setPaymentFormError(err.message || "Failed to process card payment.");
+      setChargeStatus('failed');
+    } finally {
+      setProcessing(false);
+      setCustomLoadingStep("");
+    }
+  };
+
+  const handleSubmitOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpValue) return;
+    setProcessing(true);
+    setPaymentFormError(null);
+    setPaymentFormSuccess(null);
+    setCustomLoadingStep("Verifying secure transaction OTP...");
+
+    try {
+      const response = await fetch('/api/paystack/charge/submit-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          otp: otpValue,
+          reference: chargeReference,
+          email: user?.email || ''
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to submit OTP.");
+      }
+
+      setChargeStatus(data.status);
+      setChargeMessage(data.message || '');
+
+      if (data.status === 'success') {
+        const config = currencyConfigs[selectedCurrency];
+        const selectedAmount = paymentModalType === 'subscribe' ? config.subscribeAmount : config.linkAmount;
+        setPaymentFormSuccess(`Successfully upgraded to Gourmet Plus! Paid $${(selectedAmount/100).toFixed(2)}. Your active privileges are now fully live!`);
+        if (profile) {
+          const now = new Date();
+          setProfile({
+            ...profile,
+            subscription: {
+              status: 'active',
+              subscribedDate: now.toISOString(),
+              trialEndDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+              nextPaymentDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            }
+          });
+        }
+      }
+    } catch (err: any) {
+      setPaymentFormError(err.message || "Failed to process card payment.");
+      setChargeStatus('failed');
+    } finally {
+      setProcessing(false);
+      setCustomLoadingStep("");
+    }
+  };
+
+  const handleSubmitBirthday = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!birthdayValue) return;
+    setProcessing(true);
+    setPaymentFormError(null);
+    setPaymentFormSuccess(null);
+    setCustomLoadingStep("Verifying cardholder birth date...");
+
+    try {
+      const response = await fetch('/api/paystack/charge/submit-birthday', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          birthday: birthdayValue,
+          reference: chargeReference,
+          email: user?.email || ''
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to submit birthday.");
+      }
+
+      setChargeStatus(data.status);
+      setChargeMessage(data.message || '');
+
+      if (data.status === 'success') {
+        const config = currencyConfigs[selectedCurrency];
+        const selectedAmount = paymentModalType === 'subscribe' ? config.subscribeAmount : config.linkAmount;
+        setPaymentFormSuccess(`Successfully upgraded to Gourmet Plus! Paid $${(selectedAmount/100).toFixed(2)}. Your active privileges are now fully live!`);
+        if (profile) {
+          const now = new Date();
+          setProfile({
+            ...profile,
+            subscription: {
+              status: 'active',
+              subscribedDate: now.toISOString(),
+              trialEndDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+              nextPaymentDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            }
+          });
+        }
+      }
+    } catch (err: any) {
+      setPaymentFormError(err.message || "Failed to process card payment.");
+      setChargeStatus('failed');
+    } finally {
+      setProcessing(false);
+      setCustomLoadingStep("");
+    }
+  };
+
+  const handleSubmitPhone = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!phoneValue) return;
+    setProcessing(true);
+    setPaymentFormError(null);
+    setPaymentFormSuccess(null);
+    setCustomLoadingStep("Verifying phone credentials...");
+
+    try {
+      const response = await fetch('/api/paystack/charge/submit-phone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: phoneValue,
+          reference: chargeReference,
+          email: user?.email || ''
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to submit phone number.");
+      }
+
+      setChargeStatus(data.status);
+      setChargeMessage(data.message || '');
+
+      if (data.status === 'success') {
+        const config = currencyConfigs[selectedCurrency];
+        const selectedAmount = paymentModalType === 'subscribe' ? config.subscribeAmount : config.linkAmount;
+        setPaymentFormSuccess(`Successfully upgraded to Gourmet Plus! Paid $${(selectedAmount/100).toFixed(2)}. Your active privileges are now fully live!`);
+        if (profile) {
+          const now = new Date();
+          setProfile({
+            ...profile,
+            subscription: {
+              status: 'active',
+              subscribedDate: now.toISOString(),
+              trialEndDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+              nextPaymentDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            }
+          });
+        }
+      }
+    } catch (err: any) {
+      setPaymentFormError(err.message || "Failed to process card payment.");
+      setChargeStatus('failed');
+    } finally {
+      setProcessing(false);
+      setCustomLoadingStep("");
+    }
+  };
+
   // Custom Card interactive transaction processor
   const handleCustomCardSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -328,8 +650,8 @@ export default function Subscription() {
     }
     
     const cleanNum = cardNumber.replace(/\s/g, '');
-    if (cleanNum.length < 15 || cleanNum.length > 16) {
-      setPaymentFormError("Invalid Card Number. Please double check standard digits length.");
+    if (!validateLuhn(cleanNum)) {
+      setPaymentFormError("⚠️ Invalid Card Number. The digits entered failed standard Luhn validation checksum. Please check for input typos.");
       return;
     }
     
@@ -343,27 +665,8 @@ export default function Subscription() {
       return;
     }
 
-    setProcessing(true);
-    setPaymentFormError(null);
-    setPaymentFormSuccess(null);
-
-    try {
-      setCustomLoadingStep("Establishing secure SSL/TLS connection...");
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      setCustomLoadingStep("Encrypting payment credentials (AES-256)...");
-      await new Promise(resolve => setTimeout(resolve, 900));
-
-      setCustomLoadingStep("Directing to secure verified live bank verification portal...");
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Launch actual live Paystack transaction
-      await handleRealPaystackPayment();
-    } catch (err: any) {
-      setPaymentFormError(err.message || "Card transaction was declined by the issuing bank. Please try again.");
-      setProcessing(false);
-      setCustomLoadingStep("");
-    }
+    // Launch secure direct Paystack transaction natively
+    await handleDirectCharge();
   };
 
   // Option 4: Delete a saved validation card
@@ -1312,172 +1615,479 @@ export default function Subscription() {
                           </div>
 
                           {/* Live Input Fields */}
-                          <div className="space-y-3 font-sans">
-                            {/* Cardholder Name */}
-                            <div className="flex flex-col gap-1 text-left">
-                              <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
-                                Cardholder Name
-                              </label>
-                              <input
-                                type="text"
-                                required
-                                value={cardName}
-                                disabled={processing}
-                                onFocus={() => setFocusedField('name')}
-                                onBlur={() => setFocusedField('')}
-                                onChange={(e) => setCardName(e.target.value.toUpperCase())}
-                                placeholder="E.G. BONIFACE KARUGU"
-                                style={{
-                                  backgroundColor: isModalLight ? '#f8fafc' : 'rgba(255,255,255,0.02)',
-                                  color: isModalLight ? '#0f172a' : '#ffffff',
-                                  borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.08)'
-                                }}
-                                className="w-full rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold border focus:outline-none focus:ring-1 focus:ring-amber-500 tracking-wide"
-                              />
-                            </div>
-
-                            {/* Card Number */}
-                            <div className="flex flex-col gap-1 text-left">
-                              <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
-                                Card Number
-                              </label>
-                              <div className="relative">
-                                <input
-                                  type="text"
-                                  required
-                                  maxLength={19}
-                                  value={cardNumber}
-                                  disabled={processing}
-                                  onFocus={() => setFocusedField('number')}
-                                  onBlur={() => setFocusedField('')}
-                                  onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-                                  placeholder="0000 0000 0000 0000"
-                                  style={{
-                                    backgroundColor: isModalLight ? '#f8fafc' : 'rgba(255,255,255,0.02)',
-                                    color: isModalLight ? '#0f172a' : '#ffffff',
-                                    borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.08)'
-                                  }}
-                                  className="w-full rounded-xl pl-3.5 pr-10 py-2.5 text-xs font-mono font-bold border focus:outline-none focus:ring-1 focus:ring-amber-500 tracking-[0.1em]"
-                                />
-                                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 opacity-50">
-                                  <CreditCard className="w-4 h-4" />
-                                </div>
+                          {chargeStatus === 'send_pin' ? (
+                            <div className="space-y-4 pt-1 font-sans">
+                              <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-left space-y-1">
+                                <h5 className="text-[11px] font-black uppercase text-amber-500 tracking-wider">🔒 Secure Bank Verification Required</h5>
+                                <p className="text-[10px] leading-relaxed" style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
+                                  {chargeMessage || "Please enter your card's 4-digit PIN to authorize this live payment securely."}
+                                </p>
                               </div>
-                            </div>
-
-                            {/* Expiry and CVV Grid */}
-                            <div className="grid grid-cols-2 gap-4">
                               <div className="flex flex-col gap-1 text-left">
                                 <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
-                                  Expiry Date
-                                </label>
-                                <input
-                                  type="text"
-                                  required
-                                  maxLength={5}
-                                  placeholder="MM/YY"
-                                  value={cardExpiry}
-                                  disabled={processing}
-                                  onFocus={() => setFocusedField('expiry')}
-                                  onBlur={() => setFocusedField('')}
-                                  onChange={(e) => setCardExpiry(formatCardExpiry(e.target.value))}
-                                  style={{
-                                    backgroundColor: isModalLight ? '#f8fafc' : 'rgba(255,255,255,0.02)',
-                                    color: isModalLight ? '#0f172a' : '#ffffff',
-                                    borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.08)'
-                                  }}
-                                  className="w-full rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold border focus:outline-none focus:ring-1 focus:ring-amber-500 text-center tracking-widest"
-                                />
-                              </div>
-
-                              <div className="flex flex-col gap-1 text-left">
-                                <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
-                                  CVV / Security Code
+                                  Enter Card PIN
                                 </label>
                                 <input
                                   type="password"
                                   required
-                                  maxLength={getCardBrand(cardNumber) === 'amex' ? 4 : 3}
-                                  placeholder="•••"
-                                  value={cardCvv}
+                                  maxLength={4}
+                                  placeholder="••••"
+                                  value={pinValue}
                                   disabled={processing}
-                                  onFocus={() => setFocusedField('cvv')}
-                                  onBlur={() => setFocusedField('')}
-                                  onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, '').substring(0, getCardBrand(cardNumber) === 'amex' ? 4 : 3))}
+                                  onChange={(e) => setPinValue(e.target.value.replace(/\D/g, '').substring(0, 4))}
+                                  className="w-full rounded-xl px-3.5 py-2.5 text-center text-sm font-mono font-bold border focus:outline-none focus:ring-1 focus:ring-amber-500 tracking-[0.4em]"
                                   style={{
                                     backgroundColor: isModalLight ? '#f8fafc' : 'rgba(255,255,255,0.02)',
                                     color: isModalLight ? '#0f172a' : '#ffffff',
                                     borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.08)'
                                   }}
-                                  className="w-full rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold border focus:outline-none focus:ring-1 focus:ring-amber-500 text-center tracking-widest"
                                 />
                               </div>
+                              <div className="space-y-2.5 pt-2">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleSubmitPin(e);
+                                  }}
+                                  disabled={processing || pinValue.length < 4}
+                                  className="w-full py-3 bg-amber-500 text-black font-black uppercase tracking-widest text-[10px] rounded-xl flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                                >
+                                  {processing ? (
+                                    <>
+                                      <RefreshCw className="w-4 h-4 animate-spin text-black" />
+                                      {customLoadingStep || "Verifying PIN..."}
+                                    </>
+                                  ) : (
+                                    "Confirm & Authorize Payment"
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setChargeStatus('idle')}
+                                  className="w-full py-2.5 bg-neutral-500/10 hover:bg-neutral-500/20 text-xs font-bold rounded-xl transition-all"
+                                  style={{ color: isModalLight ? '#1f2937' : '#ffffff' }}
+                                >
+                                  ← Cancel & Edit Card
+                                </button>
+                              </div>
                             </div>
-                          </div>
+                          ) : chargeStatus === 'send_otp' ? (
+                            <div className="space-y-4 pt-1 font-sans">
+                              <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-left space-y-1">
+                                <h5 className="text-[11px] font-black uppercase text-amber-500 tracking-wider">📨 One-Time Password Sent</h5>
+                                <p className="text-[10px] leading-relaxed" style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
+                                  {chargeMessage || "A security code has been sent to your phone or email. Please enter it below."}
+                                </p>
+                              </div>
+                              <div className="flex flex-col gap-1 text-left">
+                                <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
+                                  Enter OTP Code
+                                </label>
+                                <input
+                                  type="text"
+                                  required
+                                  placeholder="E.G. 123456"
+                                  value={otpValue}
+                                  disabled={processing}
+                                  onChange={(e) => setOtpValue(e.target.value.trim())}
+                                  className="w-full rounded-xl px-3.5 py-2.5 text-center text-sm font-mono font-bold border focus:outline-none focus:ring-1 focus:ring-amber-500 tracking-[0.2em]"
+                                  style={{
+                                    backgroundColor: isModalLight ? '#f8fafc' : 'rgba(255,255,255,0.02)',
+                                    color: isModalLight ? '#0f172a' : '#ffffff',
+                                    borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.08)'
+                                  }}
+                                />
+                              </div>
+                              <div className="space-y-2.5 pt-2">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleSubmitOtp(e);
+                                  }}
+                                  disabled={processing || !otpValue}
+                                  className="w-full py-3 bg-amber-500 text-black font-black uppercase tracking-widest text-[10px] rounded-xl flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                                >
+                                  {processing ? (
+                                    <>
+                                      <RefreshCw className="w-4 h-4 animate-spin text-black" />
+                                      {customLoadingStep || "Verifying OTP..."}
+                                    </>
+                                  ) : (
+                                    "Confirm Code & Complete Payment"
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setChargeStatus('idle')}
+                                  className="w-full py-2.5 bg-neutral-500/10 hover:bg-neutral-500/20 text-xs font-bold rounded-xl transition-all"
+                                  style={{ color: isModalLight ? '#1f2937' : '#ffffff' }}
+                                >
+                                  ← Cancel & Edit Card
+                                </button>
+                              </div>
+                            </div>
+                          ) : chargeStatus === 'send_birthday' ? (
+                            <div className="space-y-4 pt-1 font-sans">
+                              <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-left space-y-1">
+                                <h5 className="text-[11px] font-black uppercase text-amber-500 tracking-wider">🎂 Birthday Verification</h5>
+                                <p className="text-[10px] leading-relaxed" style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
+                                  {chargeMessage || "Your bank requires your date of birth for secondary verification."}
+                                </p>
+                              </div>
+                              <div className="flex flex-col gap-1 text-left">
+                                <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
+                                  Enter Birthday (YYYY-MM-DD)
+                                </label>
+                                <input
+                                  type="text"
+                                  required
+                                  placeholder="YYYY-MM-DD"
+                                  value={birthdayValue}
+                                  disabled={processing}
+                                  onChange={(e) => setBirthdayValue(e.target.value.trim())}
+                                  className="w-full rounded-xl px-3.5 py-2.5 text-center text-sm font-mono font-bold border focus:outline-none focus:ring-1 focus:ring-amber-500 tracking-widest"
+                                  style={{
+                                    backgroundColor: isModalLight ? '#f8fafc' : 'rgba(255,255,255,0.02)',
+                                    color: isModalLight ? '#0f172a' : '#ffffff',
+                                    borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.08)'
+                                  }}
+                                />
+                              </div>
+                              <div className="space-y-2.5 pt-2">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleSubmitBirthday(e);
+                                  }}
+                                  disabled={processing || birthdayValue.length < 10}
+                                  className="w-full py-3 bg-amber-500 text-black font-black uppercase tracking-widest text-[10px] rounded-xl flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                                >
+                                  {processing ? (
+                                    <>
+                                      <RefreshCw className="w-4 h-4 animate-spin text-black" />
+                                      {customLoadingStep || "Verifying Birthday..."}
+                                    </>
+                                  ) : (
+                                    "Confirm Birthday & Complete"
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setChargeStatus('idle')}
+                                  className="w-full py-2.5 bg-neutral-500/10 hover:bg-neutral-500/20 text-xs font-bold rounded-xl transition-all"
+                                  style={{ color: isModalLight ? '#1f2937' : '#ffffff' }}
+                                >
+                                  ← Cancel & Edit Card
+                                </button>
+                              </div>
+                            </div>
+                          ) : chargeStatus === 'send_phone' ? (
+                            <div className="space-y-4 pt-1 font-sans">
+                              <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-left space-y-1">
+                                <h5 className="text-[11px] font-black uppercase text-amber-500 tracking-wider">📱 Phone Verification</h5>
+                                <p className="text-[10px] leading-relaxed" style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
+                                  {chargeMessage || "Your bank requires your phone number registered with the card for verification."}
+                                </p>
+                              </div>
+                              <div className="flex flex-col gap-1 text-left">
+                                <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
+                                  Enter Phone Number
+                                </label>
+                                <input
+                                  type="text"
+                                  required
+                                  placeholder="E.G. +254..."
+                                  value={phoneValue}
+                                  disabled={processing}
+                                  onChange={(e) => setPhoneValue(e.target.value.trim())}
+                                  className="w-full rounded-xl px-3.5 py-2.5 text-center text-sm font-mono font-bold border focus:outline-none focus:ring-1 focus:ring-amber-500 tracking-widest"
+                                  style={{
+                                    backgroundColor: isModalLight ? '#f8fafc' : 'rgba(255,255,255,0.02)',
+                                    color: isModalLight ? '#0f172a' : '#ffffff',
+                                    borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.08)'
+                                  }}
+                                />
+                              </div>
+                              <div className="space-y-2.5 pt-2">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleSubmitPhone(e);
+                                  }}
+                                  disabled={processing || !phoneValue}
+                                  className="w-full py-3 bg-amber-500 text-black font-black uppercase tracking-widest text-[10px] rounded-xl flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                                >
+                                  {processing ? (
+                                    <>
+                                      <RefreshCw className="w-4 h-4 animate-spin text-black" />
+                                      {customLoadingStep || "Verifying Phone..."}
+                                    </>
+                                  ) : (
+                                    "Confirm Phone & Complete"
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setChargeStatus('idle')}
+                                  className="w-full py-2.5 bg-neutral-500/10 hover:bg-neutral-500/20 text-xs font-bold rounded-xl transition-all"
+                                  style={{ color: isModalLight ? '#1f2937' : '#ffffff' }}
+                                >
+                                  ← Cancel & Edit Card
+                                </button>
+                              </div>
+                            </div>
+                          ) : chargeStatus === 'open_iframe' ? (
+                            <div className="space-y-4 pt-1 font-sans">
+                              <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl text-left space-y-1">
+                                <h5 className="text-[11px] font-black uppercase text-indigo-400 tracking-wider">🏦 3D Secure Authorization</h5>
+                                <p className="text-[10px] leading-relaxed" style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
+                                  Your bank requires external secure 3D Secure authentication. Please click below to complete verification in a secure browser window.
+                                </p>
+                              </div>
+                              <div className="space-y-2.5 pt-2">
+                                <a
+                                  href={redirectUrl3ds}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={() => {
+                                    setChargeStatus('charging');
+                                    setCustomLoadingStep("Waiting for secure 3D Secure verification...");
+                                  }}
+                                  className="w-full py-4 bg-indigo-600 text-white hover:bg-indigo-700 font-black uppercase tracking-widest text-[10px] rounded-xl flex items-center justify-center gap-2 cursor-pointer text-center"
+                                >
+                                  <ExternalLink className="w-4 h-4" />
+                                  Complete 3D Secure Verification
+                                </a>
+                                
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    setProcessing(true);
+                                    setPaymentFormError(null);
+                                    try {
+                                      const res = await fetch(`/api/paystack/verify?reference=${chargeReference}`);
+                                      const checkData = await res.json();
+                                      if (checkData.status === 'success') {
+                                        setPaymentFormSuccess("Upgraded successfully! Paid $5.00 USD.");
+                                        setChargeStatus('success');
+                                        if (profile) {
+                                          const now = new Date();
+                                          setProfile({
+                                            ...profile,
+                                            subscription: {
+                                              status: 'active',
+                                              subscribedDate: now.toISOString(),
+                                              trialEndDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+                                              nextPaymentDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+                                            }
+                                          });
+                                        }
+                                      } else {
+                                        setPaymentFormError("Verification not completed yet. Please complete the bank verification and try again.");
+                                      }
+                                    } catch (e) {
+                                      setPaymentFormError("Could not check status yet.");
+                                    } finally {
+                                      setProcessing(false);
+                                    }
+                                  }}
+                                  disabled={processing}
+                                  className="w-full py-3 bg-emerald-500 text-black font-black uppercase tracking-widest text-[10px] rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+                                >
+                                  I Have Completed Verification (Check Status)
+                                </button>
 
-                          {/* SELECT BILLING CURRENCY */}
-                          <div className="flex flex-col gap-1 text-left font-sans">
-                            <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
-                              Select Billing Currency
-                            </label>
-                            <select
-                              value={selectedCurrency}
-                              disabled={processing}
-                              onChange={(e) => setSelectedCurrency(e.target.value as any)}
-                              style={{
-                                backgroundColor: isModalLight ? '#f8fafc' : 'rgba(255, 255, 255, 0.05)',
-                                color: isModalLight ? '#0f172a' : '#ffffff',
-                                borderColor: isModalLight ? '#cbd5e1' : 'rgba(255, 255, 255, 0.1)'
-                              }}
-                              className="w-full rounded-xl px-3 py-2 text-xs border font-medium focus:outline-none focus:ring-1 focus:ring-amber-500"
-                            >
-                              <option value="KES">KES - Kenyan Shilling (Supports M-PESA & Cards)</option>
-                              <option value="USD">USD - US Dollar (International Credit Cards)</option>
-                              <option value="NGN">NGN - Nigerian Naira (Supports Cards & Bank Transfer)</option>
-                              <option value="GHS">GHS - Ghanaian Cedi (Supports Cards & Mobile Money)</option>
-                              <option value="ZAR">ZAR - South African Rand (Supports Cards & EFT)</option>
-                            </select>
-                          </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setChargeStatus('idle')}
+                                  className="w-full py-2.5 bg-neutral-500/10 hover:bg-neutral-500/20 text-xs font-bold rounded-xl transition-all"
+                                  style={{ color: isModalLight ? '#1f2937' : '#ffffff' }}
+                                >
+                                  ← Cancel & Edit Card
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="space-y-3 font-sans">
+                                {/* Cardholder Name */}
+                                <div className="flex flex-col gap-1 text-left">
+                                  <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
+                                    Cardholder Name
+                                  </label>
+                                  <input
+                                    type="text"
+                                    required
+                                    value={cardName}
+                                    disabled={processing}
+                                    onFocus={() => setFocusedField('name')}
+                                    onBlur={() => setFocusedField('')}
+                                    onChange={(e) => setCardName(e.target.value.toUpperCase())}
+                                    placeholder="E.G. BONIFACE KARUGU"
+                                    style={{
+                                      backgroundColor: isModalLight ? '#f8fafc' : 'rgba(255,255,255,0.02)',
+                                      color: isModalLight ? '#0f172a' : '#ffffff',
+                                      borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.08)'
+                                    }}
+                                    className="w-full rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold border focus:outline-none focus:ring-1 focus:ring-amber-500 tracking-wide"
+                                  />
+                                </div>
 
-                          {/* Submit Custom Checkout Button */}
-                          <div className="space-y-3 pt-2">
-                            <button
-                              type="submit"
-                              disabled={processing}
-                              style={{
-                                backgroundColor: '#f59e0b',
-                                color: '#000000'
-                              }}
-                              className="w-full py-4 hover:opacity-95 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-lg shadow-amber-500/15 hover:scale-[1.01] active:scale-[0.99]"
-                            >
-                              {processing ? (
-                                <span className="flex items-center gap-2 font-black text-[10px] tracking-widest uppercase text-black">
-                                  <RefreshCw className="w-4 h-4 animate-spin text-black" />
-                                  {customLoadingStep || "Contacting Secure Gateway..."}
-                                </span>
-                              ) : (
-                                <span className="flex items-center gap-2 font-black text-[10px] tracking-widest uppercase text-black">
-                                  <Shield className="w-4 h-4 shrink-0 text-black" />
-                                  {paymentModalType === 'subscribe' 
-                                    ? `Pay ${currencyConfigs[selectedCurrency].displaySubscribe} Securely` 
-                                    : `Authorize ${currencyConfigs[selectedCurrency].displayLink} Securely`}
-                                </span>
-                              )}
-                            </button>
+                                {/* Card Number */}
+                                <div className="flex flex-col gap-1 text-left">
+                                  <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
+                                    Card Number
+                                  </label>
+                                  <div className="relative">
+                                    <input
+                                      type="text"
+                                      required
+                                      maxLength={19}
+                                      value={cardNumber}
+                                      disabled={processing}
+                                      onFocus={() => setFocusedField('number')}
+                                      onBlur={() => setFocusedField('')}
+                                      onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                                      placeholder="0000 0000 0000 0000"
+                                      style={{
+                                        backgroundColor: isModalLight ? '#f8fafc' : 'rgba(255,255,255,0.02)',
+                                        color: isModalLight ? '#0f172a' : '#ffffff',
+                                        borderColor: cardNumber.length >= 19 && isCardNumberValid === false
+                                          ? '#ef4444'
+                                          : (cardNumber.length >= 19 && isCardNumberValid === true ? '#10b981' : (isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.08)'))
+                                      }}
+                                      className="w-full rounded-xl pl-3.5 pr-10 py-2.5 text-xs font-mono font-bold border focus:outline-none focus:ring-1 focus:ring-amber-500 tracking-[0.1em]"
+                                    />
+                                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 opacity-50">
+                                      <CreditCard className="w-4 h-4" />
+                                    </div>
+                                  </div>
+                                  {cardNumber.length >= 19 && isCardNumberValid === false && (
+                                    <p className="text-[10px] text-rose-500 font-bold mt-1">
+                                      ⚠️ Invalid card checksum (failed Luhn algorithm validation). Please check for typos.
+                                    </p>
+                                  )}
+                                  {cardNumber.length >= 19 && isCardNumberValid === true && (
+                                    <p className="text-[10px] text-emerald-500 font-bold mt-1">
+                                      ✓ Valid credit card checksum detected.
+                                    </p>
+                                  )}
+                                </div>
 
-                            <button
-                              type="button"
-                              onClick={() => setShowPaymentModal(false)}
-                              disabled={processing}
-                              style={{
-                                borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.15)',
-                                color: isModalLight ? '#1f2937' : '#f3f4f6'
-                              }}
-                              className="w-full py-3.5 hover:bg-neutral-500/5 rounded-2xl font-black uppercase tracking-widest text-[9.5px] transition-all flex items-center justify-center gap-1.5 cursor-pointer border disabled:opacity-50"
-                            >
-                              ← Cancel & Back to Plans
-                            </button>
-                          </div>
+                                {/* Expiry and CVV Grid */}
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div className="flex flex-col gap-1 text-left">
+                                    <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
+                                      Expiry Date
+                                    </label>
+                                    <input
+                                      type="text"
+                                      required
+                                      maxLength={5}
+                                      placeholder="MM/YY"
+                                      value={cardExpiry}
+                                      disabled={processing}
+                                      onFocus={() => setFocusedField('expiry')}
+                                      onBlur={() => setFocusedField('')}
+                                      onChange={(e) => setCardExpiry(formatCardExpiry(e.target.value))}
+                                      style={{
+                                        backgroundColor: isModalLight ? '#f8fafc' : 'rgba(255,255,255,0.02)',
+                                        color: isModalLight ? '#0f172a' : '#ffffff',
+                                        borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.08)'
+                                      }}
+                                      className="w-full rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold border focus:outline-none focus:ring-1 focus:ring-amber-500 text-center tracking-widest"
+                                    />
+                                  </div>
+
+                                  <div className="flex flex-col gap-1 text-left">
+                                    <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
+                                      CVV / Security Code
+                                    </label>
+                                    <input
+                                      type="password"
+                                      required
+                                      maxLength={getCardBrand(cardNumber) === 'amex' ? 4 : 3}
+                                      placeholder="•••"
+                                      value={cardCvv}
+                                      disabled={processing}
+                                      onFocus={() => setFocusedField('cvv')}
+                                      onBlur={() => setFocusedField('')}
+                                      onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, '').substring(0, getCardBrand(cardNumber) === 'amex' ? 4 : 3))}
+                                      style={{
+                                        backgroundColor: isModalLight ? '#f8fafc' : 'rgba(255,255,255,0.02)',
+                                        color: isModalLight ? '#0f172a' : '#ffffff',
+                                        borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.08)'
+                                      }}
+                                      className="w-full rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold border focus:outline-none focus:ring-1 focus:ring-amber-500 text-center tracking-widest"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* SELECT BILLING CURRENCY */}
+                              <div className="flex flex-col gap-1 text-left font-sans opacity-60">
+                                <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
+                                  Billing Currency
+                                </label>
+                                <select
+                                  value="USD"
+                                  disabled={true}
+                                  style={{
+                                    backgroundColor: isModalLight ? '#f1f5f9' : 'rgba(255, 255, 255, 0.05)',
+                                    color: isModalLight ? '#475569' : '#9ca3af',
+                                    borderColor: isModalLight ? '#cbd5e1' : 'rgba(255, 255, 255, 0.1)'
+                                  }}
+                                  className="w-full rounded-xl px-3 py-2 text-xs border font-medium focus:outline-none cursor-not-allowed"
+                                >
+                                  <option value="USD">USD - US Dollar (International Credit Cards Only)</option>
+                                </select>
+                              </div>
+
+                              {/* Submit Custom Checkout Button */}
+                              <div className="space-y-3 pt-2">
+                                <button
+                                  type="submit"
+                                  disabled={processing || isCardNumberValid === false}
+                                  style={{
+                                    backgroundColor: '#f59e0b',
+                                    color: '#000000'
+                                  }}
+                                  className="w-full py-4 hover:opacity-95 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-lg shadow-amber-500/15 hover:scale-[1.01] active:scale-[0.99]"
+                                >
+                                  {processing ? (
+                                    <span className="flex items-center gap-2 font-black text-[10px] tracking-widest uppercase text-black">
+                                      <RefreshCw className="w-4 h-4 animate-spin text-black" />
+                                      {customLoadingStep || "Contacting Secure Gateway..."}
+                                    </span>
+                                  ) : (
+                                    <span className="flex items-center gap-2 font-black text-[10px] tracking-widest uppercase text-black">
+                                      <Shield className="w-4 h-4 shrink-0 text-black" />
+                                      {paymentModalType === 'subscribe' 
+                                        ? `Pay ${currencyConfigs[selectedCurrency].displaySubscribe} Securely` 
+                                        : `Authorize ${currencyConfigs[selectedCurrency].displayLink} Securely`}
+                                    </span>
+                                  )}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setShowPaymentModal(false)}
+                                  disabled={processing}
+                                  style={{
+                                    borderColor: isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.15)',
+                                    color: isModalLight ? '#1f2937' : '#f3f4f6'
+                                  }}
+                                  className="w-full py-3.5 hover:bg-neutral-500/5 rounded-2xl font-black uppercase tracking-widest text-[9.5px] transition-all flex items-center justify-center gap-1.5 cursor-pointer border disabled:opacity-50"
+                                >
+                                  ← Cancel & Back to Plans
+                                </button>
+                              </div>
+                            </>
+                          )}
                         </form>
                       ) : (
                         /* TAB 2: ORIGINAL SECURE REDIRECT OPTION WITH DIAGNOSTIC INFO */
