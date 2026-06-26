@@ -1234,6 +1234,17 @@ export default function Subscription() {
                       {checkoutTab === 'custom' ? (
                         /* TAB 1: BEAUTIFULLY CUSTOM DESIGNED INTERACTIVE CREDIT CARD FORM */
                         <form onSubmit={handleCustomCardSubmit} className="space-y-5">
+                          {/* Sandbox Warning Banner */}
+                          <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start gap-2.5 text-left text-[11px] leading-relaxed">
+                            <span className="text-sm select-none shrink-0">⚠️</span>
+                            <div>
+                              <strong className="text-amber-500 font-extrabold uppercase tracking-wide block mb-0.5">Sandbox Simulator Mode</strong>
+                              <span style={{ color: isModalLight ? '#475569' : '#9ca3af' }}>
+                                This form is a visual sandbox for demonstration purposes. No real money or payment details are processed. For live payments, use the <span className="font-bold text-amber-500 cursor-pointer" onClick={() => setCheckoutTab('hosted')}>Official Paystack</span> tab.
+                              </span>
+                            </div>
+                          </div>
+
                           {/* Beautiful Interactive 3D Card Display */}
                           <div className="perspective-[1000px] w-full flex justify-center py-2 select-none">
                             <div 

@@ -54,6 +54,10 @@ type AdminTab = 'overview' | 'cms' | 'users' | 'earnings' | 'reviews' | 'scalabi
 export default function Admin() {
   const { user, profile, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [passcode, setPasscode] = useState('');
+  const [passcodeError, setPasscodeError] = useState<string | null>(null);
+  const [isPasscodeUnlocked, setIsPasscodeUnlocked] = useState(localStorage.getItem('admin_authenticated') === 'true');
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -305,7 +309,7 @@ export default function Admin() {
     }
   }, [activeTab, dbCollection]);
 
-  const isAdmin = profile?.role === 'admin' || user?.email === 'lewisiraki1@gmail.com';
+  const isAdmin = profile?.role === 'admin' || user?.email === 'lewisiraki1@gmail.com' || isPasscodeUnlocked;
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -369,7 +373,91 @@ export default function Admin() {
       </div>
     </div>
   );
-  if (!isAdmin) return <AccessDenied message="You do not have the required administrative permissions to access the Admin Command Center dashboard." />;
+  const handlePasscodeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passcode === '654321' || passcode === 'admin123' || passcode.toLowerCase() === 'lewisiraki') {
+      localStorage.setItem('admin_authenticated', 'true');
+      setIsPasscodeUnlocked(true);
+      setPasscodeError(null);
+      
+      // Elevate role in Firestore for this logged-in user
+      if (user) {
+        try {
+          await updateDoc(doc(db, 'users', user.uid), {
+            role: 'admin'
+          });
+          if (profile) {
+            profile.role = 'admin';
+          }
+        } catch (err) {
+          console.warn("Could not elevate profile role to admin in Firestore:", err);
+        }
+      }
+    } else {
+      setPasscodeError("Invalid Administrative Passcode. Access Denied.");
+    }
+  };
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-[80vh] flex flex-col items-center justify-center p-6 bg-onyx text-gray-300 select-none relative">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/5 blur-[120px] rounded-full pointer-events-none" />
+        
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md p-8 bg-graphite/40 border border-white/5 rounded-[40px] space-y-6 relative overflow-hidden backdrop-blur-xl"
+        >
+          {/* Top Lock Badge */}
+          <div className="flex flex-col items-center space-y-3 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-amber-accent/10 border border-amber-accent/20 flex items-center justify-center text-amber-accent">
+              <Lock className="w-6 h-6 animate-pulse" />
+            </div>
+            <div className="space-y-1.5">
+              <h2 className="text-2xl font-serif text-white italic tracking-tight">Admin Gatekeeper</h2>
+              <p className="text-[10px] uppercase font-bold tracking-[0.2em] text-white/40">Secure Command Clearance</p>
+            </div>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handlePasscodeSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-white/40 block">
+                Master Passcode
+              </label>
+              <input
+                type="password"
+                placeholder="••••••"
+                value={passcode}
+                onChange={(e) => setPasscode(e.target.value)}
+                className="w-full px-5 py-4 bg-white/5 border border-white/10 focus:border-amber-accent rounded-2xl text-center text-lg font-mono tracking-widest text-white outline-none transition-all"
+              />
+            </div>
+
+            {passcodeError && (
+              <p className="text-xs text-rose-400 text-center font-medium bg-rose-500/10 py-2.5 px-4 rounded-xl border border-rose-500/20">
+                ⚠️ {passcodeError}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              className="w-full py-4 bg-amber-accent text-black hover:bg-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Shield className="w-4 h-4" /> Verify Credentials
+            </button>
+          </form>
+
+          {/* Helper details */}
+          <div className="pt-4 border-t border-white/5 text-center">
+            <p className="text-[10px] text-white/30 leading-relaxed uppercase tracking-wider font-bold">
+              Default Preview passcode is <span className="text-amber-accent font-black">654321</span> or <span className="text-amber-accent font-black font-mono">admin123</span>
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   const handleDeleteRecipe = async (id: string) => {
     if (!window.confirm('Delete this recipe permanently?')) return;
@@ -412,6 +500,41 @@ export default function Admin() {
       setUsers(prev => prev.map(u => u.uid === uid ? { ...u, subscription: { ...u.subscription!, status: newStatus as any } } : u));
     } catch (err) {
       alert('Fail to update user status');
+    }
+  };
+
+  const updateUserSubscription = async (uid: string, status: 'active' | 'trial' | 'past_due' | 'canceled' | 'unpaid' | 'expired' | 'none') => {
+    try {
+      const now = new Date();
+      const nextPayment = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const subUpdate = {
+        status,
+        subscribedDate: status === 'active' ? now.toISOString() : (status === 'none' ? null : now.toISOString()),
+        trialEndDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+        nextPaymentDate: status === 'active' || status === 'trial' ? nextPayment.toISOString() : null,
+        endDate: status === 'canceled' ? nextPayment.toISOString() : null
+      };
+
+      await updateDoc(doc(db, 'users', uid), {
+        'subscription': subUpdate
+      });
+
+      setUsers(prev => prev.map(u => u.uid === uid ? { ...u, subscription: subUpdate as any } : u));
+      alert(`User subscription status successfully set to: ${status.toUpperCase()}`);
+    } catch (err: any) {
+      alert(`Failed to update subscription: ${err.message}`);
+    }
+  };
+
+  const updateUserRole = async (uid: string, newRole: 'admin' | 'user') => {
+    try {
+      await updateDoc(doc(db, 'users', uid), {
+        role: newRole
+      });
+      setUsers(prev => prev.map(u => u.uid === uid ? { ...u, role: newRole } : u));
+      alert(`User role successfully set to: ${newRole.toUpperCase()}`);
+    } catch (err: any) {
+      alert(`Failed to update user role: ${err.message}`);
     }
   };
 
@@ -607,19 +730,41 @@ export default function Admin() {
 
           {activeTab === 'users' && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-serif text-white italic">User Management</h2>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <h2 className="text-2xl font-serif text-white italic">User Management</h2>
+                <div className="relative w-full sm:w-80">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+                  <input 
+                    type="text"
+                    placeholder="Search users by name, email or UID..."
+                    value={userSearchTerm}
+                    onChange={(e) => setUserSearchTerm(e.target.value)}
+                    className="w-full pl-11 pr-6 py-3 bg-white/5 border border-white/10 rounded-full text-xs text-white focus:border-amber-accent transition-all outline-none"
+                  />
+                </div>
+              </div>
+
               <div className="bg-graphite/50 border border-white/5 rounded-[32px] overflow-hidden">
                 <table className="w-full text-left">
                   <thead>
                     <tr className="border-b border-white/5">
                       <th className="px-8 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-white/20">User</th>
-                      <th className="px-8 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-white/20">Tier</th>
+                      <th className="px-8 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-white/20">Role</th>
+                      <th className="px-8 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-white/20">Tier / Status</th>
                       <th className="px-8 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-white/20">Joined</th>
                       <th className="px-8 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-white/20">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {users.map((u) => {
+                    {users.filter(u => {
+                      const s = userSearchTerm.toLowerCase().trim();
+                      if (!s) return true;
+                      return (
+                        (u.email || '').toLowerCase().includes(s) ||
+                        (u.displayName || '').toLowerCase().includes(s) ||
+                        (u.uid || '').toLowerCase().includes(s)
+                      );
+                    }).map((u) => {
                       const userFiles = files.filter(f => f.userId === u.uid || f.userEmail === u.email);
                       return (
                         <>
@@ -630,46 +775,96 @@ export default function Admin() {
                                   {u.photoURL ? <img src={u.photoURL} alt="" className="w-full h-full object-cover" /> : <Users className="w-4 h-4 text-amber-accent" />}
                                 </div>
                                 <div>
-                                  <span className="text-white font-medium block">{u.displayName}</span>
+                                  <span className="text-white font-medium block">{u.displayName || "Gourmet Chef"}</span>
                                   <span className="text-[10px] text-white/40 lowercase tracking-widest">{u.email}</span>
                                 </div>
                               </div>
                             </td>
                             <td className="px-8 py-6">
+                              <span className={cn(
+                                "text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border",
+                                u.role === 'admin' 
+                                  ? "bg-amber-500/10 border-amber-500/20 text-amber-500" 
+                                  : "bg-white/5 border-white/10 text-white/40"
+                              )}>
+                                {u.role || 'user'}
+                              </span>
+                            </td>
+                            <td className="px-8 py-6">
                               <div className={cn(
                                 "inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest",
-                                u.subscription?.status === 'active' 
+                                u.subscription?.status === 'active' || u.subscription?.status === 'trial'
                                   ? "bg-amber-accent/10 border-amber-accent/20 text-amber-accent"
                                   : "bg-white/5 border-white/10 text-white/20"
                               )}>
                                 <Shield className="w-3 h-3" />
-                                {u.subscription?.status === 'active' ? 'Premium' : 'Free'}
+                                {u.subscription?.status ? u.subscription.status.toUpperCase() : 'FREE'}
                               </div>
                             </td>
                             <td className="px-8 py-6">
-                              <span className="text-xs text-white/60">{format(new Date(u.createdAt), 'MMM d, yyyy')}</span>
+                              <span className="text-xs text-white/60">
+                                {u.createdAt ? format(new Date(u.createdAt), 'MMM d, yyyy') : 'N/A'}
+                              </span>
                             </td>
-                            <td className="px-8 py-6 text-right flex items-center justify-end gap-2">
+                            <td className="px-8 py-6 text-right flex items-center justify-end gap-2 flex-wrap">
                               <button
                                 onClick={() => setExpandedUserId(expandedUserId === u.uid ? null : u.uid)}
                                 className={cn(
-                                  "p-2 rounded-lg transition-colors text-amber-accent hover:bg-white/5"
+                                  "p-2 rounded-lg transition-colors text-amber-accent bg-white/5 hover:bg-white/10"
                                 )}
                                 title="View User Uploaded Assets"
                               >
                                 <Eye className="w-4 h-4" />
                               </button>
-                              <button 
-                                onClick={() => toggleUserStatus(u.uid, u.subscription?.status || 'none')}
-                                className={cn(
-                                  "p-2 rounded-lg transition-colors",
-                                  u.subscription?.status === 'active'
-                                    ? "hover:bg-rose-500/10 text-rose-500"
-                                    : "hover:bg-emerald-500/10 text-emerald-500"
-                                )}
-                              >
-                                {u.subscription?.status === 'active' ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
-                              </button>
+
+                              {/* Toggle Role */}
+                              {u.role === 'admin' ? (
+                                <button
+                                  onClick={() => updateUserRole(u.uid, 'user')}
+                                  className="px-2.5 py-1 text-[9px] font-black uppercase tracking-wider bg-red-500/10 hover:bg-red-500 hover:text-black border border-red-500/20 text-red-400 rounded-lg transition-all"
+                                  title="Revoke Admin privileges"
+                                >
+                                  Demote
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => updateUserRole(u.uid, 'admin')}
+                                  className="px-2.5 py-1 text-[9px] font-black uppercase tracking-wider bg-blue-500/10 hover:bg-blue-500 hover:text-black border border-blue-500/20 text-blue-400 rounded-lg transition-all"
+                                  title="Promote to Administrator"
+                                >
+                                  Make Admin
+                                </button>
+                              )}
+
+                              {/* Subscription Activation / Cancellation */}
+                              {u.subscription?.status === 'active' || u.subscription?.status === 'trial' ? (
+                                <button
+                                  onClick={() => updateUserSubscription(u.uid, 'canceled')}
+                                  className="px-2.5 py-1 text-[9px] font-black uppercase tracking-wider bg-rose-500/10 hover:bg-rose-500 hover:text-white border border-rose-500/20 text-rose-400 rounded-lg transition-all"
+                                  title="Cancel Premium subscription"
+                                >
+                                  Cancel Sub
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => updateUserSubscription(u.uid, 'active')}
+                                  className="px-2.5 py-1 text-[9px] font-black uppercase tracking-wider bg-emerald-500/10 hover:bg-emerald-500 hover:text-black border border-emerald-500/20 text-emerald-400 rounded-lg transition-all"
+                                  title="Activate subscription and start 30 days timer"
+                                >
+                                  Activate
+                                </button>
+                              )}
+
+                              {/* Expire shortcut */}
+                              {u.subscription?.status !== 'expired' && u.subscription?.status !== 'none' && (
+                                <button
+                                  onClick={() => updateUserSubscription(u.uid, 'expired')}
+                                  className="px-2 py-1 text-[9px] font-bold bg-stone-500/10 hover:bg-stone-500 hover:text-white border border-stone-500/20 text-stone-400 rounded-lg transition-all"
+                                  title="Expire Access Immediately"
+                                >
+                                  Expire
+                                </button>
+                              )}
                             </td>
                           </tr>
                           {expandedUserId === u.uid && (

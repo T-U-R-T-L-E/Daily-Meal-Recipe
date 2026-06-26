@@ -397,8 +397,8 @@ function SubscriptionBanner() {
               <Route path="/recipe/:id" element={<RecipeDetails />} />
               <Route path="/guided/:id" element={<GuidedCooking />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
-              <Route path="/admin" element={user && user.email === 'lewisiraki1@gmail.com' ? <Admin /> : <Navigate to="/" />} />
-              <Route path="/compliance" element={user && user.email === 'lewisiraki1@gmail.com' ? <ComplianceHub /> : <Navigate to="/" />} />
+              <Route path="/admin" element={<Admin />} />
+              <Route path="/compliance" element={user && (user.email === 'lewisiraki1@gmail.com' || profile?.role === 'admin' || localStorage.getItem('admin_authenticated') === 'true') ? <ComplianceHub /> : <Navigate to="/" />} />
               <Route path="/privacy" element={<PrivacyPolicyPage />} />
               <Route path="/terms" element={<TermsOfServicePage />} />
               <Route path="/refund-policy" element={<RefundPolicyPage />} />

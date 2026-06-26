@@ -61,7 +61,9 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
     { name: 'Gourmet Vault', path: '/files', icon: Database, auth: true },
   ];
 
-  if (user?.email === 'lewisiraki1@gmail.com') {
+  const isSystemAdmin = profile?.role === 'admin' || user?.email === 'lewisiraki1@gmail.com' || localStorage.getItem('admin_authenticated') === 'true';
+
+  if (isSystemAdmin) {
     navItems.push({ name: 'Compliance', path: '/compliance', icon: Scale, auth: true });
     navItems.push({ name: 'Admin', path: '/admin', icon: Shield, auth: true });
   }
@@ -84,7 +86,7 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
     { name: 'Subscription', path: '/subscription', icon: CreditCard, auth: true },
   ];
 
-  if (user?.email === 'lewisiraki1@gmail.com') {
+  if (isSystemAdmin) {
     mobileMoreTabs.unshift({ name: 'Compliance Hub', path: '/compliance', icon: Scale, auth: true });
     mobileMoreTabs.unshift({ name: 'Admin Hub', path: '/admin', icon: Shield, auth: true });
   }
