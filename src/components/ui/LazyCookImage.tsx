@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useState, useEffect, useRef } from 'react';
+import { motion } from 'motion/react';
 import { cn, cleanRecipeImageUrl, getStableFoodImage } from '../../lib/utils';
 import { ChefHat } from 'lucide-react';
 
@@ -31,14 +31,33 @@ export default function LazyCookImage({
   const [resolvedSrc, setResolvedSrc] = useState(() => cleanRecipeImageUrl(src, recipeName, category, cuisine));
   const [isLoaded, setIsLoaded] = useState(false);
   const [isFallback, setIsFallback] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  // Dynamically optimize the Unsplash resolution and compression for super fast loading on mobile devices
+  const displaySrc = (() => {
+    if (resolvedSrc && resolvedSrc.includes('images.unsplash.com')) {
+      let optimized = resolvedSrc;
+      if (optimized.includes('w=')) {
+        optimized = optimized.replace(/w=\d+/, 'w=600');
+      } else {
+        optimized += '&w=600';
+      }
+      if (optimized.includes('q=')) {
+        optimized = optimized.replace(/q=\d+/, 'q=75');
+      } else {
+        optimized += '&q=75';
+      }
+      return optimized;
+    }
+    return resolvedSrc;
+  })();
 
   // Generate low-resolution placeholder URL for Unsplash photos for immediate load
   const lowResPlaceholder = (() => {
-    if (resolvedSrc.includes('images.unsplash.com')) {
+    if (resolvedSrc && resolvedSrc.includes('images.unsplash.com')) {
       const base = resolvedSrc.split('?')[0];
       return `${base}?auto=format&fit=crop&q=10&w=48&blur=25`;
     }
-    // Return a smaller fallback for other links if possible or just the resolvedSrc
     return resolvedSrc;
   })();
 
@@ -48,6 +67,13 @@ export default function LazyCookImage({
     setIsLoaded(false);
     setIsFallback(false);
   }, [src, recipeName, category, cuisine]);
+
+  // Handle cached images on mobile where the onLoad event might not trigger
+  useEffect(() => {
+    if (imgRef.current && imgRef.current.complete) {
+      setIsLoaded(true);
+    }
+  }, [displaySrc]);
 
   const handleImageLoad = () => {
     setIsLoaded(true);
@@ -98,8 +124,9 @@ export default function LazyCookImage({
       {/* High-Resolution image */}
       {layoutId ? (
         <motion.img
+          ref={imgRef as any}
           layoutId={layoutId}
-          src={resolvedSrc}
+          src={displaySrc}
           alt={alt}
           onLoad={handleImageLoad}
           onError={handleImageError}
@@ -113,7 +140,8 @@ export default function LazyCookImage({
         />
       ) : (
         <img
-          src={resolvedSrc}
+          ref={imgRef}
+          src={displaySrc}
           alt={alt}
           onLoad={handleImageLoad}
           onError={handleImageError}

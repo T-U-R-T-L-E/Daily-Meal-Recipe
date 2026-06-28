@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../lib/useAuth';
+import { updateProfile } from 'firebase/auth';
 import { UserProfile } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Settings, Award, Flame, Zap, CheckCircle2, CreditCard, CloudCheck, HardDrive, RefreshCcw, ChefHat, Clock, Star, Trophy, Download, Trash2, Eye, EyeOff, Sun, Moon, Pencil, Camera, Upload, X } from 'lucide-react';
@@ -1391,6 +1392,11 @@ export default function Profile() {
                           const updated = { ...profile, photoURL: avatar.url };
                           setProfile(updated);
                           setDoc(doc(db, 'users', user!.uid), updated).catch(console.error);
+                          if (auth.currentUser) {
+                            updateProfile(auth.currentUser, { photoURL: avatar.url })
+                              .then(() => console.log("Profile: Synced preset photoURL to Firebase Auth."))
+                              .catch(err => console.error("Profile: Failed to sync photoURL to Firebase Auth:", err));
+                          }
                         }
                       }}
                       className={`aspect-square rounded-xl overflow-hidden border transition-all hover:scale-105 cursor-pointer ${
@@ -1422,15 +1428,16 @@ export default function Profile() {
                             alert('Please select an image smaller than 2MB.');
                             return;
                           }
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            const base64 = reader.result as string;
-                            if (profile) {
-                              const updated = { ...profile, photoURL: base64 };
-                              setProfile(updated);
-                              setDoc(doc(db, 'users', user!.uid), updated).catch(console.error);
-                            }
-                          };
+                           const reader = new FileReader();
+                           reader.onloadend = () => {
+                             const base64 = reader.result as string;
+                             if (profile) {
+                               const updated = { ...profile, photoURL: base64 };
+                               setProfile(updated);
+                               setDoc(doc(db, 'users', user!.uid), updated).catch(console.error);
+                               console.log("Profile: Base64 photoURL saved to Firestore. Skipping Firebase Auth sync to avoid URL limit errors.");
+                             }
+                           };
                           reader.readAsDataURL(file);
                         }
                       }}
@@ -1456,6 +1463,11 @@ export default function Profile() {
                         const updated = { ...profile, photoURL: customPhotoUrl };
                         setProfile(updated);
                         setDoc(doc(db, 'users', user!.uid), updated).catch(console.error);
+                        if (auth.currentUser) {
+                          updateProfile(auth.currentUser, { photoURL: customPhotoUrl })
+                            .then(() => console.log("Profile: Synced custom photoURL to Firebase Auth."))
+                            .catch(err => console.error("Profile: Failed to sync photoURL to Firebase Auth:", err));
+                        }
                         setCustomPhotoUrl('');
                       }
                     }}

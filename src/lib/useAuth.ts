@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, User, updateProfile } from 'firebase/auth';
 import { doc, setDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { UserProfile } from '../types';
@@ -96,6 +96,27 @@ export function useAuth() {
                     console.error("Auth: Failed to correct subscription in firestore", err);
                   });
                 }
+              }
+
+              // Ensure Firebase Auth profile (photoURL and displayName) is synchronized with Firestore profile data
+              // We skip updating Firebase Auth photoURL if it is a base64 data URL to avoid backend API size errors
+              if (profileData.photoURL && !profileData.photoURL.startsWith('data:') && firebaseUser.photoURL !== profileData.photoURL) {
+                updateProfile(firebaseUser, { photoURL: profileData.photoURL })
+                  .then(() => {
+                    console.log("Auth: Synced photoURL from Firestore to Firebase Auth user profile.");
+                    // Force refresh user state so children components react immediately
+                    setUser({ ...firebaseUser, photoURL: profileData.photoURL } as any);
+                  })
+                  .catch(err => console.error("Auth: Failed to sync photoURL to Firebase Auth:", err));
+              }
+              if (profileData.displayName && firebaseUser.displayName !== profileData.displayName) {
+                updateProfile(firebaseUser, { displayName: profileData.displayName })
+                  .then(() => {
+                    console.log("Auth: Synced displayName from Firestore to Firebase Auth user profile.");
+                    // Force refresh user state so children components react immediately
+                    setUser({ ...firebaseUser, displayName: profileData.displayName } as any);
+                  })
+                  .catch(err => console.error("Auth: Failed to sync displayName to Firebase Auth:", err));
               }
 
               setProfile(profileData);

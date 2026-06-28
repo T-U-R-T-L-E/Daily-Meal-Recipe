@@ -35,6 +35,7 @@ export default function RecipeDetails() {
   const [isCooking, setIsCooking] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [showCookedModal, setShowCookedModal] = useState(false);
   const [cookedRating, setCookedRating] = useState(5);
@@ -789,8 +790,11 @@ export default function RecipeDetails() {
                       </div>
                     </button>
                     <button 
-                      onClick={() => window.print()}
-                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-xl transition-colors text-left"
+                      onClick={() => {
+                        setIsPrintPreviewOpen(true);
+                        setIsExportOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 rounded-xl transition-colors text-left text-white"
                     >
                       <Printer className="w-4 h-4 text-amber-accent" />
                       <div>
@@ -813,6 +817,260 @@ export default function RecipeDetails() {
           url={window.location.href}
           recipe={recipe}
         />
+
+        <style>{`
+          @media print {
+            body {
+              background: white !important;
+              color: black !important;
+            }
+            /* Hide the main app background, headers, sidebars, navigation, modals, and preview controls */
+            body > * {
+              visibility: hidden !important;
+            }
+            #root, #root * {
+              visibility: hidden !important;
+            }
+            /* Explicitly target and reveal ONLY our printable card */
+            #printable-recipe-card-container, #printable-recipe-card, #printable-recipe-card * {
+              visibility: visible !important;
+            }
+            #printable-recipe-card-container {
+              position: fixed !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 100% !important;
+              height: 100% !important;
+              background: white !important;
+              z-index: 9999999 !important;
+              overflow: visible !important;
+              padding: 0 !important;
+              margin: 0 !important;
+            }
+            #printable-recipe-card {
+              position: absolute !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              border: none !important;
+              box-shadow: none !important;
+              background: white !important;
+              color: black !important;
+            }
+            .print-avoid-break {
+              page-break-inside: avoid !important;
+            }
+          }
+        `}</style>
+
+        <AnimatePresence>
+          {isPrintPreviewOpen && (
+            <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative bg-onyx border border-white/10 rounded-[32px] w-full max-w-3xl p-6 md:p-8 space-y-6 shadow-2xl my-8 text-white"
+              >
+                {/* Modal Header Controls */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
+                  <div>
+                    <h3 className="font-serif text-2xl text-white italic flex items-center gap-2">
+                      <Printer className="w-5 h-5 text-amber-accent" />
+                      Print Customizer
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-1">Adjust servings and preview the card format before printing.</p>
+                  </div>
+                  
+                  {/* Servings Tuner */}
+                  <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl p-2 self-start sm:self-auto">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-2">Servings:</span>
+                    <button
+                      onClick={() => setServings(Math.max(1, servings - 1))}
+                      className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-xs text-white transition-colors cursor-pointer"
+                    >
+                      -
+                    </button>
+                    <span className="text-sm font-mono font-bold text-amber-accent min-w-[20px] text-center">{servings}</span>
+                    <button
+                      onClick={() => setServings(servings + 1)}
+                      className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-xs text-white transition-colors cursor-pointer"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {/* Outer Printable Card Preview Wrapper */}
+                <div className="overflow-x-auto max-h-[55vh] overflow-y-auto rounded-2xl border border-white/10 p-1 bg-white/5">
+                  <div 
+                    id="printable-recipe-card-container"
+                    className="p-4"
+                  >
+                    <div 
+                      id="printable-recipe-card"
+                      className="bg-white text-gray-900 p-8 md:p-12 font-sans max-w-2xl mx-auto rounded-xl shadow-lg border-2 border-gray-100"
+                    >
+                      {/* Outer Double Border styling */}
+                      <div className="border-4 border-double border-gray-300 p-6 md:p-8 space-y-6">
+                        {/* Header Block */}
+                        <div className="text-center border-b border-gray-200 pb-6 space-y-2">
+                          <p className="text-[10px] font-bold text-amber-600 uppercase tracking-[0.25em]">Gourmet Selection</p>
+                          <h1 className="font-serif text-3xl md:text-4xl font-bold tracking-tight text-gray-900 leading-tight">
+                            {recipe.name}
+                          </h1>
+                          <div className="flex items-center justify-center gap-2 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
+                            <span>{recipe.cuisine || "International"} Cuisine</span>
+                            <span>•</span>
+                            <span>{recipe.category || "Main Dish"}</span>
+                          </div>
+                          <p className="text-xs text-gray-600 font-serif italic max-w-lg mx-auto leading-relaxed pt-2">
+                            "{recipe.description}"
+                          </p>
+                        </div>
+
+                        {/* Metadata Specs Grid */}
+                        <div className="grid grid-cols-4 gap-4 py-4 border-b border-gray-200 text-center">
+                          <div>
+                            <span className="block text-[8px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Prep Time</span>
+                            <span className="text-xs font-semibold text-gray-800">{recipe.prepTime || "N/A"}</span>
+                          </div>
+                          <div>
+                            <span className="block text-[8px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Cook Time</span>
+                            <span className="text-xs font-semibold text-gray-800">{recipe.cookTime || "N/A"}</span>
+                          </div>
+                          <div>
+                            <span className="block text-[8px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Servings</span>
+                            <span className="text-xs font-semibold text-gray-800">{servings} portions</span>
+                          </div>
+                          <div>
+                            <span className="block text-[8px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Difficulty</span>
+                            <span className="text-xs font-semibold text-amber-600 uppercase tracking-wider">{recipe.difficulty || "Easy"}</span>
+                          </div>
+                        </div>
+
+                        {/* Ingredients & Details columns */}
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-8 pt-4">
+                          {/* Left Column: Ingredients (2 columns of width) */}
+                          <div className="md:col-span-2 space-y-4">
+                            <div className="border-b border-gray-200 pb-2">
+                              <h2 className="font-serif text-sm font-bold text-gray-800">Ingredients</h2>
+                              <p className="text-[9px] text-gray-400 italic">Adjusted to {servings} servings</p>
+                            </div>
+                            <ul className="space-y-2.5">
+                              {recipe.ingredients.map((ing, i) => (
+                                <li key={i} className="flex items-start gap-2 text-xs text-gray-700">
+                                  <span className="inline-block w-3.5 h-3.5 border border-gray-300 rounded mt-0.5 shrink-0" />
+                                  <div className="flex-grow flex items-baseline justify-between gap-1.5">
+                                    <span className="font-light">{ing.item}</span>
+                                    <span className="text-[10px] font-bold text-gray-500 whitespace-nowrap">
+                                      {ing.baseAmount ? `${scaleIngredient(ing.baseAmount).toFixed(1)} ${ing.unit || ''}` : ing.amount}
+                                    </span>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+
+                            {/* Nutrition details inside card */}
+                            {recipe.nutrition && (
+                              <div className="pt-4 border-t border-gray-100 space-y-3">
+                                <h3 className="font-serif text-xs font-bold text-gray-800">Nutrition Profile</h3>
+                                <div className="grid grid-cols-2 gap-2 bg-gray-50 p-3 rounded-lg border border-gray-100 text-[10px]">
+                                  <div className="flex justify-between border-b border-gray-200/50 pb-1">
+                                    <span className="text-gray-500 font-medium">Calories</span>
+                                    <span className="font-bold text-gray-800">{recipe.nutrition.calories || 0} kcal</span>
+                                  </div>
+                                  <div className="flex justify-between border-b border-gray-200/50 pb-1">
+                                    <span className="text-gray-500 font-medium">Protein</span>
+                                    <span className="font-bold text-gray-800">{recipe.nutrition.protein || 0}g</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500 font-medium">Carbs</span>
+                                    <span className="font-bold text-gray-800">{recipe.nutrition.carbs || 0}g</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500 font-medium">Fat</span>
+                                    <span className="font-bold text-gray-800">{recipe.nutrition.fat || 0}g</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Right Column: Instructions (3 columns of width) */}
+                          <div className="md:col-span-3 space-y-4">
+                            <div className="border-b border-gray-200 pb-2">
+                              <h2 className="font-serif text-sm font-bold text-gray-800">Preparation Steps</h2>
+                            </div>
+                            <ol className="space-y-4">
+                              {recipe.instructions.map((step, i) => {
+                                const stepText = typeof step === 'string' ? step : (step as any).text;
+                                const stepTips = typeof step === 'object' ? (step as any).tips : null;
+                                return (
+                                  <li key={i} className="text-xs text-gray-700 space-y-1.5 print-avoid-break">
+                                    <div className="font-semibold text-gray-800 flex gap-2">
+                                      <span>{i + 1}.</span>
+                                      <p className="font-normal text-gray-600 leading-relaxed">{stepText}</p>
+                                    </div>
+                                    {stepTips && (
+                                      <div className="ml-5 p-2 bg-amber-50 border-l border-amber-300 rounded text-[10px] text-amber-800 italic">
+                                        <strong>Chef Tip:</strong> {stepTips}
+                                      </div>
+                                    )}
+                                  </li>
+                                );
+                              })}
+                            </ol>
+
+                            {/* Health advice or warning notes */}
+                            {recipe.healthAdvice && (
+                              <div className="pt-4 border-t border-gray-100">
+                                <h3 className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Culinary Wellness Note</h3>
+                                <p className="text-[10px] text-gray-600 italic leading-relaxed">
+                                  "{recipe.healthAdvice}"
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Footer citation block */}
+                        <div className="border-t border-gray-200 pt-6 text-center text-[9px] text-gray-400 space-y-0.5">
+                          <p className="font-serif italic font-medium">Crafted & printed from Discovery AI Chef Companion</p>
+                          <p className="font-mono">{format(new Date(), 'MMMM d, yyyy h:mm a')}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Modal Buttons */}
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+                  <button
+                    onClick={() => setIsPrintPreviewOpen(false)}
+                    className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-full text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      setTimeout(() => {
+                        window.print();
+                      }, 100);
+                    }}
+                    className="px-8 py-3 bg-amber-accent hover:bg-amber-accent/80 text-black font-bold rounded-full text-[10px] uppercase tracking-[0.2em] transition-all flex items-center gap-2 cursor-pointer shadow-lg shadow-amber-accent/25"
+                  >
+                    <Printer className="w-4 h-4" />
+                    Print Now
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
          <div className="space-y-8">
           <div className="rounded-[48px] border border-white/5 overflow-hidden shadow-2xl relative group h-[500px]">
