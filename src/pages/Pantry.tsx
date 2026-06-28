@@ -8,6 +8,7 @@ import { Plus, Trash2, Calendar, ShoppingCart, Search, Filter, AlertTriangle } f
 import { format, isBefore, addDays } from 'date-fns';
 import { useLocation, useNavigate } from 'react-router-dom';
 import AuthModal from '../components/auth/AuthModal';
+import { cacheOfflineItems, getOfflineItems, addOfflineItem, deleteOfflineItem } from '../lib/indexedDb';
 
 export default function Pantry() {
   const { user } = useAuth();
@@ -57,21 +58,59 @@ export default function Pantry() {
       setLoading(false);
       return;
     }
-    const q = query(collection(db, 'pantry'), where('userId', '==', user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PantryItem));
-      // Sort client-side by createdAt descending, so newest items are always at the top!
-      fetched.sort((a, b) => {
-        const timeA = (a as any).createdAt?.seconds || 0;
-        const timeB = (b as any).createdAt?.seconds || 0;
-        return timeB - timeA;
+    
+    let isSubscribed = true;
+    let unsubscribe: any = null;
+
+    const loadPantryItems = async () => {
+      // If we are offline, load immediately from IndexedDB
+      if (!navigator.onLine) {
+        try {
+          const offlinePantry = await getOfflineItems('pantry');
+          if (isSubscribed) {
+            setItems(offlinePantry);
+            setLoading(false);
+          }
+        } catch (e) {
+          console.error("Failed to load offline pantry", e);
+        }
+        return;
+      }
+
+      const q = query(collection(db, 'pantry'), where('userId', '==', user.uid));
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PantryItem));
+        fetched.sort((a, b) => {
+          const timeA = (a as any).createdAt?.seconds || 0;
+          const timeB = (b as any).createdAt?.seconds || 0;
+          return timeB - timeA;
+        });
+        if (isSubscribed) {
+          setItems(fetched);
+          setLoading(false);
+        }
+        // Cache to IndexedDB for offline use
+        cacheOfflineItems('pantry', fetched).catch(err => console.warn("Failed to cache pantry offline:", err));
+      }, async (error) => {
+        console.warn("Firestore pantry load failed, falling back to offline", error);
+        try {
+          const offlinePantry = await getOfflineItems('pantry');
+          if (isSubscribed) {
+            setItems(offlinePantry);
+            setLoading(false);
+          }
+        } catch (e) {
+          console.error("Failed to load offline pantry on Firestore error", e);
+        }
       });
-      setItems(fetched);
-      setLoading(false);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'pantry');
-    });
-    return unsubscribe;
+    };
+
+    loadPantryItems();
+
+    return () => {
+      isSubscribed = false;
+      if (unsubscribe) unsubscribe();
+    };
   }, [user]);
 
   const addItem = async (e: React.FormEvent) => {
@@ -81,25 +120,58 @@ export default function Pantry() {
       return;
     }
     if (!newItem.item) return;
+
+    const tempId = 'temp-' + Date.now();
+    const itemToAdd: PantryItem = {
+      id: tempId,
+      ...newItem,
+      userId: user.uid,
+      createdAt: Timestamp.now() as any
+    };
+
+    // Optimistic UI update
+    setItems(prev => [itemToAdd, ...prev]);
+    setIsAdding(false);
+    setNewItem({ item: '', quantity: '', expiryDate: '', category: 'Oils & Vinegars' });
+    setSearchTerm('');
+
     try {
-      await addDoc(collection(db, 'pantry'), {
-        ...newItem,
-        userId: user.uid,
-        createdAt: Timestamp.now()
-      });
-      setNewItem({ item: '', quantity: '', expiryDate: '', category: 'Oils & Vinegars' });
-      setSearchTerm('');
-      setIsAdding(false);
+      if (navigator.onLine) {
+        const docRef = await addDoc(collection(db, 'pantry'), {
+          item: itemToAdd.item,
+          quantity: itemToAdd.quantity,
+          expiryDate: itemToAdd.expiryDate,
+          category: itemToAdd.category,
+          userId: user.uid,
+          createdAt: Timestamp.now()
+        });
+        // Replace temp ID with real ID in items and IndexedDB
+        setItems(prev => prev.map(item => item.id === tempId ? { ...item, id: docRef.id } : item));
+        await addOfflineItem('pantry', { ...itemToAdd, id: docRef.id });
+      } else {
+        await addOfflineItem('pantry', itemToAdd);
+      }
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'pantry');
+      console.error("Failed to add pantry item:", error);
+      if (navigator.onLine) {
+        handleFirestoreError(error, OperationType.CREATE, 'pantry');
+      }
     }
   };
 
   const deleteItem = async (id: string) => {
+    // Optimistic UI update
+    setItems(prev => prev.filter(item => item.id !== id));
     try {
-      await deleteDoc(doc(db, 'pantry', id));
+      await deleteOfflineItem('pantry', id);
+      if (navigator.onLine && !id.startsWith('temp-')) {
+        await deleteDoc(doc(db, 'pantry', id));
+      }
     } catch (error) {
-       handleFirestoreError(error, OperationType.DELETE, `pantry/${id}`);
+      console.error("Failed to delete pantry item:", error);
+      if (navigator.onLine) {
+        handleFirestoreError(error, OperationType.DELETE, `pantry/${id}`);
+      }
     }
   };
 

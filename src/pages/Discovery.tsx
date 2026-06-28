@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { collection, query, where, getDocs, limit, onSnapshot, doc, getDoc, setDoc, increment, orderBy } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Recipe, UserProfile } from '../types';
@@ -11,6 +11,7 @@ import { useAuth } from '../lib/useAuth';
 import { faultTolerantFetchJson } from '../lib/api';
 import AuthModal from '../components/auth/AuthModal';
 import AddRecipeModal from '../components/recipes/AddRecipeModal';
+import { getPinnedRecipes } from '../lib/indexedDb';
 
 // Client-side in-memory search query cache to make repetitive searches instantaneous (<1ms)
 const clientSearchCache: Record<string, Recipe[]> = {};
@@ -77,6 +78,7 @@ export default function Discovery() {
   
   // Enhanced Search Features States
   const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
   const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
   const [activePresetTags, setActivePresetTags] = useState<string[]>([]);
   const [conversationalPromptText, setConversationalPromptText] = useState('');
@@ -497,9 +499,17 @@ export default function Discovery() {
     async function loadRecipes() {
       if (offlineOnly) {
         try {
+          const pinned = await getPinnedRecipes();
           const savedRaw = localStorage.getItem('saved_recipes');
           const saved = (savedRaw && savedRaw !== 'undefined') ? JSON.parse(savedRaw) : [];
-          setRecipes(saved);
+          
+          const merged = [...pinned];
+          for (const s of saved) {
+            if (!merged.find(r => r.id === s.id)) {
+              merged.push(s);
+            }
+          }
+          setRecipes(merged);
         } catch (e) {
           console.error("Failed to parse offline recipes", e);
           setRecipes([]);
@@ -536,9 +546,16 @@ export default function Discovery() {
         }
         // Auto-fallback if network is down
         try {
+          const pinned = await getPinnedRecipes();
           const savedRaw = localStorage.getItem('saved_recipes');
           const saved = (savedRaw && savedRaw !== 'undefined') ? JSON.parse(savedRaw) : [];
-          setRecipes(saved);
+          const merged = [...pinned];
+          for (const s of saved) {
+            if (!merged.find(r => r.id === s.id)) {
+              merged.push(s);
+            }
+          }
+          setRecipes(merged);
         } catch (e) {
           console.error("Failed to parse fallback recipes", e);
         }
@@ -564,11 +581,22 @@ export default function Discovery() {
       return;
     }
 
+    if (isListening) {
+      try {
+        recognitionRef.current?.stop();
+      } catch (err) {
+        console.error("Error stopping voice recognition:", err);
+      }
+      setIsListening(false);
+      return;
+    }
+
     try {
       const recognition = new SpeechRecognition();
       recognition.lang = 'en-US';
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
+      recognitionRef.current = recognition;
 
       recognition.onstart = () => {
         setIsListening(true);

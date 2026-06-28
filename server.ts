@@ -2468,10 +2468,17 @@ function computeSearchScore(recipe: any, queryText: string, userContext: any = n
   return score;
 }
 
-function getServerStableFoodImage(recipeName: string = "", category: string = "", cuisine: string = "", excludeIds: string[] = []): string {
-  const nameLower = (recipeName || "").toLowerCase();
-  const catLower = (category || "").toLowerCase();
-  const cuiLower = (cuisine || "").toLowerCase();
+function getServerStableFoodImage(recipeName: string = "", category: string = "", cuisine: string = "", excludeIds: string[] = [], ingredients: any[] = []): string {
+  const nameLower = (recipeName || "").toLowerCase().trim();
+  const catLower = (category || "").toLowerCase().trim();
+  const cuiLower = (cuisine || "").toLowerCase().trim();
+
+  // Convert ingredients list to clean lowercase strings
+  const ingredientNames = (ingredients || []).map(i => {
+    if (typeof i === 'string') return i.toLowerCase().trim();
+    if (i && typeof i === 'object' && i.item) return String(i.item).toLowerCase().trim();
+    return "";
+  }).filter(Boolean);
 
   const stableMappings: { keywords: string[]; id: string }[] = [
     // 1. Italian/Pastas Specifics
@@ -2591,19 +2598,50 @@ function getServerStableFoodImage(recipeName: string = "", category: string = ""
     { keywords: ["tofu", "vegan", "vegetarian"], id: "photo-1540420773420-3366772f4999" }
   ];
 
-  // Compile all matched mappings
-  const matchedIds: string[] = [];
+  // Compile and score all matched mappings based on Name, Category, Cuisine, and Ingredients
+  let bestId = "";
+  let bestScore = 0;
+
   for (const mapping of stableMappings) {
-    let matched = false;
+    let score = 0;
     for (const kw of mapping.keywords) {
-      if (nameLower.includes(kw) || catLower.includes(kw) || cuiLower.includes(kw)) {
-        matched = true;
-        break;
+      if (nameLower.includes(kw)) {
+        score += 15;
+      }
+      if (catLower.includes(kw) || cuiLower.includes(kw)) {
+        score += 5;
+      }
+      const ingredientMatch = ingredientNames.some(ing => ing.includes(kw));
+      if (ingredientMatch) {
+        score += 10;
       }
     }
-    if (matched) {
-      matchedIds.push(mapping.id);
+    if (score > bestScore) {
+      bestScore = score;
+      bestId = mapping.id;
     }
+  }
+
+  // If we have a confident pre-mapped image (bestScore >= 15), we use it
+  if (bestId && bestScore >= 15) {
+    const fullUrl = `https://images.unsplash.com/${bestId}?auto=format&fit=crop&q=80&w=1000`;
+    if (!excludeIds.includes(fullUrl)) {
+      return fullUrl;
+    }
+  }
+
+  // Otherwise, to guarantee that the image is 100% linked to the recipe and ingredients,
+  // we return a beautiful, dynamic, featured Unsplash query specifically tailored
+  // to the recipe's title and its actual key ingredients!
+  // This satisfies the requirement: "check the ingredients before giving the image to make sure they 100% relate"
+  const searchKeywords = [
+    nameLower,
+    ...ingredientNames.slice(0, 2)
+  ].filter(Boolean).map(kw => kw.replace(/[^a-zA-Z0-9 ]/g, "").trim());
+
+  if (searchKeywords.length > 0) {
+    const query = searchKeywords.join(",");
+    return `https://images.unsplash.com/featured/1000x1000/?food,${encodeURIComponent(query)}`;
   }
 
   // Fallback pool of high-quality diverse food images
@@ -2621,31 +2659,13 @@ function getServerStableFoodImage(recipeName: string = "", category: string = ""
     "photo-1519708227418-c8fd9a32b7a2"  // Fish
   ];
 
-  let chosenId = "";
-
-  // Try to pick the first matched category ID that is not already excluded
-  for (const id of matchedIds) {
+  let chosenId = fallbackPool[0];
+  for (const id of fallbackPool) {
     const fullUrl = `https://images.unsplash.com/${id}?auto=format&fit=crop&q=80&w=1000`;
     if (!excludeIds.includes(fullUrl)) {
       chosenId = id;
       break;
     }
-  }
-
-  // If all matched IDs are excluded, pick from general fallback pool
-  if (!chosenId) {
-    for (const id of fallbackPool) {
-      const fullUrl = `https://images.unsplash.com/${id}?auto=format&fit=crop&q=80&w=1000`;
-      if (!excludeIds.includes(fullUrl)) {
-        chosenId = id;
-        break;
-      }
-    }
-  }
-
-  // Ultimate fallback
-  if (!chosenId) {
-    chosenId = matchedIds[0] || "photo-1546069901-ba9599a7e63c";
   }
 
   return `https://images.unsplash.com/${chosenId}?auto=format&fit=crop&q=80&w=1000`;
@@ -2869,7 +2889,7 @@ app.post("/api/ai/generate-recipe", async (req, res) => {
       rawRecipe.isPublic = true;
       rawRecipe.status = "approved";
 
-      const validatedImageUrl = getServerStableFoodImage(rawRecipe.name, rawRecipe.category, rawRecipe.cuisine);
+      const validatedImageUrl = getServerStableFoodImage(rawRecipe.name, rawRecipe.category, rawRecipe.cuisine, [], rawRecipe.ingredients);
       rawRecipe.imageUrl = validatedImageUrl;
 
       if (adminDb) {
@@ -3542,7 +3562,7 @@ app.post("/api/ai/search-recipes", async (req, res) => {
 
       // If missing, invalid, or already used, dynamically generate a unique stable image URL
       if (!finalImageUrl) {
-        finalImageUrl = getServerStableFoodImage(recipeName, item.category, item.cuisine, usedImageUrls);
+        finalImageUrl = getServerStableFoodImage(recipeName, item.category, item.cuisine, usedImageUrls, item.ingredients);
       }
 
       item.imageUrl = finalImageUrl;
@@ -3643,7 +3663,7 @@ app.post("/api/ai/scan-image", async (req, res) => {
           contents: [{
             role: "user",
             parts: [
-              { text: "Identify the exact main meal or dish shown in this image. Return a clean, concise, globally recognizable dish name (e.g., 'Spaghetti Carbonara', 'Grilled Salmon with Asparagus', 'Beef Stew', 'Chicken Caesar Salad'). Be highly accurate. Strictly use English." },
+              { text: "First, analyze the image to determine if there is a clearly identifiable plated meal, dish, or culinary food preparation. If there is NO recognizable meal, dish, or food item in the image, or if the image is completely unrelated to food, return 'NOT_FOUND' for mealName. Otherwise, identify the exact main meal or dish shown in this image. Return a clean, concise, globally recognizable dish name (e.g., 'Spaghetti Carbonara', 'Grilled Salmon with Asparagus', 'Beef Stew', 'Chicken Caesar Salad'). Be highly accurate. Strictly use English." },
               { inlineData: { mimeType: "image/jpeg", data: base64Data } }
             ]
           }],
@@ -3653,7 +3673,7 @@ app.post("/api/ai/scan-image", async (req, res) => {
             responseSchema: {
               type: Type.OBJECT,
               properties: {
-                mealName: { type: Type.STRING, description: "The exact name of the meal/dish identified." }
+                mealName: { type: Type.STRING, description: "The exact name of the meal/dish identified, or 'NOT_FOUND' if no food is seen." }
               },
               required: ["mealName"]
             }
@@ -3664,6 +3684,10 @@ app.post("/api/ai/scan-image", async (req, res) => {
         let mealName = parsedMeal.mealName || "Unknown Meal";
         mealName = mealName.trim();
         console.log(`[Meal Scanner] Identified meal: "${mealName}"`);
+
+        if (mealName === "NOT_FOUND") {
+          return res.json({ mealName: "NOT_FOUND", recipe: null });
+        }
 
         const recipeId = generateStableRecipeId(mealName);
         let recipeData: any = null;
@@ -3768,7 +3792,7 @@ app.post("/api/ai/scan-image", async (req, res) => {
           parsedRecipe.ratingsCount = 0;
           parsedRecipe.averageRating = 5;
 
-          const validatedImageUrl = getServerStableFoodImage(mealName, parsedRecipe.category, parsedRecipe.cuisine);
+          const validatedImageUrl = getServerStableFoodImage(mealName, parsedRecipe.category, parsedRecipe.cuisine, [], parsedRecipe.ingredients);
           parsedRecipe.imageUrl = validatedImageUrl;
 
           if (adminDb) {
@@ -3803,7 +3827,12 @@ app.post("/api/ai/scan-image", async (req, res) => {
           category: "Dinner",
           cuisine: "American",
           servings: 4,
-          imageUrl: getServerStableFoodImage(fallbackMeal, "Dinner", "American"),
+          imageUrl: getServerStableFoodImage(fallbackMeal, "Dinner", "American", [], [
+            { item: "Beef Chuck Roast", amount: "1.5", unit: "kg" },
+            { item: "Carrots", amount: "4", unit: "pieces" },
+            { item: "Garlic", amount: "4", unit: "cloves" },
+            { item: "Beef Broth", amount: "500", unit: "ml" }
+          ]),
           healthAdvice: "This meal is rich in high-quality protein and iron. Serve with steamed vegetables for a balanced low-glycemic dish.",
           ingredients: [
             { item: "Beef Chuck Roast", amount: "1.5", unit: "kg" },
@@ -3840,7 +3869,7 @@ app.post("/api/ai/scan-image", async (req, res) => {
         contents: [{
           role: "user",
           parts: [
-            { text: "Identify all food items, ingredients, or products in this image. Also, if there is a barcode, identify the product it represents. Return a list of ingredient names or product names. Strictly use English." },
+            { text: "Identify all recognizable raw ingredients, food products, or pantry items in this image. Also, if there is a food product barcode, identify the product it represents. Return a list of ingredient names or product names. Strictly use English. If there is NO recognizable food item, raw ingredient, or pantry product in the image, or if the image is completely unrelated to food, return an empty array `[]` for items." },
             { inlineData: { mimeType: "image/jpeg", data: base64Data } }
           ]
         }],

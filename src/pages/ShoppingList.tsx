@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle2, Circle, Trash2, Plus, ShoppingBag, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 import AuthModal from '../components/auth/AuthModal';
+import { cacheOfflineItems, getOfflineItems, addOfflineItem, deleteOfflineItem } from '../lib/indexedDb';
 
 export default function ShoppingList() {
   const { user } = useAuth();
@@ -71,45 +72,79 @@ export default function ShoppingList() {
     }
     setLoading(true);
 
-    let q = query(
-      collection(db, 'shoppingLists'),
-      where('userId', '==', user.uid)
-    );
+    let isSubscribed = true;
+    let unsubscribe: any = null;
 
-    if (activeFamily) {
-      q = query(
-        collection(db, 'shoppingLists'),
-        where('familyId', '==', activeFamily.id)
-      );
-    }
-
-    const unsubscribe = onSnapshot(q, 
-      (snapshot) => {
-        const data = snapshot.docs.map(doc => {
-          const d = doc.data();
-          return { 
-            id: doc.id, 
-            ...d,
-            createdAt: d.createdAt ? d.createdAt.toDate() : new Date()
-          } as ShoppingListItem;
-        });
-        
-        // If in Solo Mode, filter out items that belong to a family group to avoid crossing scopes
-        const filtered = activeFamily 
-          ? data 
-          : data.filter(item => !item.familyId);
-
-        setItems(filtered);
-        setLoading(false);
-      },
-      (err) => {
-        console.error("Failed to sync shopping list in real-time:", err);
-        setLoading(false);
-        handleFirestoreError(err, OperationType.LIST, 'shoppingLists');
+    const loadItems = async () => {
+      // If we are offline, load immediately from IndexedDB
+      if (!navigator.onLine) {
+        try {
+          const offlineList = await getOfflineItems('shopping_list');
+          if (isSubscribed) {
+            setItems(offlineList);
+            setLoading(false);
+          }
+        } catch (e) {
+          console.error("Failed to load offline shopping list", e);
+        }
+        return;
       }
-    );
 
-    return () => unsubscribe();
+      let q = query(
+        collection(db, 'shoppingLists'),
+        where('userId', '==', user.uid)
+      );
+
+      if (activeFamily) {
+        q = query(
+          collection(db, 'shoppingLists'),
+          where('familyId', '==', activeFamily.id)
+        );
+      }
+
+      unsubscribe = onSnapshot(q, 
+        (snapshot) => {
+          const data = snapshot.docs.map(doc => {
+            const d = doc.data();
+            return { 
+              id: doc.id, 
+              ...d,
+              createdAt: d.createdAt ? d.createdAt.toDate() : new Date()
+            } as ShoppingListItem;
+          });
+          
+          const filtered = activeFamily 
+            ? data 
+            : data.filter(item => !item.familyId);
+
+          if (isSubscribed) {
+            setItems(filtered);
+            setLoading(false);
+          }
+          // Cache to IndexedDB
+          cacheOfflineItems('shopping_list', filtered).catch(err => console.warn("Failed to cache shopping list:", err));
+        },
+        async (err) => {
+          console.warn("Firestore shopping list sync failed, using offline fallback:", err);
+          try {
+            const offlineList = await getOfflineItems('shopping_list');
+            if (isSubscribed) {
+              setItems(offlineList);
+              setLoading(false);
+            }
+          } catch (e) {
+            console.error("Failed to load offline shopping list on Firestore error", e);
+          }
+        }
+      );
+    };
+
+    loadItems();
+
+    return () => {
+      isSubscribed = false;
+      if (unsubscribe) unsubscribe();
+    };
   }, [user, activeFamily]);
 
   const addItem = async (e?: React.FormEvent) => {
@@ -119,48 +154,97 @@ export default function ShoppingList() {
       return;
     }
     if (!newItem.item.trim()) return;
+
+    const tempId = 'temp-' + Date.now();
+    const itemToAdd: ShoppingListItem = {
+      id: tempId,
+      item: newItem.item.trim(),
+      amount: newItem.amount.trim() || "As needed",
+      category: newItem.category,
+      completed: false,
+      createdAt: new Date(),
+      userId: user.uid,
+      addedByName: user.displayName || 'Anonymous Cook',
+      addedByPhoto: user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'User')}`,
+    };
+
+    if (activeFamily) {
+      itemToAdd.familyId = activeFamily.id;
+    }
+
+    // Optimistic UI update
+    setItems(prev => [...prev, itemToAdd]);
+    setNewItem({ item: '', amount: 'As needed', category: 'Oils & Vinegars' });
+    setIsAdding(false);
+
     try {
-      const itemToAdd: any = {
-        item: newItem.item.trim(),
-        amount: newItem.amount.trim() || "As needed",
-        category: newItem.category,
-        completed: false,
-        createdAt: serverTimestamp(),
-        userId: user.uid,
-        addedByName: user.displayName || 'Anonymous Cook',
-        addedByPhoto: user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'User')}`,
-      };
-
-      if (activeFamily) {
-        itemToAdd.familyId = activeFamily.id;
+      if (navigator.onLine) {
+        const docRef = await addDoc(collection(db, 'shoppingLists'), {
+          item: itemToAdd.item,
+          amount: itemToAdd.amount,
+          category: itemToAdd.category,
+          completed: itemToAdd.completed,
+          userId: itemToAdd.userId,
+          addedByName: itemToAdd.addedByName,
+          addedByPhoto: itemToAdd.addedByPhoto,
+          createdAt: serverTimestamp(),
+          ...(itemToAdd.familyId ? { familyId: itemToAdd.familyId } : {})
+        });
+        // Replace temp ID with real ID
+        setItems(prev => prev.map(item => item.id === tempId ? { ...item, id: docRef.id } : item));
+        await addOfflineItem('shopping_list', { ...itemToAdd, id: docRef.id });
+      } else {
+        await addOfflineItem('shopping_list', itemToAdd);
       }
-
-      await addDoc(collection(db, 'shoppingLists'), itemToAdd);
-      setNewItem({ item: '', amount: 'As needed', category: 'Oils & Vinegars' });
-      setIsAdding(false);
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'shoppingLists');
+      console.error("Failed to add shopping list item:", error);
+      if (navigator.onLine) {
+        handleFirestoreError(error, OperationType.CREATE, 'shoppingLists');
+      }
     }
   };
 
   const toggleComplete = async (id: string, currentStatus: boolean) => {
+    const nextCompleted = !currentStatus;
+    // Optimistic UI update
+    setItems(prev => prev.map(item => item.id === id ? { ...item, completed: nextCompleted } : item));
+
     try {
-      const nextCompleted = !currentStatus;
-      await updateDoc(doc(db, 'shoppingLists', id), { 
-        completed: nextCompleted,
-        completedBy: nextCompleted ? user.uid : null,
-        completedByName: nextCompleted ? (user.displayName || 'Collaborator') : null
-      });
+      const dbItem = items.find(item => item.id === id);
+      if (dbItem) {
+        const updatedItem = { ...dbItem, completed: nextCompleted };
+        await addOfflineItem('shopping_list', updatedItem);
+      }
+
+      if (navigator.onLine && !id.startsWith('temp-')) {
+        await updateDoc(doc(db, 'shoppingLists', id), { 
+          completed: nextCompleted,
+          completedBy: nextCompleted ? user.uid : null,
+          completedByName: nextCompleted ? (user.displayName || 'Collaborator') : null
+        });
+      }
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `shoppingLists/${id}`);
+      console.error("Failed to toggle item complete status:", error);
+      if (navigator.onLine) {
+        handleFirestoreError(error, OperationType.UPDATE, `shoppingLists/${id}`);
+      }
     }
   };
 
   const deleteItem = async (id: string) => {
+    // Optimistic UI update
+    setItems(prev => prev.filter(item => item.id !== id));
+
     try {
-      await deleteDoc(doc(db, 'shoppingLists', id));
+      await deleteOfflineItem('shopping_list', id);
+      if (navigator.onLine && !id.startsWith('temp-')) {
+        await deleteDoc(doc(db, 'shoppingLists', id));
+      }
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `shoppingLists/${id}`);
+      console.error("Failed to delete shopping list item:", error);
+      if (navigator.onLine) {
+        handleFirestoreError(error, OperationType.DELETE, `shoppingLists/${id}`);
+      }
     }
   };
 

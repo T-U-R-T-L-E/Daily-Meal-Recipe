@@ -36,6 +36,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { MealPlannerSkeleton } from '../components/recipes/RecipeSkeleton';
 import AuthModal from '../components/auth/AuthModal';
+import { cacheOfflineItems, getOfflineItems, addOfflineItem, deleteOfflineItem } from '../lib/indexedDb';
 
 // Gourmet Chef-Curated fallback database for flawless ingrediet-based shopping list aggregation
 const INCLUDED_GOURMET_RECIPES = [
@@ -236,81 +237,150 @@ export default function MealPlanner() {
     }
     setLoading(true);
 
-    let q = query(
-      collection(db, 'mealPlans'),
-      where('userId', '==', user.uid)
-    );
+    let isSubscribed = true;
+    let unsubscribe: any = null;
 
-    if (activeFamily) {
-      q = query(
-        collection(db, 'mealPlans'),
-        where('familyId', '==', activeFamily.id)
-      );
-    }
-
-    const unsubscribe = onSnapshot(q, 
-      (snapshot) => {
-        const data = snapshot.docs.map(doc => {
-          const d = doc.data();
-          return {
-            id: doc.id,
-            ...d
-          } as MealPlan;
-        });
-
-        // Filter and sort client-side (to avoid index layout crashes)
-        const filteredAndSorted = (activeFamily 
-          ? data 
-          : data.filter(item => !(item as any).familyId))
-          .sort((a, b) => a.date.localeCompare(b.date));
-
-        setPlans(filteredAndSorted);
-        setLoading(false);
-      },
-      (err) => {
-        console.error("Failed to sync meal plan in real-time:", err);
-        setLoading(false);
-        handleFirestoreError(err, OperationType.LIST, 'mealPlans');
+    const loadMealPlans = async () => {
+      // If we are offline, load immediately from IndexedDB
+      if (!navigator.onLine) {
+        try {
+          const offlinePlans = await getOfflineItems('meal_plans');
+          if (isSubscribed) {
+            setPlans(offlinePlans);
+            setLoading(false);
+          }
+        } catch (e) {
+          console.error("Failed to load offline meal plans", e);
+        }
+        return;
       }
-    );
 
-    return () => unsubscribe();
+      let q = query(
+        collection(db, 'mealPlans'),
+        where('userId', '==', user.uid)
+      );
+
+      if (activeFamily) {
+        q = query(
+          collection(db, 'mealPlans'),
+          where('familyId', '==', activeFamily.id)
+        );
+      }
+
+      unsubscribe = onSnapshot(q, 
+        (snapshot) => {
+          const data = snapshot.docs.map(doc => {
+            const d = doc.data();
+            return {
+              id: doc.id,
+              ...d
+            } as MealPlan;
+          });
+
+          // Filter and sort client-side (to avoid index layout crashes)
+          const filteredAndSorted = (activeFamily 
+            ? data 
+            : data.filter(item => !(item as any).familyId))
+            .sort((a, b) => a.date.localeCompare(b.date));
+
+          if (isSubscribed) {
+            setPlans(filteredAndSorted);
+            setLoading(false);
+          }
+          // Cache to IndexedDB
+          cacheOfflineItems('meal_plans', filteredAndSorted).catch(err => console.warn("Failed to cache meal plans:", err));
+        },
+        async (err) => {
+          console.warn("Firestore meal plans sync failed, using offline fallback:", err);
+          try {
+            const offlinePlans = await getOfflineItems('meal_plans');
+            if (isSubscribed) {
+              setPlans(offlinePlans);
+              setLoading(false);
+            }
+          } catch (e) {
+            console.error("Failed to load offline meal plans on Firestore error", e);
+          }
+        }
+      );
+    };
+
+    loadMealPlans();
+
+    return () => {
+      isSubscribed = false;
+      if (unsubscribe) unsubscribe();
+    };
   }, [user, activeFamily]);
 
   const removePlan = async (id: string) => {
+    // Optimistic UI update
+    setPlans(prev => prev.filter(plan => plan.id !== id));
+
     try {
-      await deleteDoc(doc(db, 'mealPlans', id));
+      await deleteOfflineItem('meal_plans', id);
+      if (navigator.onLine && !id.startsWith('temp-')) {
+        await deleteDoc(doc(db, 'mealPlans', id));
+      }
     } catch (error) {
-       handleFirestoreError(error, OperationType.DELETE, `mealPlans/${id}`);
+      console.error("Failed to delete meal plan:", error);
+      if (navigator.onLine) {
+        handleFirestoreError(error, OperationType.DELETE, `mealPlans/${id}`);
+      }
     }
   };
 
   const addCustomMeal = async (date: string, mealType: "breakfast" | "lunch" | "dinner" | "snack" | "dessert", recipeName: string, recipeId: string = 'custom') => {
     if (!user || !recipeName.trim()) return;
-    try {
-      const mealToAdd: any = {
-        userId: user.uid,
-        date,
-        mealType,
-        recipeName: recipeName.trim(),
-        recipeId: recipeId,
-        createdAt: serverTimestamp(),
-        addedByName: user.displayName || 'Anonymous Cook',
-        addedByPhoto: user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'User')}`,
-      };
 
-      if (activeFamily) {
-        mealToAdd.familyId = activeFamily.id;
+    const tempId = 'temp-' + Date.now();
+    const mealToAdd: MealPlan = {
+      id: tempId,
+      userId: user.uid,
+      date,
+      mealType,
+      recipeName: recipeName.trim(),
+      recipeId: recipeId,
+      createdAt: new Date() as any,
+      addedByName: user.displayName || 'Anonymous Cook',
+      addedByPhoto: user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'User')}`,
+    };
+
+    if (activeFamily) {
+      mealToAdd.familyId = activeFamily.id;
+    }
+
+    // Optimistic UI update
+    setPlans(prev => [...prev, mealToAdd].sort((a, b) => a.date.localeCompare(b.date)));
+
+    try {
+      if (navigator.onLine) {
+        const docRef = await addDoc(collection(db, 'mealPlans'), {
+          userId: mealToAdd.userId,
+          date: mealToAdd.date,
+          mealType: mealToAdd.mealType,
+          recipeName: mealToAdd.recipeName,
+          recipeId: mealToAdd.recipeId,
+          addedByName: mealToAdd.addedByName,
+          addedByPhoto: mealToAdd.addedByPhoto,
+          createdAt: serverTimestamp(),
+          ...(mealToAdd.familyId ? { familyId: mealToAdd.familyId } : {})
+        });
+        // Replace temp ID with real ID in items and IndexedDB
+        setPlans(prev => prev.map(item => item.id === tempId ? { ...item, id: docRef.id } : item));
+        await addOfflineItem('meal_plans', { ...mealToAdd, id: docRef.id });
+      } else {
+        await addOfflineItem('meal_plans', mealToAdd);
       }
 
-      await addDoc(collection(db, 'mealPlans'), mealToAdd);
-      
-      // If we were adding a specific recipe, clear the state
       if (pendingRecipe && recipeId !== 'custom') {
         navigate(location.pathname, { replace: true, state: {} });
       }
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'mealPlans');
+      console.error("Failed to add meal plan:", error);
+      if (navigator.onLine) {
+        handleFirestoreError(error, OperationType.CREATE, 'mealPlans');
+      }
     }
   };
 

@@ -100,21 +100,31 @@ export function useAuth() {
 
               // Ensure Firebase Auth profile (photoURL and displayName) is synchronized with Firestore profile data
               // We skip updating Firebase Auth photoURL if it is a base64 data URL to avoid backend API size errors
-              if (profileData.photoURL && !profileData.photoURL.startsWith('data:') && firebaseUser.photoURL !== profileData.photoURL) {
-                updateProfile(firebaseUser, { photoURL: profileData.photoURL })
-                  .then(() => {
-                    console.log("Auth: Synced photoURL from Firestore to Firebase Auth user profile.");
-                    // Force refresh user state so children components react immediately
-                    setUser({ ...firebaseUser, photoURL: profileData.photoURL } as any);
-                  })
-                  .catch(err => console.error("Auth: Failed to sync photoURL to Firebase Auth:", err));
+              const currentUser = auth.currentUser || firebaseUser;
+              if (profileData.photoURL) {
+                if (profileData.photoURL.startsWith('data:')) {
+                  // For base64, we only update React state.
+                  // We do the check inside setUser to prevent infinite updates due to stale closures.
+                  setUser(prev => {
+                    if (prev && prev.photoURL !== profileData.photoURL) {
+                      return { ...prev, photoURL: profileData.photoURL } as any;
+                    }
+                    return prev;
+                  });
+                } else if (currentUser && currentUser.photoURL !== profileData.photoURL) {
+                  updateProfile(currentUser, { photoURL: profileData.photoURL })
+                    .then(() => {
+                      console.log("Auth: Synced photoURL from Firestore to Firebase Auth user profile.");
+                      setUser(prev => prev ? { ...prev, photoURL: profileData.photoURL } as any : null);
+                    })
+                    .catch(err => console.error("Auth: Failed to sync photoURL to Firebase Auth:", err));
+                }
               }
-              if (profileData.displayName && firebaseUser.displayName !== profileData.displayName) {
-                updateProfile(firebaseUser, { displayName: profileData.displayName })
+              if (profileData.displayName && currentUser && currentUser.displayName !== profileData.displayName) {
+                updateProfile(currentUser, { displayName: profileData.displayName })
                   .then(() => {
                     console.log("Auth: Synced displayName from Firestore to Firebase Auth user profile.");
-                    // Force refresh user state so children components react immediately
-                    setUser({ ...firebaseUser, displayName: profileData.displayName } as any);
+                    setUser(prev => prev ? { ...prev, displayName: profileData.displayName } as any : null);
                   })
                   .catch(err => console.error("Auth: Failed to sync displayName to Firebase Auth:", err));
               }

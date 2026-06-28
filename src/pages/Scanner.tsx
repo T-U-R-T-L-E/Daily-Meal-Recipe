@@ -41,6 +41,7 @@ export default function Scanner() {
       console.error("Failed to save scanned items to local storage", e);
     }
   }, [scannedItems]);
+  const [noIngredientsFound, setNoIngredientsFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -145,6 +146,7 @@ export default function Scanner() {
     setScanning(true);
     setError(null);
     setIdentifiedMeal(null);
+    setNoIngredientsFound(false);
     const reader = new FileReader();
     reader.onload = async (event) => {
       const img = new Image();
@@ -171,12 +173,17 @@ export default function Scanner() {
           '/api/ai/scan-image',
           (data) => {
             if (scanMode === 'meal') {
-              if (data.mealName && data.recipe) {
+              if (data.mealName === 'NOT_FOUND' || !data.recipe) {
+                setIdentifiedMeal({ mealName: 'NOT_FOUND', recipe: null });
+              } else if (data.mealName && data.recipe) {
                 setIdentifiedMeal({ mealName: data.mealName, recipe: data.recipe });
               }
             } else {
               if (data.items && data.items.length > 0) {
                 setScannedItems(prev => [...new Set([...prev, ...data.items])]);
+                setNoIngredientsFound(false);
+              } else {
+                setNoIngredientsFound(true);
               }
             }
             setScanning(false);
@@ -212,6 +219,7 @@ export default function Scanner() {
 
     setScanning(true);
     setIdentifiedMeal(null);
+    setNoIngredientsFound(false);
     const video = videoRef.current;
     const canvas = canvasRef.current;
     canvas.width = video.videoWidth;
@@ -233,12 +241,17 @@ export default function Scanner() {
       '/api/ai/scan-image',
       (data) => {
         if (scanMode === 'meal') {
-          if (data.mealName && data.recipe) {
+          if (data.mealName === 'NOT_FOUND' || !data.recipe) {
+            setIdentifiedMeal({ mealName: 'NOT_FOUND', recipe: null });
+          } else if (data.mealName && data.recipe) {
             setIdentifiedMeal({ mealName: data.mealName, recipe: data.recipe });
           }
         } else {
           if (data.items && data.items.length > 0) {
             setScannedItems(prev => [...new Set([...prev, ...data.items])]);
+            setNoIngredientsFound(false);
+          } else {
+            setNoIngredientsFound(true);
           }
         }
         setScanning(false);
@@ -542,12 +555,24 @@ export default function Scanner() {
                   </AnimatePresence>
 
                   {scannedItems.length === 0 && (
-                    <div className="w-full py-20 flex flex-col items-center justify-center text-center space-y-4">
-                      <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center">
-                        <Camera className="w-8 h-8 text-white/5" />
+                    noIngredientsFound ? (
+                      <div className="w-full py-20 flex flex-col items-center justify-center text-center space-y-4">
+                        <div className="w-16 h-16 bg-rose-500/10 border border-rose-500/20 rounded-full flex items-center justify-center">
+                          <AlertCircle className="w-8 h-8 text-rose-400 animate-pulse" />
+                        </div>
+                        <p className="text-rose-400 text-xs font-semibold uppercase tracking-wider">No Ingredients Detected</p>
+                        <p className="text-gray-500 text-xs italic font-light max-w-[240px] leading-relaxed">
+                          We couldn't identify any ingredients in this photo. Please try capturing food products or raw ingredients under better lighting!
+                        </p>
                       </div>
-                      <p className="text-gray-500 text-xs italic font-light max-w-[200px]">Identify ingredients to build your recipe basket.</p>
-                    </div>
+                    ) : (
+                      <div className="w-full py-20 flex flex-col items-center justify-center text-center space-y-4">
+                        <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center">
+                          <Camera className="w-8 h-8 text-white/5" />
+                        </div>
+                        <p className="text-gray-500 text-xs italic font-light max-w-[200px]">Identify ingredients to build your recipe basket.</p>
+                      </div>
+                    )
                   )}
                 </div>
               </div>
@@ -604,7 +629,7 @@ export default function Scanner() {
                 <div className="space-y-1">
                   <h3 className="text-white font-serif text-2xl italic">Meal Identifier</h3>
                   <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                    {identifiedMeal ? "Perfect recipe match found" : "Ready to scan dish"}
+                    {identifiedMeal ? (identifiedMeal.mealName === 'NOT_FOUND' ? "No food detected" : "Perfect recipe match found") : "Ready to scan dish"}
                   </p>
                 </div>
                 <ChefHat className="w-6 h-6 text-amber-accent/20" />
@@ -612,86 +637,110 @@ export default function Scanner() {
 
               <div className="flex-grow flex flex-col justify-between">
                 {identifiedMeal ? (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="space-y-6"
-                  >
-                    {/* Meal Image Card */}
-                    <div className="relative aspect-[16/10] rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
-                      <img 
-                        src={identifiedMeal.recipe.imageUrl} 
-                        alt={identifiedMeal.mealName}
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                      
-                      <div className="absolute top-4 left-4 bg-emerald-500/95 text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        100% Match
+                  identifiedMeal.mealName === 'NOT_FOUND' ? (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="space-y-6 flex-grow flex flex-col justify-center items-center text-center py-12"
+                    >
+                      <div className="w-16 h-16 bg-rose-500/10 border border-rose-500/20 rounded-full flex items-center justify-center">
+                        <AlertCircle className="w-8 h-8 text-rose-400 animate-pulse" />
                       </div>
-
-                      <div className="absolute bottom-4 left-4 right-4">
-                        <span className="text-[9px] font-black text-amber-accent uppercase tracking-widest">
-                          {identifiedMeal.recipe.cuisine || "International"} • {identifiedMeal.recipe.category || "Main"}
-                        </span>
-                        <h4 className="text-lg font-serif font-light text-white leading-tight mt-1">
-                          {identifiedMeal.mealName}
-                        </h4>
+                      <div className="space-y-2 max-w-[280px]">
+                        <h4 className="text-sm font-serif font-light text-white">No Meal Detected</h4>
+                        <p className="text-gray-500 text-xs italic font-light leading-relaxed">
+                          We couldn't identify any plated food or finished meal in your photo. Please try scanning a finished culinary dish!
+                        </p>
                       </div>
-                    </div>
-
-                    {/* Meal Details */}
-                    <div className="space-y-4">
-                      <p className="text-xs text-white/70 font-light leading-relaxed italic">
-                        "{identifiedMeal.recipe.description}"
-                      </p>
-
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="p-3 bg-white/[0.02] border border-white/5 rounded-2xl text-center space-y-0.5">
-                          <span className="block text-[8px] font-bold text-gray-500 uppercase tracking-widest">Prep Time</span>
-                          <span className="text-xs font-mono font-medium text-white">{identifiedMeal.recipe.prepTime || "15 mins"}</span>
-                        </div>
-                        <div className="p-3 bg-white/[0.02] border border-white/5 rounded-2xl text-center space-y-0.5">
-                          <span className="block text-[8px] font-bold text-gray-500 uppercase tracking-widest">Cook Time</span>
-                          <span className="text-xs font-mono font-medium text-white">{identifiedMeal.recipe.cookTime || "25 mins"}</span>
-                        </div>
-                        <div className="p-3 bg-white/[0.02] border border-white/5 rounded-2xl text-center space-y-0.5">
-                          <span className="block text-[8px] font-bold text-gray-500 uppercase tracking-widest">Difficulty</span>
-                          <span className="text-xs text-amber-accent font-medium">{identifiedMeal.recipe.difficulty || "Easy"}</span>
-                        </div>
-                      </div>
-
-                      {/* Nutrition stats brief */}
-                      {identifiedMeal.recipe.nutrition && (
-                        <div className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/5 rounded-2xl text-[11px] text-white/50 font-light">
-                          <span>Calories: <strong className="text-white font-medium">{identifiedMeal.recipe.nutrition.calories} kcal</strong></span>
-                          <span>Protein: <strong className="text-white font-medium">{identifiedMeal.recipe.nutrition.protein}g</strong></span>
-                          <span>Carbs: <strong className="text-white font-medium">{identifiedMeal.recipe.nutrition.carbs}g</strong></span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="pt-4 border-t border-white/5 mt-auto space-y-3">
-                      <button 
-                        onClick={() => navigate(`/recipe/${identifiedMeal.recipe.id}`)}
-                        className="w-full h-14 bg-amber-accent hover:bg-white text-black rounded-full font-bold uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 transition-all cursor-pointer shadow-lg shadow-amber-accent/10"
-                      >
-                        <ArrowRight className="w-4 h-4" />
-                        View 100% Related Recipe
-                      </button>
-
                       <button 
                         onClick={() => setIdentifiedMeal(null)}
-                        className="w-full h-12 bg-white/5 hover:bg-white/10 text-white rounded-full border border-white/5 font-bold uppercase tracking-[0.2em] text-[9px] flex items-center justify-center gap-2 transition-all cursor-pointer"
+                        className="h-12 px-6 bg-white/5 hover:bg-white/10 text-white rounded-full border border-white/5 font-bold uppercase tracking-[0.2em] text-[9px] flex items-center justify-center gap-2 transition-all cursor-pointer"
                       >
                         <RefreshCw className="w-3.5 h-3.5 text-white/40" />
-                        Scan Another Meal
+                        Try Scanning Again
                       </button>
-                    </div>
-                  </motion.div>
-                ) : (
+                    </motion.div>
+                  ) : (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="space-y-6"
+                    >
+                      {/* Meal Image Card */}
+                      <div className="relative aspect-[16/10] rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
+                        <img 
+                          src={identifiedMeal.recipe.imageUrl} 
+                          alt={identifiedMeal.mealName}
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                        
+                        <div className="absolute top-4 left-4 bg-emerald-500/95 text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          100% Match
+                        </div>
+
+                        <div className="absolute bottom-4 left-4 right-4">
+                          <span className="text-[9px] font-black text-amber-accent uppercase tracking-widest">
+                            {identifiedMeal.recipe.cuisine || "International"} • {identifiedMeal.recipe.category || "Main"}
+                          </span>
+                          <h4 className="text-lg font-serif font-light text-white leading-tight mt-1">
+                            {identifiedMeal.mealName}
+                          </h4>
+                        </div>
+                      </div>
+
+                      {/* Meal Details */}
+                      <div className="space-y-4">
+                        <p className="text-xs text-white/70 font-light leading-relaxed italic">
+                          "{identifiedMeal.recipe.description}"
+                        </p>
+
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="p-3 bg-white/[0.02] border border-white/5 rounded-2xl text-center space-y-0.5">
+                            <span className="block text-[8px] font-bold text-gray-500 uppercase tracking-widest">Prep Time</span>
+                            <span className="text-xs font-mono font-medium text-white">{identifiedMeal.recipe.prepTime || "15 mins"}</span>
+                          </div>
+                          <div className="p-3 bg-white/[0.02] border border-white/5 rounded-2xl text-center space-y-0.5">
+                            <span className="block text-[8px] font-bold text-gray-500 uppercase tracking-widest">Cook Time</span>
+                            <span className="text-xs font-mono font-medium text-white">{identifiedMeal.recipe.cookTime || "25 mins"}</span>
+                          </div>
+                          <div className="p-3 bg-white/[0.02] border border-white/5 rounded-2xl text-center space-y-0.5">
+                            <span className="block text-[8px] font-bold text-gray-500 uppercase tracking-widest">Difficulty</span>
+                            <span className="text-xs text-amber-accent font-medium">{identifiedMeal.recipe.difficulty || "Easy"}</span>
+                          </div>
+                        </div>
+
+                        {/* Nutrition stats brief */}
+                        {identifiedMeal.recipe.nutrition && (
+                          <div className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/5 rounded-2xl text-[11px] text-white/50 font-light">
+                            <span>Calories: <strong className="text-white font-medium">{identifiedMeal.recipe.nutrition.calories} kcal</strong></span>
+                            <span>Protein: <strong className="text-white font-medium">{identifiedMeal.recipe.nutrition.protein}g</strong></span>
+                            <span>Carbs: <strong className="text-white font-medium">{identifiedMeal.recipe.nutrition.carbs}g</strong></span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="pt-4 border-t border-white/5 mt-auto space-y-3">
+                        <button 
+                          onClick={() => navigate(`/recipe/${identifiedMeal.recipe.id}`)}
+                          className="w-full h-14 bg-amber-accent hover:bg-white text-black rounded-full font-bold uppercase tracking-[0.2em] text-[10px] flex items-center justify-center gap-3 transition-all cursor-pointer shadow-lg shadow-amber-accent/10"
+                        >
+                          <ArrowRight className="w-4 h-4" />
+                          View 100% Related Recipe
+                        </button>
+
+                        <button 
+                          onClick={() => setIdentifiedMeal(null)}
+                          className="w-full h-12 bg-white/5 hover:bg-white/10 text-white rounded-full border border-white/5 font-bold uppercase tracking-[0.2em] text-[9px] flex items-center justify-center gap-2 transition-all cursor-pointer"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5 text-white/40" />
+                          Scan Another Meal
+                        </button>
+                      </div>
+                    </motion.div>
+                  )) : (
                   <div className="w-full py-16 flex flex-col items-center justify-center text-center space-y-6 flex-grow">
                     <div className="relative">
                       <div className="absolute inset-0 bg-amber-accent/5 rounded-full blur-2xl animate-pulse" />

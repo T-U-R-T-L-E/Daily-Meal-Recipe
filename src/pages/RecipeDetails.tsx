@@ -5,7 +5,7 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../lib/useAuth';
 import { Recipe } from '../types';
 import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
-import { Clock, ChefHat, User, Share2, CalendarPlus, ChevronLeft, X, Zap, CheckCircle2, Play, Video, ArrowRight, Info, Heart, Calendar, Box, Link2, Download, Printer, FileJson, FileText, AlertTriangle, Star } from 'lucide-react';
+import { Clock, ChefHat, User, Share2, CalendarPlus, ChevronLeft, X, Zap, CheckCircle2, Play, Video, ArrowRight, Info, Heart, Calendar, Box, Link2, Download, Printer, FileJson, FileText, AlertTriangle, Star, ArrowUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { updateDoc, increment } from 'firebase/firestore';
 import { cn, cleanRecipeImageUrl, getStableFoodImage } from '../lib/utils';
@@ -14,6 +14,7 @@ import ShareSheet from '../components/ui/ShareSheet';
 import AccessDenied from '../components/auth/AccessDenied';
 import { RecipeDetailsSkeleton } from '../components/recipes/RecipeSkeleton';
 import { getRecipeWarnings } from '../lib/recipeWarnings';
+import { saveRecipeOffline, deleteRecipeOffline, isRecipePinned, getPinnedRecipes } from '../lib/indexedDb';
 
 export default function RecipeDetails() {
   const { id } = useParams();
@@ -46,6 +47,28 @@ export default function RecipeDetails() {
   const [isFavorited, setIsFavorited] = useState(false);
   const [favoriteId, setFavoriteId] = useState<string | null>(null);
   const [isToggling, setIsToggling] = useState(false);
+
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [isPinned, setIsPinned] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 350) {
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
 
   useEffect(() => {
     if (!user || !id) return;
@@ -198,6 +221,24 @@ export default function RecipeDetails() {
   useEffect(() => {
     async function loadRecipe() {
       if (!id) return;
+
+      // Check pinned status from IndexedDB
+      try {
+        const pinned = await isRecipePinned(id);
+        setIsPinned(pinned);
+
+        if (pinned) {
+          const pinnedList = await getPinnedRecipes();
+          const found = pinnedList.find(r => r.id === id);
+          if (found && !navigator.onLine) {
+            setRecipe(found);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error("Failed to check pinned status", e);
+      }
       
       // Check if it's a discovered recipe from session storage
       if (id.startsWith('ai-')) {
@@ -269,9 +310,29 @@ export default function RecipeDetails() {
             viewCount: increment(1)
           }).catch(e => console.warn("View increment failed", e));
         } else {
-          setRecipe(null);
+          // If Firestore says it does not exist, check IndexedDB as ultimate fallback
+          const pinnedList = await getPinnedRecipes();
+          const found = pinnedList.find(r => r.id === id);
+          if (found) {
+            setRecipe(found);
+          } else {
+            setRecipe(null);
+          }
         }
       } catch (error: any) {
+        // Fallback to IndexedDB pinned recipes on network failure
+        try {
+          const pinnedList = await getPinnedRecipes();
+          const found = pinnedList.find(r => r.id === id);
+          if (found) {
+            setRecipe(found);
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          console.error("IndexedDB fallback lookup failed", e);
+        }
+
         const isPermissionError = error?.code === 'permission-denied' || 
           error?.message?.toLowerCase().includes('permission') || 
           error?.message?.toLowerCase().includes('insufficient');
@@ -718,22 +779,37 @@ export default function RecipeDetails() {
               </button>
             )}
             <button 
-              onClick={() => {
+              onClick={async () => {
+                if (!recipe) return;
                 try {
-                  const savedRaw = localStorage.getItem('saved_recipes');
-                  const saved = (savedRaw && savedRaw !== 'undefined') ? JSON.parse(savedRaw) : [];
-                  if (!saved.find((r: any) => r.id === recipe.id)) {
-                    localStorage.setItem('saved_recipes', JSON.stringify([...saved, recipe]));
-                    alert('Recipe saved for offline access.');
+                  if (isPinned) {
+                    await deleteRecipeOffline(recipe.id || "");
+                    setIsPinned(false);
+                    // Sync with localStorage for backward compatibility
+                    const savedRaw = localStorage.getItem('saved_recipes');
+                    const saved = (savedRaw && savedRaw !== 'undefined') ? JSON.parse(savedRaw) : [];
+                    localStorage.setItem('saved_recipes', JSON.stringify(saved.filter((r: any) => r.id !== recipe.id)));
+                  } else {
+                    await saveRecipeOffline(recipe);
+                    setIsPinned(true);
+                    // Sync with localStorage for backward compatibility
+                    const savedRaw = localStorage.getItem('saved_recipes');
+                    const saved = (savedRaw && savedRaw !== 'undefined') ? JSON.parse(savedRaw) : [];
+                    if (!saved.find((r: any) => r.id === recipe.id)) {
+                      localStorage.setItem('saved_recipes', JSON.stringify([...saved, recipe]));
+                    }
                   }
                 } catch (e) {
-                  console.error("Failed to save recipes", e);
+                  console.error("Failed to pin/unpin recipe offline:", e);
                 }
               }}
-              className="flex-1 min-w-[125px] px-6 py-3 bg-graphite border border-white/10 text-white rounded-full text-[9px] font-bold uppercase tracking-[0.2em] hover:border-amber-accent transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className={cn(
+                "flex-1 min-w-[125px] px-6 py-3 bg-graphite border rounded-full text-[9px] font-bold uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 cursor-pointer",
+                isPinned ? "border-amber-accent/40 text-amber-accent bg-amber-accent/5 hover:bg-amber-accent/10" : "border-white/10 text-white hover:border-amber-accent"
+              )}
             >
-              <Zap className="w-3 h-3 text-amber-accent" />
-              Save Offline
+              <Zap className={cn("w-3 h-3 transition-transform", isPinned ? "text-amber-accent fill-current scale-110" : "text-amber-accent")} />
+              {isPinned ? 'Saved Offline' : 'Save Offline'}
             </button>
             <button 
               onClick={handleShareRecipe}
@@ -1537,6 +1613,22 @@ export default function RecipeDetails() {
               </form>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showScrollTop && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 10 }}
+            onClick={scrollToTop}
+            className="fixed bottom-8 right-8 z-50 w-12 h-12 bg-amber-accent hover:bg-white text-black rounded-full flex items-center justify-center shadow-2xl transition-all cursor-pointer border border-white/10 group"
+            title="Scroll to Top"
+            aria-label="Scroll to Top"
+          >
+            <ArrowUp className="w-5 h-5 group-hover:-translate-y-0.5 transition-transform" />
+          </motion.button>
         )}
       </AnimatePresence>
     </motion.div>

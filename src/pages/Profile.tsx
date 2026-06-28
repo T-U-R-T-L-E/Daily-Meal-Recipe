@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { ProfileSkeleton } from '../components/recipes/RecipeSkeleton';
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, profile: authProfile } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -47,54 +47,14 @@ export default function Profile() {
   const levels = ['Beginner', 'Intermediate', 'Expert', 'Professional'];
 
   useEffect(() => {
-    if (!user) {
+    if (authProfile) {
+      setProfile(authProfile);
+      setLoading(false);
+    } else if (!user) {
       setProfile(null);
       setLoading(false);
-      return;
     }
-
-    async function loadProfile() {
-      setLoading(true);
-      try {
-        const docSnap = await getDoc(doc(db, 'users', user.uid));
-        if (docSnap.exists()) {
-          setProfile(docSnap.data() as UserProfile);
-        } else {
-          const defaultProfile: UserProfile = {
-            uid: user.uid,
-            displayName: user.displayName,
-            email: user.email,
-            photoURL: user.photoURL,
-            dietaryPreferences: [],
-            allergies: [],
-            healthConditions: [],
-            fitnessGoals: [],
-            activityLevel: 'Moderate',
-            skillLevel: 'Beginner',
-            language: 'English',
-            badges: ['New Cook'],
-            points: 100,
-            achievements: [],
-            activeChallenges: [],
-            streaks: 0,
-            cookedCount: 0,
-            createdAt: new Date().toISOString(),
-            subscription: {
-              status: 'trial',
-              trialEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-            }
-          };
-          await setDoc(doc(db, 'users', user.uid), defaultProfile);
-          setProfile(defaultProfile);
-        }
-      } catch (error) {
-        handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadProfile();
-  }, [user]);
+  }, [authProfile, user]);
 
   const toggleOption = (list: string[], item: string) => {
     if (list.includes(item)) {

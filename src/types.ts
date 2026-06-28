@@ -119,6 +119,10 @@ export interface MealPlan {
   date: string;
   mealType: "breakfast" | "lunch" | "dinner" | "snack" | "dessert";
   completed?: boolean;
+  createdAt?: any;
+  familyId?: string;
+  addedByName?: string;
+  addedByPhoto?: string;
 }
 
 export interface NutritionLog {
@@ -156,6 +160,7 @@ export interface PantryItem {
   quantity: string;
   expiryDate?: string;
   category: string;
+  createdAt?: any;
 }
 
 export interface Review {
