@@ -25,7 +25,6 @@ import {
   ExternalLink as LinkIcon 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import AIConsentModal from '../components/AIConsentModal';
 
 // Data types declared in the internal registry mapping
 interface DataItem {
@@ -178,7 +177,6 @@ export default function ComplianceHub() {
   const [isCookieConsentSaved, setIsCookieConsentSaved] = useState(false);
 
   // AI Consent Simulator states
-  const [showAIConsentPreview, setShowAIConsentPreview] = useState(false);
   const [hasAIConsented, setHasAIConsented] = useState(() => localStorage.getItem('ai_consent_accepted') === 'true');
 
   // Dynamic policy content generation
@@ -849,14 +847,9 @@ Support Contact: ${supportEmail}`;
                 Reset AI Consent
               </button>
 
-              <button
-                type="button"
-                onClick={() => setShowAIConsentPreview(true)}
-                className="flex-1 px-5 py-2.5 rounded-xl bg-amber-accent text-black font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer hover:bg-white"
-              >
-                <Eye className="w-4 h-4" />
-                <span>Simulate Consent popup</span>
-              </button>
+              <div className="flex-1 text-[10px] text-white/40 italic flex items-center justify-center text-center">
+                Consent integrated in Terms & Privacy Policy
+              </div>
             </div>
           </div>
 
@@ -962,19 +955,7 @@ Support Contact: ${supportEmail}`;
         )}
       </AnimatePresence>
 
-      <AIConsentModal
-        isOpen={showAIConsentPreview}
-        onClose={() => setShowAIConsentPreview(false)}
-        onAccept={() => {
-          setHasAIConsented(true);
-          // Tick checklist item automatically when accepted
-          if (!checklist.aiConsentConfigured) {
-            toggleChecklist('aiConsentConfigured');
-          }
-          alert('AI processing consent simulated successfully! Verified outbound transparency rules.');
-        }}
-        dataTypesToSend={['Dietary Preferences Profile', 'Ingredients List', 'Custom Allergic Exclusions (Health Safeties)']}
-      />
+
 
     </div>
   );

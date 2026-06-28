@@ -1095,6 +1095,22 @@ async function upgradeUserSubscriptionInFirestore(
   return false;
 }
 
+// Reusable helper to safely parse JSON from Paystack and provide descriptive errors on failure
+async function fetchPaystackApi(url: string, options: any) {
+  const response = await fetch(url, options);
+  const responseText = await response.text();
+  
+  let data: any = null;
+  try {
+    data = JSON.parse(responseText);
+  } catch (err) {
+    console.error(`[Paystack API JSON Parse Error] URL: ${url}, Status: ${response.status}, Raw Response:`, responseText);
+    throw new Error(`Paystack Gateway returned an invalid response (HTTP ${response.status}). Let's verify our secret key is set correctly and the transaction is supported. Message: ${responseText.substring(0, 160)}`);
+  }
+  
+  return { response, data };
+}
+
 app.post("/api/paystack/charge", async (req, res) => {
   try {
     const { email, amount, currency, card, pin } = req.body;
@@ -1125,7 +1141,7 @@ app.post("/api/paystack/charge", async (req, res) => {
       payload.pin = pin;
     }
 
-    const response = await fetch("https://api.paystack.co/charge", {
+    const { response, data } = await fetchPaystackApi("https://api.paystack.co/charge", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${paystackSecretKey}`,
@@ -1134,7 +1150,6 @@ app.post("/api/paystack/charge", async (req, res) => {
       body: JSON.stringify(payload)
     });
 
-    const data = await response.json();
     console.log(`[Paystack Direct Charge Response] Status: ${response.status}`, JSON.stringify(data));
 
     if (!response.ok || !data.status) {
@@ -1183,7 +1198,7 @@ app.post("/api/paystack/charge/submit-pin", async (req, res) => {
 
     console.log(`[Paystack Submit PIN] Ref: ${reference}`);
 
-    const response = await fetch("https://api.paystack.co/charge/submit_pin", {
+    const { response, data } = await fetchPaystackApi("https://api.paystack.co/charge/submit_pin", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${paystackSecretKey}`,
@@ -1192,7 +1207,6 @@ app.post("/api/paystack/charge/submit-pin", async (req, res) => {
       body: JSON.stringify({ pin, reference })
     });
 
-    const data = await response.json();
     if (!response.ok || !data.status) {
       return res.status(400).json({ status: "failed", error: data.message || "Submit PIN failed." });
     }
@@ -1228,7 +1242,7 @@ app.post("/api/paystack/charge/submit-otp", async (req, res) => {
 
     console.log(`[Paystack Submit OTP] Ref: ${reference}`);
 
-    const response = await fetch("https://api.paystack.co/charge/submit_otp", {
+    const { response, data } = await fetchPaystackApi("https://api.paystack.co/charge/submit_otp", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${paystackSecretKey}`,
@@ -1237,7 +1251,6 @@ app.post("/api/paystack/charge/submit-otp", async (req, res) => {
       body: JSON.stringify({ otp, reference })
     });
 
-    const data = await response.json();
     if (!response.ok || !data.status) {
       return res.status(400).json({ status: "failed", error: data.message || "Submit OTP failed." });
     }
@@ -1271,7 +1284,7 @@ app.post("/api/paystack/charge/submit-birthday", async (req, res) => {
       return res.status(400).json({ error: "Missing required parameters: birthday, reference" });
     }
 
-    const response = await fetch("https://api.paystack.co/charge/submit_birthday", {
+    const { response, data } = await fetchPaystackApi("https://api.paystack.co/charge/submit_birthday", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${paystackSecretKey}`,
@@ -1280,7 +1293,6 @@ app.post("/api/paystack/charge/submit-birthday", async (req, res) => {
       body: JSON.stringify({ birthday, reference })
     });
 
-    const data = await response.json();
     if (!response.ok || !data.status) {
       return res.status(400).json({ status: "failed", error: data.message || "Submit birthday failed." });
     }
@@ -1314,7 +1326,7 @@ app.post("/api/paystack/charge/submit-phone", async (req, res) => {
       return res.status(400).json({ error: "Missing required parameters: phone, reference" });
     }
 
-    const response = await fetch("https://api.paystack.co/charge/submit_phone", {
+    const { response, data } = await fetchPaystackApi("https://api.paystack.co/charge/submit_phone", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${paystackSecretKey}`,
@@ -1323,7 +1335,6 @@ app.post("/api/paystack/charge/submit-phone", async (req, res) => {
       body: JSON.stringify({ phone, reference })
     });
 
-    const data = await response.json();
     if (!response.ok || !data.status) {
       return res.status(400).json({ status: "failed", error: data.message || "Submit phone failed." });
     }
@@ -1357,14 +1368,13 @@ app.all("/api/paystack/verify", async (req, res) => {
       throw new Error("PAYSTACK_SECRET_KEY is not configured in environment variables.");
     }
 
-    const response = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+    const { response, data } = await fetchPaystackApi(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${paystackSecretKey}`
       }
     });
 
-    const data = await response.json();
     if (!data.status || data.data.status !== "success") {
       throw new Error(data.message || "Transaction verification failed or incomplete");
     }
@@ -2690,11 +2700,11 @@ app.post("/api/ai/generate-recipe", async (req, res) => {
     
     const specialInstructions = buildUserContextInstructions(userContext);
 
-    let parsedRecipe: any;
+    let parsedRecipesList: any[] = [];
     try {
       const response = await generateContentWithRetry({
         model: "gemini-3.5-flash",
-        contents: [{ role: "user", parts: [{ text: `Generate a professional recipe using these ingredients: ${ingredients.join(", ")}. 
+        contents: [{ role: "user", parts: [{ text: `Generate EXACTLY 3 distinct, professional recipes using these ingredients: ${ingredients.join(", ")}. 
         Dietary restrictions: ${dietaryRestrictions || "None"}. 
         Cuisine style: ${cuisineType || "Any"}.
         Target servings: ${servings || 2}.
@@ -2706,125 +2716,156 @@ app.post("/api/ai/generate-recipe", async (req, res) => {
         IMPORTANT: Prioritize using common, popular, and easy-to-find ingredients. 
         Avoid rare, obscure, or hard-to-source ingredients that the average person might not have heard of or cannot easily buy at a standard local grocery store.
         
-        For the imageUrl field, provide a keyword-based URL like this: https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=1000 - YOU MUST REPLACE the ID (1546069901-ba9599a7e63c) with a different, REAL Unsplash ID that perfectly corresponds to the specific dish name. Use your internal knowledge of high-quality food photography IDs on Unsplash to ensure every dish gets a unique, beautiful, and fast-loading image. Do not use the same ID for different dishes.
+        For each of the 3 recipes, in the imageUrl field, provide a keyword-based URL like this: https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=1000 - YOU MUST REPLACE the ID (1546069901-ba9599a7e63c) with a different, REAL Unsplash ID that perfectly corresponds to the specific dish name. Use your internal knowledge of high-quality food photography IDs on Unsplash to ensure every dish gets a unique, beautiful, and fast-loading image. Do not use the same ID for different dishes.
         For the videoUrl field, provide a YouTube search query URL for a tutorial on any dish, formatted as: https://www.youtube.com/results?search_query=[dish-name]+tutorial.
         Include precise baseAmounts (numeric grams/ml) for the ingredients metadata.
         
-        For the 'instructions' field, you MUST generate EXACTLY 8 to 15 sequential, logical steps (no fewer than 8 steps, and no more than 15). Each step should be highly descriptive and detailed, parsing prep, cooking, checks, and plating. Do not keep them short or compile separate tasks together just to reduce step count.` }]}],
+        For the 'instructions' field of each recipe, you MUST generate EXACTLY 8 to 15 sequential, logical steps (no fewer than 8 steps, and no more than 15). Each step should be highly descriptive and detailed, parsing prep, cooking, checks, and plating. Do not keep them short or compile separate tasks together just to reduce step count.` }]}],
         config: {
           thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
             properties: {
-              name: { type: Type.STRING },
-              description: { type: Type.STRING },
-              prepTime: { type: Type.STRING },
-              cookTime: { type: Type.STRING },
-              restTime: { type: Type.STRING },
-              difficulty: { type: Type.STRING },
-              category: { type: Type.STRING },
-              cuisine: { type: Type.STRING },
-              imageUrl: { type: Type.STRING },
-              videoUrl: { type: Type.STRING },
-              servings: { type: Type.NUMBER },
-              healthAdvice: { type: Type.STRING, description: "Detailed clinical/dietary advice mapping this specific recipe back to the user's focus options, preferences, constraints, or goals." },
-              ingredients: {
+              recipes: {
                 type: Type.ARRAY,
                 items: {
                   type: Type.OBJECT,
                   properties: {
-                    item: { type: Type.STRING },
-                    amount: { type: Type.STRING },
-                    unit: { type: Type.STRING },
-                    baseAmount: { type: Type.NUMBER }
-                  }
-                }
-              },
-              instructions: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    text: { type: Type.STRING },
+                    name: { type: Type.STRING },
+                    description: { type: Type.STRING },
+                    prepTime: { type: Type.STRING },
+                    cookTime: { type: Type.STRING },
+                    restTime: { type: Type.STRING },
+                    difficulty: { type: Type.STRING },
+                    category: { type: Type.STRING },
+                    cuisine: { type: Type.STRING },
                     imageUrl: { type: Type.STRING },
-                    tips: { type: Type.STRING }
+                    videoUrl: { type: Type.STRING },
+                    servings: { type: Type.NUMBER },
+                    healthAdvice: { type: Type.STRING, description: "Detailed clinical/dietary advice mapping this specific recipe back to the user's focus options, preferences, constraints, or goals." },
+                    ingredients: {
+                      type: Type.ARRAY,
+                      items: {
+                        type: Type.OBJECT,
+                        properties: {
+                          item: { type: Type.STRING },
+                          amount: { type: Type.STRING },
+                          unit: { type: Type.STRING },
+                          baseAmount: { type: Type.NUMBER }
+                        }
+                      }
+                    },
+                    instructions: {
+                      type: Type.ARRAY,
+                      items: {
+                        type: Type.OBJECT,
+                        properties: {
+                          text: { type: Type.STRING },
+                          imageUrl: { type: Type.STRING },
+                          tips: { type: Type.STRING }
+                        },
+                        required: ["text"]
+                      }
+                    },
+                    nutrition: {
+                      type: Type.OBJECT,
+                      properties: {
+                        calories: { type: Type.NUMBER },
+                        protein: { type: Type.NUMBER },
+                        carbs: { type: Type.NUMBER },
+                        fat: { type: Type.NUMBER },
+                        fiber: { type: Type.NUMBER },
+                        sugar: { type: Type.NUMBER },
+                        sodium: { type: Type.NUMBER }
+                      }
+                    }
                   },
-                  required: ["text"]
-                }
-              },
-              nutrition: {
-                type: Type.OBJECT,
-                properties: {
-                  calories: { type: Type.NUMBER },
-                  protein: { type: Type.NUMBER },
-                  carbs: { type: Type.NUMBER },
-                  fat: { type: Type.NUMBER },
-                  fiber: { type: Type.NUMBER },
-                  sugar: { type: Type.NUMBER },
-                  sodium: { type: Type.NUMBER }
+                  required: ["name", "description", "ingredients", "instructions", "nutrition", "healthAdvice"]
                 }
               }
             },
-            required: ["name", "description", "ingredients", "instructions", "nutrition", "healthAdvice"]
+            required: ["recipes"]
           }
         }
       });
 
       const text = response.text || "{}";
-      parsedRecipe = JSON.parse(text);
+      const parsedObj = JSON.parse(text);
+      parsedRecipesList = parsedObj.recipes || [];
+      if (!Array.isArray(parsedRecipesList) || parsedRecipesList.length === 0) {
+        if (parsedObj.name) {
+          parsedRecipesList = [parsedObj];
+        } else {
+          throw new Error("Invalid response format: no recipes array");
+        }
+      }
     } catch (aiErr: any) {
       console.log(`[Resilience Engine] Expected Gemini API limit or rate limit encountered (${aiErr?.status || "RESOURCE_EXHAUSTED"}). Applying chef-curated dynamic fallback generator.`);
-      parsedRecipe = findBestFallbackRecipe(cuisineType || "", ingredients || [], cuisineType || "", "");
-      if (servings) parsedRecipe.servings = Number(servings);
-    }
-
-    const recipeId = generateStableRecipeId(parsedRecipe.name);
-    parsedRecipe.id = recipeId;
-    parsedRecipe.authorId = "ai-chef";
-    parsedRecipe.authorName = "Discovery AI";
-    parsedRecipe.isPublic = true;
-    parsedRecipe.status = "approved";
-
-    // Ensure image URL is 100% accurate, related, and fast-loading via our stable food photography mapper
-    const validatedImageUrl = getServerStableFoodImage(parsedRecipe.name, parsedRecipe.category, parsedRecipe.cuisine);
-    parsedRecipe.imageUrl = validatedImageUrl;
-    
-    if (adminDb) {
-      try {
-        const recipeRef = adminDb.collection("recipes").doc(recipeId);
-        const existingSnap = await recipeRef.get();
-        if (existingSnap.exists) {
-          const currentData = existingSnap.data() || {};
-          parsedRecipe.viewCount = currentData.viewCount ?? 0;
-          parsedRecipe.saveCount = currentData.saveCount ?? 0;
-        } else {
-          parsedRecipe.viewCount = 0;
-          parsedRecipe.saveCount = 0;
-        }
-        parsedRecipe.ratingsCount = 0;
-        parsedRecipe.averageRating = 5;
-
-        await recipeRef.set({
-          ...parsedRecipe,
-          createdAt: FieldValue.serverTimestamp()
-        }, { merge: true });
-        console.log(`Saved generated recipe indices in global DB store: ${recipeId}`);
-      } catch (dbErr) {
-        handleAdminDbError(dbErr, "Could not write recipe to Firestore caches");
-        parsedRecipe.viewCount = 0;
-        parsedRecipe.saveCount = 0;
-        parsedRecipe.ratingsCount = 0;
-        parsedRecipe.averageRating = 5;
+      const fallback1 = findBestFallbackRecipe(cuisineType || "", ingredients || [], cuisineType || "", "Dinner");
+      const fallbackList = [fallback1];
+      const extraList = getFallbackSearchRecipes(cuisineType || "", [fallback1.name]);
+      for (const extra of extraList) {
+        if (fallbackList.length >= 3) break;
+        fallbackList.push(extra);
       }
-    } else {
-      parsedRecipe.viewCount = 0;
-      parsedRecipe.saveCount = 0;
-      parsedRecipe.ratingsCount = 0;
-      parsedRecipe.averageRating = 5;
+      while (fallbackList.length < 3) {
+        const copy = JSON.parse(JSON.stringify(fallback1));
+        copy.name = `${copy.name} - Version ${fallbackList.length + 1}`;
+        fallbackList.push(copy);
+      }
+      parsedRecipesList = fallbackList;
     }
 
-    res.json(parsedRecipe);
+    const processedRecipes = [];
+    for (const rawRecipe of parsedRecipesList) {
+      if (servings) rawRecipe.servings = Number(servings);
+      const recipeId = generateStableRecipeId(rawRecipe.name);
+      rawRecipe.id = recipeId;
+      rawRecipe.authorId = "ai-chef";
+      rawRecipe.authorName = "Discovery AI";
+      rawRecipe.isPublic = true;
+      rawRecipe.status = "approved";
+
+      const validatedImageUrl = getServerStableFoodImage(rawRecipe.name, rawRecipe.category, rawRecipe.cuisine);
+      rawRecipe.imageUrl = validatedImageUrl;
+
+      if (adminDb) {
+        try {
+          const recipeRef = adminDb.collection("recipes").doc(recipeId);
+          const existingSnap = await recipeRef.get();
+          if (existingSnap.exists) {
+            const currentData = existingSnap.data() || {};
+            rawRecipe.viewCount = currentData.viewCount ?? 0;
+            rawRecipe.saveCount = currentData.saveCount ?? 0;
+          } else {
+            rawRecipe.viewCount = 0;
+            rawRecipe.saveCount = 0;
+          }
+          rawRecipe.ratingsCount = 0;
+          rawRecipe.averageRating = 5;
+
+          await recipeRef.set({
+            ...rawRecipe,
+            createdAt: FieldValue.serverTimestamp()
+          }, { merge: true });
+        } catch (dbErr) {
+          console.error("Could not write recipe to Firestore caches", dbErr);
+          rawRecipe.viewCount = 0;
+          rawRecipe.saveCount = 0;
+          rawRecipe.ratingsCount = 0;
+          rawRecipe.averageRating = 5;
+        }
+      } else {
+        rawRecipe.viewCount = 0;
+        rawRecipe.saveCount = 0;
+        rawRecipe.ratingsCount = 0;
+        rawRecipe.averageRating = 5;
+      }
+      processedRecipes.push(rawRecipe);
+    }
+
+    res.json({ recipes: processedRecipes });
   } catch (error) {
     console.error("Gemini Error:", error);
     res.status(500).json({ error: "Failed to generate recipe" });

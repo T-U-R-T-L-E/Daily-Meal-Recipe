@@ -4,7 +4,7 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../lib/useAuth';
 import { UserProfile } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, Settings, Award, Flame, Zap, CheckCircle2, CreditCard, CloudCheck, HardDrive, RefreshCcw, ChefHat, Clock, Star, Trophy, Download, Trash2, Eye, EyeOff, Sun, Moon } from 'lucide-react';
+import { Shield, Settings, Award, Flame, Zap, CheckCircle2, CreditCard, CloudCheck, HardDrive, RefreshCcw, ChefHat, Clock, Star, Trophy, Download, Trash2, Eye, EyeOff, Sun, Moon, Pencil, Camera, Upload, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ProfileSkeleton } from '../components/recipes/RecipeSkeleton';
@@ -27,6 +27,9 @@ export default function Profile() {
   const [verifiedBackup, setVerifiedBackup] = useState<any | null>(null);
   const [restoreMode, setRestoreMode] = useState<'merge' | 'overwrite'>('merge');
   const [appUpdating, setAppUpdating] = useState(false);
+  const [isEditingPhoto, setIsEditingPhoto] = useState(false);
+  const [isFullScreenPhoto, setIsFullScreenPhoto] = useState(false);
+  const [customPhotoUrl, setCustomPhotoUrl] = useState('');
 
   const handleManualUpdate = () => {
     setAppUpdating(true);
@@ -649,16 +652,36 @@ export default function Profile() {
 
       {/* Header */}
       <div className="flex flex-col md:flex-row items-center gap-12 border-b border-white/5 pb-16">
-        <div className="relative">
+        <div className="relative group">
           <div className="absolute inset-0 bg-amber-accent/20 blur-3xl rounded-full" />
-          <img 
-            src={profile?.photoURL || user?.photoURL || `https://ui-avatars.com/api/?name=${user?.displayName}`} 
-            className="w-40 h-40 rounded-full border-2 border-white/10 relative z-10 p-1 bg-onyx"
-            alt="User"
-          />
-          <div className="absolute bottom-2 right-2 z-20 bg-amber-accent text-black p-2 rounded-full shadow-xl">
-             <Trophy className="w-5 h-5" />
+          
+          {/* Profile Image with click to view full screen */}
+          <div 
+            onClick={() => setIsFullScreenPhoto(true)}
+            className="w-40 h-40 rounded-full border-2 border-white/10 relative z-10 p-1 bg-onyx cursor-zoom-in overflow-hidden hover:border-amber-accent/40 transition-all"
+          >
+            <img 
+              src={profile?.photoURL || user?.photoURL || `https://ui-avatars.com/api/?name=${user?.displayName}`} 
+              className="w-full h-full rounded-full object-cover"
+              alt="User"
+            />
+            {/* Click to view full screen overlay on hover */}
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-full">
+              <Eye className="w-6 h-6 text-white" />
+            </div>
           </div>
+          
+          {/* Pencil Edit button */}
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsEditingPhoto(true);
+            }}
+            className="absolute bottom-2 right-2 z-20 bg-amber-accent text-black p-2.5 rounded-full shadow-xl hover:bg-white hover:scale-110 transition-all cursor-pointer"
+            title="Edit Profile Picture"
+          >
+             <Pencil className="w-4 h-4" />
+          </button>
         </div>
         
         <div className="space-y-6 text-center md:text-left">
@@ -1292,6 +1315,163 @@ export default function Profile() {
                   Initiate Cloud Sync
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+        {/* Full Screen Avatar Modal */}
+        {isFullScreenPhoto && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md">
+            <div className="absolute inset-0 cursor-zoom-out" onClick={() => setIsFullScreenPhoto(false)} />
+            <div className="relative z-[110] max-w-2xl max-h-[85vh] p-4 flex flex-col items-center">
+              <button 
+                onClick={() => setIsFullScreenPhoto(false)}
+                className="absolute -top-12 right-4 p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <img 
+                src={profile?.photoURL || user?.photoURL || `https://ui-avatars.com/api/?name=${user?.displayName}`} 
+                className="max-w-full max-h-[70vh] rounded-3xl object-contain border border-white/10 shadow-2xl animate-scale-up"
+                alt="Profile"
+              />
+              <p className="text-white/40 text-xs italic mt-6 font-light">
+                {profile?.displayName || user?.displayName || 'Gourmet Cook'}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Profile Picture Editor Modal */}
+        {isEditingPhoto && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className="absolute inset-0" onClick={() => setIsEditingPhoto(false)} />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-graphite rounded-[32px] border border-white/10 p-8 max-w-md w-full relative z-10 shadow-2xl space-y-6"
+            >
+              <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                <h3 className="font-serif text-2xl text-white italic">Edit Profile Photo</h3>
+                <button onClick={() => setIsEditingPhoto(false)} className="text-white/40 hover:text-white cursor-pointer">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Current Photo Preview */}
+              <div className="flex flex-col items-center space-y-2">
+                <div className="w-24 h-24 rounded-full border-2 border-amber-accent/30 p-1 overflow-hidden bg-onyx">
+                  <img 
+                    src={profile?.photoURL || user?.photoURL || `https://ui-avatars.com/api/?name=${user?.displayName}`} 
+                    className="w-full h-full rounded-full object-cover" 
+                    alt="Preview" 
+                  />
+                </div>
+                <span className="text-[10px] text-white/40 uppercase font-bold tracking-widest">Active Avatar</span>
+              </div>
+
+              {/* Option 1: Choose from Gallery */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-widest text-amber-accent">Choose from Chef Gallery</h4>
+                <div className="grid grid-cols-4 gap-3">
+                  {[
+                    { name: 'Classic Chef', url: 'https://images.unsplash.com/photo-1577219491135-ce391730fb2c?auto=format&fit=crop&w=150&h=150&q=80' },
+                    { name: 'Sommelier', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80' },
+                    { name: 'Baking Artisan', url: 'https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?auto=format&fit=crop&w=150&h=150&q=80' },
+                    { name: 'Gourmet Master', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80' },
+                    { name: 'Pizza Cook', url: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=150&h=150&q=80' },
+                    { name: 'Connoisseur', url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80' },
+                    { name: 'Japanese Chef', url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=150&h=150&q=80' },
+                    { name: 'Pastry Queen', url: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=150&h=150&q=80' }
+                  ].map((avatar) => (
+                    <button
+                      key={avatar.name}
+                      onClick={() => {
+                        if (profile) {
+                          const updated = { ...profile, photoURL: avatar.url };
+                          setProfile(updated);
+                          setDoc(doc(db, 'users', user!.uid), updated).catch(console.error);
+                        }
+                      }}
+                      className={`aspect-square rounded-xl overflow-hidden border transition-all hover:scale-105 cursor-pointer ${
+                        profile?.photoURL === avatar.url ? 'border-amber-accent ring-2 ring-amber-accent/20' : 'border-white/5 hover:border-white/20'
+                      }`}
+                      title={avatar.name}
+                    >
+                      <img src={avatar.url} className="w-full h-full object-cover" alt={avatar.name} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Option 2: Upload personal image (Base64) */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-widest text-amber-accent">Upload Personal Image</h4>
+                <div className="flex items-center gap-4">
+                  <label className="flex-1 flex flex-col items-center justify-center border border-dashed border-white/10 hover:border-amber-accent/30 bg-onyx/40 rounded-xl p-4 cursor-pointer hover:bg-onyx/60 transition-colors">
+                    <Upload className="w-5 h-5 text-amber-accent/80 mb-1" />
+                    <span className="text-[10px] text-white/50 uppercase font-bold tracking-wider">Choose File</span>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          if (file.size > 2 * 1024 * 1024) {
+                            alert('Please select an image smaller than 2MB.');
+                            return;
+                          }
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            const base64 = reader.result as string;
+                            if (profile) {
+                              const updated = { ...profile, photoURL: base64 };
+                              setProfile(updated);
+                              setDoc(doc(db, 'users', user!.uid), updated).catch(console.error);
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Option 3: Paste custom URL */}
+              <div className="space-y-3 pb-2">
+                <h4 className="text-xs font-bold uppercase tracking-widest text-amber-accent">Or Paste Image URL</h4>
+                <div className="flex gap-2">
+                  <input 
+                    type="url" 
+                    placeholder="https://example.com/avatar.jpg"
+                    value={customPhotoUrl}
+                    onChange={(e) => setCustomPhotoUrl(e.target.value)}
+                    className="flex-1 bg-onyx border border-white/5 rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-amber-accent/50"
+                  />
+                  <button 
+                    onClick={() => {
+                      if (customPhotoUrl && profile) {
+                        const updated = { ...profile, photoURL: customPhotoUrl };
+                        setProfile(updated);
+                        setDoc(doc(db, 'users', user!.uid), updated).catch(console.error);
+                        setCustomPhotoUrl('');
+                      }
+                    }}
+                    className="px-4 bg-amber-accent text-black font-bold uppercase tracking-widest text-[10px] rounded-xl hover:bg-white transition-colors"
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setIsEditingPhoto(false)}
+                className="w-full py-3 border border-white/10 text-white font-bold uppercase tracking-widest text-[10px] rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                Done
+              </button>
             </motion.div>
           </div>
         )}

@@ -6,10 +6,13 @@ import { PantryItem } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Trash2, Calendar, ShoppingCart, Search, Filter, AlertTriangle } from 'lucide-react';
 import { format, isBefore, addDays } from 'date-fns';
+import { useLocation, useNavigate } from 'react-router-dom';
 import AuthModal from '../components/auth/AuthModal';
 
 export default function Pantry() {
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [items, setItems] = useState<PantryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
@@ -19,6 +22,36 @@ export default function Pantry() {
 
   const categories = ['Oils & Vinegars', 'Spices', 'Grains', 'Proteins', 'Vegetables', 'Dairy', 'Baking', 'Other'];
 
+  // Handle pre-population from router query params or state
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const addParam = params.get('add');
+    const quantityParam = params.get('quantity') || '1';
+    const categoryParam = params.get('category') || 'Other';
+    if (addParam) {
+      setNewItem({
+        item: decodeURIComponent(addParam),
+        quantity: quantityParam,
+        expiryDate: '',
+        category: categoryParam
+      });
+      setIsAdding(true);
+      // Clean up search query so it doesn't open on reload
+      navigate('/pantry', { replace: true });
+    } else if (location.state && (location.state as any).addItem) {
+      const stateItem = (location.state as any).addItem;
+      setNewItem({
+        item: stateItem.item || '',
+        quantity: stateItem.quantity || '1',
+        expiryDate: '',
+        category: stateItem.category || 'Other'
+      });
+      setIsAdding(true);
+      // Clean up state
+      navigate('/pantry', { replace: true, state: {} });
+    }
+  }, [location, navigate]);
+
   useEffect(() => {
     if (!user) {
       setLoading(false);
@@ -26,7 +59,14 @@ export default function Pantry() {
     }
     const q = query(collection(db, 'pantry'), where('userId', '==', user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PantryItem)));
+      const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PantryItem));
+      // Sort client-side by createdAt descending, so newest items are always at the top!
+      fetched.sort((a, b) => {
+        const timeA = (a as any).createdAt?.seconds || 0;
+        const timeB = (b as any).createdAt?.seconds || 0;
+        return timeB - timeA;
+      });
+      setItems(fetched);
       setLoading(false);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'pantry');
@@ -48,6 +88,7 @@ export default function Pantry() {
         createdAt: Timestamp.now()
       });
       setNewItem({ item: '', quantity: '', expiryDate: '', category: 'Oils & Vinegars' });
+      setSearchTerm('');
       setIsAdding(false);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'pantry');
@@ -112,10 +153,14 @@ export default function Pantry() {
               if (!user) {
                 setIsAuthModalOpen(true);
               } else {
+                setNewItem(prev => ({
+                  ...prev,
+                  item: prev.item || searchTerm
+                }));
                 setIsAdding(true);
               }
             }}
-            className="px-6 py-3 bg-white text-black rounded-full font-bold uppercase tracking-widest text-[10px] hover:bg-amber-accent transition-all flex items-center gap-2"
+            className="px-6 py-3 bg-white text-black rounded-full font-bold uppercase tracking-widest text-[10px] hover:bg-amber-accent transition-all flex items-center gap-2 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Add Item
@@ -246,10 +291,14 @@ export default function Pantry() {
               if (!user) {
                 setIsAuthModalOpen(true);
               } else {
+                setNewItem(prev => ({
+                  ...prev,
+                  item: prev.item || searchTerm
+                }));
                 setIsAdding(true);
               }
             }}
-            className="px-8 py-4 border border-white/10 text-white rounded-full hover:bg-white/5 transition-all text-[10px] font-bold uppercase tracking-widest"
+            className="px-8 py-4 border border-white/10 text-white rounded-full hover:bg-white/5 transition-all text-[10px] font-bold uppercase tracking-widest cursor-pointer"
           >
             Add your first item
           </button>

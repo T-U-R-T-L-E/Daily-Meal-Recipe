@@ -9,7 +9,6 @@ import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useBackgroundJobs } from '../lib/BackgroundJobContext';
 import { useErrorUX, InlineErrorHelper } from '../lib/ErrorUXContext';
-import AIConsentModal from '../components/AIConsentModal';
 import AuthModal from '../components/auth/AuthModal';
 
 
@@ -26,7 +25,9 @@ export default function Generator() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [selectedRecipeIndex, setSelectedRecipeIndex] = useState<number>(0);
+  const recipe = recipes[selectedRecipeIndex] || null;
   const [saving, setSaving] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('Dinner');
   const [pantryItems, setPantryItems] = useState<{name: string, id: string}[]>([]);
@@ -107,7 +108,6 @@ export default function Generator() {
     document.addEventListener('click', clickOutside);
     return () => document.removeEventListener('click', clickOutside);
   }, []);
-  const [isConsentOpen, setIsConsentOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
 
@@ -120,7 +120,16 @@ export default function Generator() {
   useEffect(() => {
     const handleRecipeReady = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      setRecipe(detail);
+      if (detail && detail.recipes) {
+        setRecipes(detail.recipes);
+        setSelectedRecipeIndex(0);
+      } else if (Array.isArray(detail)) {
+        setRecipes(detail);
+        setSelectedRecipeIndex(0);
+      } else if (detail) {
+        setRecipes([detail]);
+        setSelectedRecipeIndex(0);
+      }
       setLoading(false);
     };
     window.addEventListener('recipe_ready', handleRecipeReady);
@@ -182,11 +191,6 @@ export default function Generator() {
       return;
     }
     if (ingredients.length === 0) return;
-    const hasConsent = localStorage.getItem('ai_consent_accepted') === 'true';
-    if (!hasConsent) {
-      setIsConsentOpen(true);
-      return;
-    }
     executeRecipeGeneration();
   };
 
@@ -194,7 +198,7 @@ export default function Generator() {
   const executeRecipeGeneration = () => {
     setLoading(true);
     setError(null);
-    setRecipe(null);
+    setRecipes([]);
 
     addJob(
       'recipe_generation',
@@ -209,7 +213,16 @@ export default function Generator() {
       },
       '/api/ai/generate-recipe',
       (data) => {
-        setRecipe(data);
+        if (data && data.recipes) {
+          setRecipes(data.recipes);
+          setSelectedRecipeIndex(0);
+        } else if (Array.isArray(data)) {
+          setRecipes(data);
+          setSelectedRecipeIndex(0);
+        } else if (data) {
+          setRecipes([data]);
+          setSelectedRecipeIndex(0);
+        }
         setLoading(false);
       },
       (err) => {
@@ -225,12 +238,13 @@ export default function Generator() {
   };
 
   const saveRecipe = async () => {
-    if (!recipe || !user) return;
+    const currentRecipe = recipes[selectedRecipeIndex];
+    if (!currentRecipe || !user) return;
     setSaving(true);
     try {
       const isUserAdmin = profile?.role === 'admin' || user.email === 'lewisiraki1@gmail.com';
       const docRef = await addDoc(collection(db, 'recipes'), {
-        ...recipe,
+        ...currentRecipe,
         category: selectedCategory,
         authorId: user.uid,
         isPublic: true,
@@ -470,108 +484,156 @@ export default function Generator() {
         )}
       </div>
 
-      {recipe && (
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-graphite rounded-[40px] border border-white/5 overflow-hidden shadow-2xl relative"
-        >
-          <div className="absolute top-8 right-8 z-20 flex items-center gap-4">
-             <div className="bg-black/40 backdrop-blur-xl p-2 rounded-2xl border border-white/10 flex gap-1">
-               {categories.map(cat => (
-                 <button
-                   key={cat}
-                   onClick={() => setSelectedCategory(cat)}
-                   className={cn(
-                     "px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all",
-                     selectedCategory === cat ? "bg-amber-accent text-black" : "text-white/40 hover:text-white"
-                   )}
-                 >
-                   {cat}
-                 </button>
-               ))}
-             </div>
-             <button
-              onClick={saveRecipe}
-              disabled={saving}
-              className="px-8 py-4 bg-white text-black rounded-full font-bold text-xs uppercase tracking-wider hover:bg-amber-accent transition-all flex items-center gap-3 shadow-2xl"
-            >
-              {saving ? 'Saving...' : 'Save to Collection'}
-              <Save className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="aspect-[21/9] w-full bg-onyx relative overflow-hidden group">
-             <img 
-               src={recipe.imageUrl || "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1200"} 
-               className="w-full h-full object-cover opacity-60 mix-blend-overlay md:grayscale md:group-hover:grayscale-0 transition-all duration-700"
-               alt={recipe.name}
-               onError={(e) => {
-                 e.currentTarget.onerror = null;
-                 e.currentTarget.src = `https://images.unsplash.com/featured/1200x800/?food,${encodeURIComponent(recipe.category || recipe.name)}`;
-               }}
-             />
-             <div className="absolute inset-0 bg-gradient-to-t from-onyx via-onyx/40 to-transparent" />
-             
-             {recipe.videoUrl && (
-               <button 
-                 onClick={() => window.open(recipe.videoUrl, '_blank')}
-                 className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
-               >
-                 <div className="w-16 h-16 bg-amber-accent rounded-full flex items-center justify-center shadow-2xl scale-90 group-hover:scale-100 transition-transform">
-                   <Play className="w-6 h-6 text-black fill-current ml-1" />
-                 </div>
-               </button>
-             )}
-
-             <div className="absolute bottom-12 left-12 right-12 text-white space-y-4">
-                <div className="flex items-center gap-6 text-[10px] font-bold uppercase tracking-[0.2em] text-amber-accent">
-                  <span className="flex items-center gap-2"><ChefHat className="w-4 h-4" /> {recipe.difficulty}</span>
-                  <span>•</span>
-                  <span>{recipe.cookingTime}</span>
-                </div>
-                <h2 className="font-serif text-6xl font-light leading-tight">{recipe.name}</h2>
-             </div>
-          </div>
-
-          <div className="p-16 grid grid-cols-1 md:grid-cols-3 gap-20">
-            <div className="space-y-8">
-              <h3 className="font-serif text-3xl font-light text-white italic border-b border-white/5 pb-4">Ingredients</h3>
-              <ul className="space-y-6">
-                {recipe.ingredients.map((ing, i) => (
-                  <li key={i} className="flex justify-between items-center gap-6">
-                    <span className="text-gray-400 font-light text-lg">{ing.item}</span>
-                    <span className="font-bold text-amber-accent text-xs px-3 py-1 bg-amber-accent/10 rounded-lg uppercase tracking-wider">{ing.amount}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="md:col-span-2 space-y-12 border-l border-white/5 pl-0 md:pl-20">
-              <h3 className="font-serif text-3xl font-light text-white italic border-b border-white/5 pb-4">Instructions</h3>
-              <div className="space-y-12">
-                {recipe.instructions.map((step, i) => (
-                  <div key={i} className="flex gap-10 relative">
-                    <span className="font-serif text-8xl text-white/5 font-bold leading-none absolute -left-12 -top-4 -z-0">{i + 1}</span>
-                    <div className="relative z-10 pt-2">
-                       <span className="text-xs font-bold uppercase tracking-wider text-amber-accent mb-2 block">Step {i + 1}</span>
-                       <p className="text-gray-300 text-lg font-light leading-relaxed italic">
-                         {typeof step === 'string' ? step : step.text}
-                       </p>
+      {recipes.length > 0 && (
+        <div className="space-y-12 animate-fade-in">
+          {/* Card selector for 3 recipes */}
+          <div className="space-y-6">
+            <h2 className="font-serif text-3.5xl font-light text-white italic">
+              Your 3 Generated Culinary Options:
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {recipes.map((item, idx) => (
+                <div
+                  key={item.id || idx}
+                  onClick={() => setSelectedRecipeIndex(idx)}
+                  className={cn(
+                    "relative overflow-hidden rounded-[24px] border transition-all duration-300 cursor-pointer p-6 space-y-4 flex flex-col justify-between h-full group",
+                    selectedRecipeIndex === idx
+                      ? "bg-amber-accent/10 border-amber-accent shadow-lg shadow-amber-accent/5"
+                      : "bg-graphite/40 border-white/5 hover:border-white/20 hover:bg-graphite/60"
+                  )}
+                >
+                  <div className="space-y-3">
+                    <div className="aspect-video w-full rounded-2xl overflow-hidden bg-onyx relative">
+                      <img 
+                        src={item.imageUrl || "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600"}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        alt={item.name}
+                        referrerPolicy="no-referrer"
+                      />
+                      <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider text-amber-accent border border-white/5">
+                        Option {idx + 1}
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <h3 className="font-serif text-xl font-medium text-white group-hover:text-amber-accent transition-colors">
+                        {item.name}
+                      </h3>
+                      <p className="text-white/50 text-xs font-light line-clamp-2">
+                        {item.description}
+                      </p>
                     </div>
                   </div>
-                ))}
-              </div>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-white/5 text-[9px] font-bold uppercase tracking-wider text-white/40">
+                    <span className="flex items-center gap-1.5"><ChefHat className="w-3.5 h-3.5 text-amber-accent" /> {item.difficulty || "Medium"}</span>
+                    <span>•</span>
+                    <span>{item.cookTime || item.cookingTime || "25m"}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        </motion.div>
-      )}
 
-      <AIConsentModal
-        isOpen={isConsentOpen}
-        onClose={() => setIsConsentOpen(false)}
-        onAccept={executeRecipeGeneration}
-        dataTypesToSend={['Ingredients Inventory', 'Selected Category (' + selectedCategory + ')', 'Custom Profile Allergies & Health Goals']}
-      />
+          {recipe && (
+            <motion.div
+              key={selectedRecipeIndex}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-graphite rounded-[40px] border border-white/5 overflow-hidden shadow-2xl relative"
+            >
+              <div className="absolute top-8 right-8 z-20 flex items-center gap-4">
+                 <div className="bg-black/40 backdrop-blur-xl p-2 rounded-2xl border border-white/10 flex gap-1">
+                   {categories.map(cat => (
+                     <button
+                       key={cat}
+                       onClick={() => setSelectedCategory(cat)}
+                       className={cn(
+                         "px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all",
+                         selectedCategory === cat ? "bg-amber-accent text-black" : "text-white/40 hover:text-white"
+                       )}
+                     >
+                       {cat}
+                     </button>
+                   ))}
+                 </div>
+                 <button
+                  onClick={saveRecipe}
+                  disabled={saving}
+                  className="px-8 py-4 bg-white text-black rounded-full font-bold text-xs uppercase tracking-wider hover:bg-amber-accent transition-all flex items-center gap-3 shadow-2xl cursor-pointer"
+                >
+                  {saving ? 'Saving...' : 'Save Selection'}
+                  <Save className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="aspect-[21/9] w-full bg-onyx relative overflow-hidden group">
+                 <img 
+                   src={recipe.imageUrl || "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1200"} 
+                   className="w-full h-full object-cover opacity-60 mix-blend-overlay md:grayscale md:group-hover:grayscale-0 transition-all duration-700"
+                   alt={recipe.name}
+                   onError={(e) => {
+                     e.currentTarget.onerror = null;
+                     e.currentTarget.src = `https://images.unsplash.com/featured/1200x800/?food,${encodeURIComponent(recipe.category || recipe.name)}`;
+                   }}
+                 />
+                 <div className="absolute inset-0 bg-gradient-to-t from-onyx via-onyx/40 to-transparent" />
+                 
+                 {recipe.videoUrl && (
+                   <button 
+                     onClick={() => window.open(recipe.videoUrl, '_blank')}
+                     className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 cursor-pointer"
+                   >
+                     <div className="w-16 h-16 bg-amber-accent rounded-full flex items-center justify-center shadow-2xl scale-90 group-hover:scale-100 transition-transform">
+                       <Play className="w-6 h-6 text-black fill-current ml-1" />
+                     </div>
+                   </button>
+                 )}
+
+                 <div className="absolute bottom-12 left-12 right-12 text-white space-y-4">
+                    <div className="flex items-center gap-6 text-[10px] font-bold uppercase tracking-[0.2em] text-amber-accent">
+                      <span className="flex items-center gap-2"><ChefHat className="w-4 h-4" /> {recipe.difficulty}</span>
+                      <span>•</span>
+                      <span>{recipe.cookTime || recipe.cookingTime || "25m"}</span>
+                    </div>
+                    <h2 className="font-serif text-4xl md:text-6xl font-light leading-tight">{recipe.name}</h2>
+                 </div>
+              </div>
+
+              <div className="p-16 grid grid-cols-1 md:grid-cols-3 gap-20">
+                <div className="space-y-8">
+                  <h3 className="font-serif text-3xl font-light text-white italic border-b border-white/5 pb-4">Ingredients</h3>
+                  <ul className="space-y-6">
+                    {recipe.ingredients.map((ing, i) => (
+                      <li key={i} className="flex justify-between items-center gap-6">
+                        <span className="text-gray-400 font-light text-lg">{ing.item}</span>
+                        <span className="font-bold text-amber-accent text-xs px-3 py-1 bg-amber-accent/10 rounded-lg uppercase tracking-wider">{ing.amount}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="md:col-span-2 space-y-12 border-l border-white/5 pl-0 md:pl-20">
+                  <h3 className="font-serif text-3xl font-light text-white italic border-b border-white/5 pb-4">Instructions</h3>
+                  <div className="space-y-12">
+                    {recipe.instructions.map((step, i) => (
+                      <div key={i} className="flex gap-10 relative">
+                        <span className="font-serif text-8xl text-white/5 font-bold leading-none absolute -left-12 -top-4 -z-0">{i + 1}</span>
+                        <div className="relative z-10 pt-2">
+                           <span className="text-xs font-bold uppercase tracking-wider text-amber-accent mb-2 block">Step {i + 1}</span>
+                           <p className="text-gray-300 text-lg font-light leading-relaxed italic">
+                             {typeof step === 'string' ? step : step.text}
+                           </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </div>
+      )}
 
       <AuthModal
         isOpen={isAuthModalOpen}
