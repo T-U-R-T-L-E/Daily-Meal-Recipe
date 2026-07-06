@@ -33,10 +33,10 @@ export default function AuthModal({
         {/* Backdrop overlay */}
         <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: 0.7 }}
+          animate={{ opacity: 0.6 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 bg-black/95 backdrop-blur-sm"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm"
         />
 
         {/* Modal Content */}
@@ -45,7 +45,7 @@ export default function AuthModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
           transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-          className="relative max-w-md w-full bg-[#141414] border border-white/5 rounded-[40px] p-8 md:p-10 shadow-2xl text-center overflow-hidden z-10"
+          className="relative max-w-md w-full bg-coal border border-white/5 rounded-[40px] p-8 md:p-10 shadow-2xl text-center overflow-hidden z-10"
         >
           {/* Subtle Top Accent line */}
           <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-amber-500/20 via-amber-accent to-rose-500/20" />

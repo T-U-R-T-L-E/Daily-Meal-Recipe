@@ -32,6 +32,7 @@ const ComplianceHub = lazy(() => import('./pages/ComplianceHub'));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
 const RefundPolicyPage = lazy(() => import('./pages/RefundPolicyPage'));
+const Blog = lazy(() => import('./pages/Blog'));
 import { motion, AnimatePresence } from 'motion/react';
 
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
@@ -195,19 +196,14 @@ function AppContent() {
     return <BrandedSplash />;
   }
 
+  if (user && location.pathname === '/') {
+    return <Navigate to="/discover" replace />;
+  }
+
   const isPublicPath = 
     location.pathname === '/' || 
     location.pathname === '/discover' || 
-    location.pathname === '/generate' || 
-    location.pathname === '/planner' || 
-    location.pathname === '/shopping' || 
-    location.pathname === '/shared-todos' || 
-    location.pathname === '/pantry' || 
-    location.pathname === '/files' || 
-    location.pathname === '/profile' || 
-    location.pathname === '/subscription' || 
-    location.pathname === '/leaderboard' || 
-    location.pathname === '/scanner' || 
+    location.pathname === '/blog' ||
     location.pathname.startsWith('/recipe/') || 
     location.pathname.startsWith('/guided/') || 
     location.pathname === '/privacy' || 
@@ -331,7 +327,11 @@ function SubscriptionBanner() {
     <div className="min-h-screen bg-onyx flex flex-col text-gray-300">
         <Navbar onOpenDownload={() => setIsDownloadOpen(true)} />
         <SubscriptionBanner />
-        <main className={`flex-1 w-full max-w-7xl xxl:max-w-[1400px] 3xl:max-w-[1800px] 4xl:max-w-[2400px] 5xl:max-w-[3200px] mx-auto ${location.pathname === '/' ? 'px-1 xs:px-2' : 'px-3 xs:px-4'} sm:px-6 pt-6 pb-20 md:py-12`}>
+        <main className={`flex-1 w-full max-w-7xl xxl:max-w-[1400px] 3xl:max-w-[1800px] 4xl:max-w-[2400px] 5xl:max-w-[3200px] mx-auto ${
+          location.pathname === '/' 
+            ? 'px-1 xs:px-2 pt-0 md:pt-0 pb-20 md:pb-12' 
+            : 'px-3 xs:px-4 pt-6 pb-20 md:py-12'
+        } sm:px-6`}>
           <AnimatePresence mode="wait">
             <Suspense fallback={<PageLoadingFallback />}>
               <Routes location={location} key={location.pathname}>
@@ -402,6 +402,7 @@ function SubscriptionBanner() {
               <Route path="/privacy" element={<PrivacyPolicyPage />} />
               <Route path="/terms" element={<TermsOfServicePage />} />
               <Route path="/refund-policy" element={<RefundPolicyPage />} />
+              <Route path="/blog" element={<Blog />} />
               <Route path="/auth" element={<Auth />} />
               <Route 
                 path="/scanner" 

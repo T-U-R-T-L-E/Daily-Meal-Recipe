@@ -479,7 +479,7 @@ export default function Profile() {
   if (loading) return <ProfileSkeleton />;
   if (!user || !profile) {
     return (
-      <div className="max-w-md mx-auto my-12 text-center py-16 px-8 bg-[#141414] border border-white/5 rounded-[40px] shadow-2xl relative overflow-hidden">
+      <div className="max-w-md mx-auto my-12 text-center py-16 px-8 bg-coal border border-white/5 rounded-[40px] shadow-2xl relative overflow-hidden">
         {/* Subtle Top Accent line */}
         <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-amber-500/20 via-amber-accent to-rose-500/20" />
         

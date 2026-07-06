@@ -611,6 +611,10 @@ app.get("/sitemap.xml", async (req, res) => {
       { path: "terms", priority: "0.4", changefreq: "monthly" },
       { path: "refund-policy", priority: "0.4", changefreq: "monthly" },
       { path: "auth", priority: "0.8", changefreq: "monthly" },
+      { path: "blog", priority: "0.9", changefreq: "daily" },
+      { path: "blog?post=mastering-simple-food-recipes-5-minute-meals", priority: "0.8", changefreq: "weekly" },
+      { path: "blog?post=easy-indian-snacks-5-minutes", priority: "0.8", changefreq: "weekly" },
+      { path: "blog?post=budget-healthy-meals-for-one", priority: "0.8", changefreq: "weekly" },
     ];
 
     let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;

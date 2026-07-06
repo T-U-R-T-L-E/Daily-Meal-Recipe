@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/useAuth';
 import { signOut } from '../../lib/firebase';
 import { 
@@ -22,7 +22,9 @@ import {
   Smartphone,
   Download,
   Database,
-  Activity
+  Activity,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -33,6 +35,7 @@ import LogoutConfirmModal from '../auth/LogoutConfirmModal';
 export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void }) {
   const { user, profile } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
 
@@ -41,6 +44,23 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
   const [authModalMessage, setAuthModalMessage] = useState("To access premium cooking features, generate customized recipes, scan ingredients, or map weekly meal plans, please sign in.");
 
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('theme') as 'dark' | 'light') || 'dark';
+  });
+
+  useEffect(() => {
+    if (theme === 'light') {
+      document.documentElement.classList.add('light');
+    } else {
+      document.documentElement.classList.remove('light');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
 
   useEffect(() => {
     const checkStandalone = 
@@ -97,7 +117,10 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
       <nav className="hidden md:block bg-graphite border-b border-white/5 sticky top-0 z-50 backdrop-blur-md bg-graphite/90">
         <div className="max-w-7xl mx-auto px-6">
           {/* Top Header Row */}
-          <div className="h-20 flex items-center justify-between border-b border-white/5">
+          <div className={cn(
+            "h-20 flex items-center justify-between",
+            user ? "border-b border-white/5" : ""
+          )}>
             <Link to="/" className="flex items-center gap-3">
               <div className="shrink-0 w-10 h-10 flex items-center justify-center overflow-hidden rounded-2xl">
                 <img
@@ -114,6 +137,15 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
             </Link>
 
             <div className="flex items-center gap-6">
+              {/* Theme Switcher Button */}
+              <button
+                onClick={toggleTheme}
+                className="w-10 h-10 flex items-center justify-center rounded-2xl bg-white/[0.03] border border-white/5 hover:border-amber-accent/30 hover:bg-amber-accent/15 text-amber-accent transition-all cursor-pointer shadow-lg active:scale-95 shrink-0"
+                title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              >
+                {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-accent" /> : <Moon className="w-4 h-4 text-amber-accent" />}
+              </button>
+
               {/* Premium Install Companion App shortcut */}
               {!isStandalone && (
                 <button
@@ -149,7 +181,7 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
               ) : (
                 <Link
                   to="/auth"
-                  className="px-8 py-3 bg-amber-accent text-black rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-white transition-all shadow-xl shadow-amber-accent/10 active:scale-95 cursor-pointer inline-block text-center"
+                  className="px-8 py-3 bg-amber-accent text-black rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-white transition-all shadow-xl shadow-amber-accent/10 active:scale-95 cursor-pointer inline-block text-center animate-pulse"
                 >
                   Sign In
                 </Link>
@@ -158,34 +190,36 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
           </div>
 
           {/* Tab Navigation Row */}
-          <div className="h-14 flex items-center justify-start xl:justify-center overflow-x-auto no-scrollbar px-4 xl:px-0">
-            <div className="flex items-center gap-4 lg:gap-8 xl:gap-10 min-w-max">
-              {navItems.map((item) => {
-                const isActive = location.pathname === item.path;
-                const Icon = item.icon;
+          {user && (
+            <div className="h-14 flex items-center justify-start xl:justify-center overflow-x-auto no-scrollbar px-4 xl:px-0">
+              <div className="flex items-center gap-4 lg:gap-8 xl:gap-10 min-w-max">
+                {navItems.map((item) => {
+                  const isActive = location.pathname === item.path;
+                  const Icon = item.icon;
 
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={cn(
-                      "relative flex items-center gap-2.5 text-[10px] font-black uppercase tracking-[0.2em] transition-all py-4 hover:translate-y-[-1px]",
-                      isActive ? "text-amber-accent scale-105" : "text-white/30 hover:text-white"
-                    )}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    {item.name}
-                    {isActive && (
-                      <motion.div
-                        layoutId="nav-underline"
-                        className="absolute bottom-0 left-[-4px] right-[-4px] h-[3px] bg-amber-accent rounded-full shadow-[0_0_15px_rgba(245,158,11,0.6)]"
-                      />
-                    )}
-                  </Link>
-                );
-              })}
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={cn(
+                        "relative flex items-center gap-2.5 text-[10px] font-black uppercase tracking-[0.2em] transition-all py-4 hover:translate-y-[-1px]",
+                        isActive ? "text-amber-accent scale-105" : "text-white/30 hover:text-white"
+                      )}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      {item.name}
+                      {isActive && (
+                        <motion.div
+                          layoutId="nav-underline"
+                          className="absolute bottom-0 left-[-4px] right-[-4px] h-[3px] bg-amber-accent rounded-full shadow-[0_0_15px_rgba(245,158,11,0.6)]"
+                        />
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </nav>
 
@@ -208,6 +242,13 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
 
         {user ? (
           <div className="flex items-center gap-3">
+            <button
+              onClick={toggleTheme}
+              className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/[0.03] border border-white/5 text-amber-accent active:scale-95 transition-transform shrink-0"
+              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+            </button>
             <Link to="/profile" className="w-8 h-8 rounded-full overflow-hidden border border-white/10 active:scale-90 transition-transform">
               <img 
                 src={profile?.photoURL || user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName}`} 
@@ -217,62 +258,73 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
             </Link>
           </div>
         ) : (
-          <Link
-            to="/auth"
-            className="px-4 py-2 bg-amber-accent text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all active:scale-95 cursor-pointer shadow-lg shadow-amber-accent/10"
-          >
-            Sign In
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/[0.03] border border-white/5 text-amber-accent active:scale-95 transition-transform shrink-0 animate-pulse"
+              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+            </button>
+            <Link
+              to="/auth"
+              className="px-4 py-2 bg-amber-accent text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white transition-all active:scale-95 cursor-pointer shadow-lg shadow-amber-accent/10"
+            >
+              Sign In
+            </Link>
+          </div>
         )}
       </header>
 
       {/* 3. MOBILE BOTTOM NAVIGATION SUITE (Ideal look and feel for Mobile App/Website) */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-graphite/95 border-t border-white/5 backdrop-blur-lg pb-safe">
-        <div className="grid grid-cols-5 h-16 items-center justify-around px-2">
-          
-          {/* Static Core Tabs */}
-          {mobileCoreTabs.map((tab) => {
-            const isActive = location.pathname === tab.path;
-            const Icon = tab.icon;
+      {user && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-graphite/95 border-t border-white/5 backdrop-blur-lg pb-safe">
+          <div className="grid grid-cols-5 h-16 items-center justify-around px-2">
+            
+            {/* Static Core Tabs */}
+            {mobileCoreTabs.map((tab) => {
+              const isActive = location.pathname === tab.path;
+              const Icon = tab.icon;
 
-            return (
-              <Link
-                key={tab.path}
-                to={tab.path}
-                className={cn(
-                  "flex flex-col items-center justify-center h-full gap-1 text-[9px] font-bold uppercase tracking-wider transition-all",
-                  isActive ? "text-amber-accent" : "text-white/30"
-                )}
-              >
-                <div className={cn(
-                  "p-1 rounded-xl transition-all",
-                  isActive ? "bg-amber-accent/10" : ""
-                )}>
-                  <Icon className="w-5 h-5" />
-                </div>
-                <span>{tab.name}</span>
-              </Link>
-            );
-          })}
+              return (
+                <Link
+                  key={tab.path}
+                  to={tab.path}
+                  className={cn(
+                    "flex flex-col items-center justify-center h-full gap-1 text-[9px] font-bold uppercase tracking-wider transition-all",
+                    isActive ? "text-amber-accent" : "text-white/30"
+                  )}
+                >
+                  <div className={cn(
+                    "p-1 rounded-xl transition-all",
+                    isActive ? "bg-amber-accent/10" : ""
+                  )}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <span>{tab.name}</span>
+                </Link>
+              );
+            })}
 
-          {/* Trigger Tab: "More Menu" */}
-          <button
-            onClick={() => setIsMoreMenuOpen(true)}
-            className={cn(
-              "flex flex-col items-center justify-center h-full gap-1 text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer",
-              isMoreMenuOpen ? "text-amber-accent" : "text-white/30"
-            )}
-          >
-            <div className={cn(
-              "p-1 rounded-xl transition-all",
-              isMoreMenuOpen ? "bg-amber-accent/10" : ""
-            )}>
-              <Menu className="w-5 h-5" />
-            </div>
-            <span>More</span>
-          </button>
+            {/* Trigger Tab: "More Menu" */}
+            <button
+              onClick={() => setIsMoreMenuOpen(true)}
+              className={cn(
+                "flex flex-col items-center justify-center h-full gap-1 text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer",
+                isMoreMenuOpen ? "text-amber-accent" : "text-white/30"
+              )}
+            >
+              <div className={cn(
+                "p-1 rounded-xl transition-all",
+                isMoreMenuOpen ? "bg-amber-accent/10" : ""
+              )}>
+                <Menu className="w-5 h-5" />
+              </div>
+              <span>More</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 4. PREMIUM Bottom-Sheet Overlay Modal for "More" Navigation options */}
       <AnimatePresence>
@@ -383,9 +435,10 @@ export default function Navbar({ onOpenDownload }: { onOpenDownload?: () => void
       <LogoutConfirmModal
         isOpen={isLogoutConfirmOpen}
         onClose={() => setIsLogoutConfirmOpen(false)}
-        onConfirm={() => {
+        onConfirm={async () => {
           setIsLogoutConfirmOpen(false);
-          signOut();
+          await signOut();
+          navigate('/');
         }}
       />
     </>

@@ -73,7 +73,14 @@ service cloud.firestore {
 
       // Reviews Subcollection
       match /reviews/{reviewId} {
-        allow read: if isValidId(reviewId) && isValidId(recipeId);
+        allow get: if isValidId(reviewId) && isValidId(recipeId);
+        allow list: if isValidId(recipeId) && (
+          recipeId.matches('^ai-.*') ||
+          !exists(/databases/$(database)/documents/recipes/$(recipeId)) ||
+          get(/databases/$(database)/documents/recipes/$(recipeId)).data.get('isPublic', false) == true ||
+          (isSignedIn() && get(/databases/$(database)/documents/recipes/$(recipeId)).data.authorId == request.auth.uid) ||
+          isAdmin()
+        );
         allow create: if isValidId(reviewId) && isValidId(recipeId) && isVerifiedUser() && 
                       incoming().userId == request.auth.uid && 
                       incoming().recipeId == recipeId &&

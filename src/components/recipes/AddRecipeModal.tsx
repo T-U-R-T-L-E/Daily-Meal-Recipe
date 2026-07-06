@@ -235,10 +235,10 @@ export default function AddRecipeModal({ isOpen, onClose, onSuccess }: AddRecipe
         {/* Backdrop overlay */}
         <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: 0.7 }}
+          animate={{ opacity: 0.6 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 bg-black/95 backdrop-blur-sm shadow-2xl"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm shadow-2xl"
         />
 
         {/* Modal Container */}
@@ -247,7 +247,7 @@ export default function AddRecipeModal({ isOpen, onClose, onSuccess }: AddRecipe
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
           transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-          className="relative max-w-3xl w-full max-h-[90vh] bg-[#141414] border border-white/5 rounded-[40px] shadow-3xl flex flex-col overflow-hidden z-10"
+          className="relative max-w-3xl w-full max-h-[90vh] bg-coal border border-white/5 rounded-[40px] shadow-3xl flex flex-col overflow-hidden z-10"
         >
           {/* Top Decorative Line */}
           <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-amber-500/20 via-amber-accent to-amber-500/20" />
@@ -309,7 +309,7 @@ export default function AddRecipeModal({ isOpen, onClose, onSuccess }: AddRecipe
                     <select
                       value={category}
                       onChange={(e: any) => setCategory(e.target.value)}
-                      className="w-full h-12 px-4 bg-[#181818] border border-white/10 rounded-2xl text-xs text-white focus:outline-none focus:border-amber-accent transition-all"
+                      className="w-full h-12 px-4 bg-coal border border-white/10 rounded-2xl text-xs text-white focus:outline-none focus:border-amber-accent transition-all"
                     >
                       <option value="Breakfast">Breakfast</option>
                       <option value="Lunch">Lunch</option>
@@ -400,7 +400,7 @@ export default function AddRecipeModal({ isOpen, onClose, onSuccess }: AddRecipe
                   <select
                     value={difficulty}
                     onChange={(e: any) => setDifficulty(e.target.value)}
-                    className="w-full h-12 px-4 bg-[#181818] border border-white/10 rounded-2xl text-xs text-white focus:outline-none focus:border-amber-accent transition-all cursor-pointer"
+                    className="w-full h-12 px-4 bg-coal border border-white/10 rounded-2xl text-xs text-white focus:outline-none focus:border-amber-accent transition-all cursor-pointer"
                   >
                     <option value="Beginner">Beginner</option>
                     <option value="Intermediate">Intermediate</option>

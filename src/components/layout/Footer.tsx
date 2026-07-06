@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Shield, Scale, FileText, Mail } from 'lucide-react';
+import { Shield, Scale, FileText, Mail, BookOpen } from 'lucide-react';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -43,6 +43,14 @@ export default function Footer() {
           >
             <FileText className="w-3.5 h-3.5 text-amber-accent/80" />
             <span>Refund Policy</span>
+          </Link>
+
+          <Link 
+            to="/blog" 
+            className="flex items-center gap-1.5 hover:text-amber-accent transition-colors py-1"
+          >
+            <BookOpen className="w-3.5 h-3.5 text-amber-accent/80" />
+            <span>Kitchen Journal</span>
           </Link>
         </div>
 
