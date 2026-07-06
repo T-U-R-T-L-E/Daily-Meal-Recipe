@@ -66,6 +66,11 @@ async function run() {
     { path: "blog?post=mastering-simple-food-recipes-5-minute-meals", priority: "0.8", changefreq: "weekly" },
     { path: "blog?post=easy-indian-snacks-5-minutes", priority: "0.8", changefreq: "weekly" },
     { path: "blog?post=budget-healthy-meals-for-one", priority: "0.8", changefreq: "weekly" },
+    { path: "blog?post=quick-dinner-ideas-for-2-simple-food-recipes", priority: "0.8", changefreq: "weekly" },
+    { path: "blog?post=food-recipes-breakfast-guide-easy-5-minutes", priority: "0.8", changefreq: "weekly" },
+    { path: "blog?post=quick-easy-healthy-meals-for-weight-loss", priority: "0.8", changefreq: "weekly" },
+    { path: "blog?post=easy-snacks-to-make-in-5-minutes-indian-spiced", priority: "0.8", changefreq: "weekly" },
+    { path: "blog?post=simple-food-recipes-for-students-budget-meals", priority: "0.8", changefreq: "weekly" },
   ];
 
   let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;

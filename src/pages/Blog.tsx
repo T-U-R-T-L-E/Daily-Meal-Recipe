@@ -221,6 +221,183 @@ export default function Blog() {
           </p>
         </div>
       )
+    },
+    {
+      id: '4',
+      slug: 'quick-dinner-ideas-for-2-simple-food-recipes',
+      title: 'Quick Dinner Ideas for 2: Simple Food Recipes for Dinner and Late Nights',
+      subtitle: 'Nourishing plans for two that reduce dirty pans and kitchen fatigue.',
+      category: 'Dinner Blueprints',
+      readTime: '5 min read',
+      date: 'July 7, 2026',
+      author: {
+        name: 'Chef Marcus Vance',
+        role: 'Culinary Director & Food Anthropologist',
+        avatar: 'https://images.unsplash.com/photo-1577219491135-ce391730fb2c?auto=format&fit=crop&q=80&w=200'
+      },
+      image: 'https://images.unsplash.com/photo-1517433367423-c7e5b0f35086?auto=format&fit=crop&q=80&w=1200',
+      tags: ['quick dinner ideas for 2', 'simple food recipes for dinner', 'lazy dinner ideas', 'simple food recipes for dinner for two'],
+      summary: 'Making dinner for two should not be a chore. Discover simple food recipes for dinner that take the stress out of cooking, featuring quick dinner ideas for 2 and lazy dinner ideas for family meals.',
+      content: (
+        <div className="space-y-6 font-sans text-sm sm:text-base text-gray-300 leading-relaxed font-light">
+          <p>
+            After a long day, preparing a meal can feel like a heavy task. We all search for <span className="text-white font-medium">Lazy dinner ideas</span> that satisfy our cravings without keeping us at the stove for hours. If you are cooking with a partner, our curated list of <span className="text-white font-medium">Quick dinner ideas for 2</span> will revolutionize your evening routine.
+          </p>
+          <p>
+            When searching for <span className="text-white font-medium">Simple food recipes for dinner</span>, it is important to find balanced recipes that use minimal pans. Our favorite <span className="text-white font-medium">Simple food recipes for dinner for two</span> focus on one-pot pasta bakes, pan-seared fish with quick lemon asparagus, and custom loaded vegetable quesadillas.
+          </p>
+          <h4 className="font-serif text-xl text-white italic pt-2">Dinner for the Whole Family</h4>
+          <p>
+            If you are cooking for a larger table, these concepts easily scale up into <span className="text-white font-medium">Simple food recipes for dinner for family</span> gatherings. You can elevate standard dinners with <span className="text-white font-medium">Simple food recipes for dinner healthy</span> choices, like garlic-herb roasted chicken breasts alongside oven-roasted broccoli.
+          </p>
+          <p>
+            For those times when you need food on the table instantly, you can rely on our easy <span className="text-white font-medium">5 minute recipes for dinner</span> like customized gourmet dynamic grain bowls or classic loaded wraps. Try these fast tips tonight!
+          </p>
+        </div>
+      )
+    },
+    {
+      id: '5',
+      slug: 'food-recipes-breakfast-guide-easy-5-minutes',
+      title: 'Food Recipes Breakfast Guide: Easy Food to Make in 5 Minutes for Kids and Family',
+      subtitle: 'Jumpstart your morning with delicious, quick meals using our food recipes app.',
+      category: 'Fast Cooking',
+      readTime: '4 min read',
+      date: 'July 7, 2026',
+      author: {
+        name: 'Sarah Jenkins',
+        role: 'Eco-Kitchen Financial Advisor',
+        avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=200'
+      },
+      image: 'https://images.unsplash.com/photo-1493770348161-369560ae357d?auto=format&fit=crop&q=80&w=1200',
+      tags: ['food recipes breakfast', 'easy food to make in 5 minutes', 'food recipes app', 'easy food to make in 5 minutes for kids'],
+      summary: 'Mornings are fast, but your breakfast shouldn\'t be sacrificed. Learn the best easy food to make in 5 minutes with our step-by-step food recipes breakfast guide for family wellness.',
+      content: (
+        <div className="space-y-6 font-sans text-sm sm:text-base text-gray-300 leading-relaxed font-light">
+          <p>
+            A high-energy day begins with the ultimate breakfast. Many of us browse our <span className="text-white font-medium">Food recipes app</span> searching for delicious breakfast inspirations. Our comprehensive <span className="text-white font-medium">Food recipes breakfast</span> guide highlights dishes that are rich in nutrients yet fast to prepare.
+          </p>
+          <p>
+            If your morning is chaotic, knowing some <span className="text-white font-medium">Easy food to make in 5 minutes</span> is a lifesaver. You can make an <span className="text-white font-medium">Easy food to make in 5 minutes with few ingredients</span>, such as a high-protein cottage cheese berry bowl or a rapid spinach egg scramble.
+          </p>
+          <h4 className="font-serif text-xl text-white italic pt-2">Healthy and Fast Meals for Your Loved Ones</h4>
+          <p>
+            For parents, creating <span className="text-white font-medium">Easy food to make in 5 minutes for kids</span> ensures your little ones get proper nutrition before school without any fuss. You can prepare delicious, warm oat bowls or berry-banana Greek yogurt parfaits that double as <span className="text-white font-medium">Easy food to make in 5 minutes for family</span> breakfasts.
+          </p>
+          <p>
+            By choosing an <span className="text-white font-medium">Easy food to make in 5 minutes healthy</span>, you can skip sugary packaged cereals. Use these smart meal ideas to enjoy peaceful, nutritious, and incredibly speedy mornings with your loved ones!
+          </p>
+        </div>
+      )
+    },
+    {
+      id: '6',
+      slug: 'quick-easy-healthy-meals-for-weight-loss',
+      title: 'Quick Easy Healthy Meals for Weight Loss: Simple Food Recipes for Everyday Wellness',
+      subtitle: 'Nutrient-dense single servings and smart meal prep strategies.',
+      category: 'Healthy Eating',
+      readTime: '6 min read',
+      date: 'July 7, 2026',
+      author: {
+        name: 'Sarah Jenkins',
+        role: 'Eco-Kitchen Financial Advisor',
+        avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=200'
+      },
+      image: 'https://images.unsplash.com/photo-1505253716362-afaea1d3d1af?auto=format&fit=crop&q=80&w=1200',
+      tags: ['quick easy healthy meals for weight loss', 'simple food recipes for every day', 'food recipes list'],
+      summary: 'Sustain your fitness goals with our handpicked food recipes list. Learn to make quick easy healthy meals for one and master smart portion control without sacrificing taste.',
+      content: (
+        <div className="space-y-6 font-sans text-sm sm:text-base text-gray-300 leading-relaxed font-light">
+          <p>
+            Weight management doesn\'t have to mean eating bland, boring foods. By organizing your kitchen around a curated <span className="text-white font-medium">Food recipes list</span>, you can enjoy delicious, vibrant dishes while staying in a calorie deficit.
+          </p>
+          <p>
+            Our core mission is sharing <span className="text-white font-medium">Simple food recipes for every day</span> that are high in fiber and rich in lean proteins. Preparing <span className="text-white font-medium">Quick easy healthy meals for weight loss</span> is much simpler when you have pre-washed greens and cooked grains ready in your fridge.
+          </p>
+          <h4 className="font-serif text-xl text-white italic pt-2">No-Cook and Single-Portion Solutions</h4>
+          <p>
+            For those living alone, cooking single-portion meals is easy with our <span className="text-white font-medium">Quick easy healthy meals for one</span> blueprint. You can whip up an <span className="text-white font-medium">Easy food to make in 5 minutes healthy no cook</span> meal, such as a fiber-packed Mediterranean cucumber and bean salad dressed with fresh lemon and a splash of olive oil.
+          </p>
+          <p>
+            This is an exceptional example of an <span className="text-white font-medium">Easy food to make in 5 minutes healthy for weight loss</span> that keeps you feeling satisfied for hours. Browse our menu planner today to build your custom daily routine!
+          </p>
+        </div>
+      )
+    },
+    {
+      id: '7',
+      slug: 'easy-snacks-to-make-in-5-minutes-indian-spiced',
+      title: 'Easy Snacks to Make in 5 Minutes: Indian Spiced Vegetarian Platters',
+      subtitle: 'A high-flavor culinary journey featuring authentic spices and quick ingredients.',
+      category: 'Indian Cuisine',
+      readTime: '5 min read',
+      date: 'July 7, 2026',
+      author: {
+        name: 'Pooja Nair',
+        role: 'Traditional Spice Specialist',
+        avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200'
+      },
+      image: 'https://images.unsplash.com/photo-1596797038530-2c107229654b?auto=format&fit=crop&q=80&w=1200',
+      tags: ['easy snacks to make in 5 minutes indian', 'food recipes Indian', 'quick dinner recipes Indian', 'food recipes with ingredients'],
+      summary: 'Add vibrant spice to your routine with quick dinner recipes Indian style. Explore simple Indian vegetarian recipes for dinner and high-fiber easy snacks to make in 5 minutes Indian style.',
+      content: (
+        <div className="space-y-6 font-sans text-sm sm:text-base text-gray-300 leading-relaxed font-light">
+          <p>
+            Traditional spice profiles have a unique way of turning plain ingredients into something extraordinary. If you enjoy bold, aromatic tastes, exploring <span className="text-white font-medium">Food recipes Indian</span> style is an incredibly rewarding culinary experience.
+          </p>
+          <p>
+            You don\'t need to spend hours over a hot stove to enjoy authentic flavors. Our collection of <span className="text-white font-medium">Quick dinner recipes Indian</span> food lovers can make on busy weeknights includes spiced lentil soups, stir-fried vegetables, and express flatbreads.
+          </p>
+          <h4 className="font-serif text-xl text-white italic pt-2">Quick Indian Street-Food Inspired Snacks</h4>
+          <p>
+            When hunger strikes in the afternoon, try an <span className="text-white font-medium">Easy snacks to make in 5 minutes indian</span> style, like a tangy Tomato-Onion Peanut Chaat. It is a simple dish that you can quickly customize using our interactive <span className="text-white font-medium">Food recipes With ingredients</span> checklist.
+          </p>
+          <p>
+            For a more substantial evening meal, try our comforting, high-protein <span className="text-white font-medium">Simple Indian vegetarian recipes for dinner</span>, like the classic Quick Tadka Dal paired with cumin rice. Experience the richness of traditional spices in record time!
+          </p>
+        </div>
+      )
+    },
+    {
+      id: '8',
+      slug: 'simple-food-recipes-for-students-budget-meals',
+      title: 'Simple Food Recipes for Students: Quick, Easy Healthy Meals on a Budget',
+      subtitle: 'A survival guide for busy college students looking for cheap, delicious food.',
+      category: 'Budget Friendly',
+      readTime: '6 min read',
+      date: 'July 7, 2026',
+      author: {
+        name: 'Sarah Jenkins',
+        role: 'Eco-Kitchen Financial Advisor',
+        avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=200'
+      },
+      image: 'https://images.unsplash.com/photo-1543353071-10c8ba85a904?auto=format&fit=crop&q=80&w=1200',
+      tags: ['simple food recipes for students', 'quick, easy healthy meals on a budget', 'food recipes website', 'simple food recipes website'],
+      summary: 'Student life is busy, but you can still eat well! Check out simple food recipes for students, easy food to make in 5 minutes healthy on a budget, and simple food recipes snacks.',
+      content: (
+        <div className="space-y-6 font-sans text-sm sm:text-base text-gray-300 leading-relaxed font-light">
+          <p>
+            Being a student means balancing classes, homework, and social life. Often, we don\'t have much money or time to spend on cooking. That is why we created a clean, modern <span className="text-white font-medium">Food recipes Website</span> to help you cook fast, healthy meals.
+          </p>
+          <p>
+            Our dedicated <span className="text-white font-medium">Simple food recipes website</span> contains a vast collection of delicious meals. If you browse our <span className="text-white font-medium">Simple food recipes</span> category, you\'ll find dishes designed specifically for low budgets and tiny dorm kitchens.
+          </p>
+          <h4 className="font-serif text-xl text-white italic pt-2">Budget Cooking and Quick Snacks</h4>
+          <p>
+            We also share popular visual guides on our <span className="text-white font-medium">Simple food recipes instagram</span> page. Our guides focus on <span className="text-white font-medium">Simple Food recipes with few ingredients</span>, like 3-ingredient black bean quesadillas or customized microwave egg mugs.
+          </p>
+          <p>
+            When you need a quick study break, try our favorite <span className="text-white font-medium">Simple food recipes snacks</span> or prepare <span className="text-white font-medium">Quick, easy healthy meals on a budget</span>. You can make an <span className="text-white font-medium">Easy food to make in 5 minutes healthy on a budget</span>, such as a high-protein peanut butter banana wrap.
+          </p>
+          <h4 className="font-serif text-xl text-white italic pt-2">Healthy Lunches and Sweet Treats</h4>
+          <p>
+            Our student guide also covers quick <span className="text-white font-medium">5-minute Recipes for lunch</span> like seasoned chickpea salad wraps. For a midday energy boost, try a fast <span className="text-white font-medium">5 minute recipes for snacks</span>.
+          </p>
+          <p>
+            If you want something sweet, look up <span className="text-white font-medium">Simple Food recipes sweet</span> desserts like chocolate avocado pudding or our fast <span className="text-white font-medium">5 minute recipes dessert</span> mug cake. Best of all, all our <span className="text-white font-medium">Food recipes in English</span> are explained step-by-step with simple, clear instructions. Try our easy <span className="text-white font-medium">food recipes</span> today to eat delicious food while keeping your budget safe!
+          </p>
+        </div>
+      )
     }
   ], []);
 
