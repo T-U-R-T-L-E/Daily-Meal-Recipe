@@ -71,6 +71,16 @@ async function run() {
     { path: "blog?post=quick-easy-healthy-meals-for-weight-loss", priority: "0.8", changefreq: "weekly" },
     { path: "blog?post=easy-snacks-to-make-in-5-minutes-indian-spiced", priority: "0.8", changefreq: "weekly" },
     { path: "blog?post=simple-food-recipes-for-students-budget-meals", priority: "0.8", changefreq: "weekly" },
+    { path: "blog?post=food-recipes-with-ingredients-few-items", priority: "0.8", changefreq: "weekly" },
+    { path: "blog?post=simple-indian-vegetarian-recipes-for-dinner-healthy", priority: "0.8", changefreq: "weekly" },
+    { path: "blog?post=lazy-dinner-ideas-simple-family-meals", priority: "0.8", changefreq: "weekly" },
+    { path: "blog?post=simple-food-recipes-sweet-5-minute-dessert", priority: "0.8", changefreq: "weekly" },
+    { path: "blog?post=easy-food-to-make-in-5-minutes-healthy-for-kids", priority: "0.8", changefreq: "weekly" },
+    { path: "blog?post=quick-easy-healthy-meals-on-a-budget-for-students", priority: "0.8", changefreq: "weekly" },
+    { path: "blog?post=quick-dinner-ideas-for-2-healthy-meals-for-one", priority: "0.8", changefreq: "weekly" },
+    { path: "blog?post=food-recipes-app-best-simple-food-recipes-website", priority: "0.8", changefreq: "weekly" },
+    { path: "blog?post=simple-food-recipes-instagram-healthy-meals", priority: "0.8", changefreq: "weekly" },
+    { path: "blog?post=easy-snacks-to-make-in-5-minutes-indian-spiced-fast", priority: "0.8", changefreq: "weekly" },
   ];
 
   let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
