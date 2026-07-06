@@ -591,6 +591,81 @@ app.post("/api/ai/quota-clear", (req, res) => {
   res.json({ success: true, message: "Server API offline block cleared successfully. Live web search is now re-enabled!" });
 });
 
+// Dynamic SEO sitemap.xml endpoint
+app.get("/sitemap.xml", async (req, res) => {
+  try {
+    const staticPages = [
+      { path: "", priority: "1.0", changefreq: "daily" },
+      { path: "discover", priority: "0.8", changefreq: "daily" },
+      { path: "generate", priority: "0.8", changefreq: "daily" },
+      { path: "planner", priority: "0.7", changefreq: "weekly" },
+      { path: "shopping", priority: "0.7", changefreq: "weekly" },
+      { path: "shared-todos", priority: "0.6", changefreq: "weekly" },
+      { path: "pantry", priority: "0.7", changefreq: "weekly" },
+      { path: "files", priority: "0.5", changefreq: "monthly" },
+      { path: "profile", priority: "0.6", changefreq: "monthly" },
+      { path: "subscription", priority: "0.8", changefreq: "monthly" },
+      { path: "leaderboard", priority: "0.6", changefreq: "daily" },
+      { path: "scanner", priority: "0.7", changefreq: "monthly" },
+      { path: "privacy", priority: "0.4", changefreq: "monthly" },
+      { path: "terms", priority: "0.4", changefreq: "monthly" },
+      { path: "refund-policy", priority: "0.4", changefreq: "monthly" },
+      { path: "auth", priority: "0.8", changefreq: "monthly" },
+    ];
+
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+    xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+
+    // Add static pages
+    for (const page of staticPages) {
+      const url = `https://dailymealrecipe.online${page.path ? "/" + page.path : ""}`;
+      xml += `  <url>\n`;
+      xml += `    <loc>${url}</loc>\n`;
+      xml += `    <changefreq>${page.changefreq}</changefreq>\n`;
+      xml += `    <priority>${page.priority}</priority>\n`;
+      xml += `  </url>\n`;
+    }
+
+    // Add dynamic approved public recipes from Firestore if adminDb is available
+    if (adminDb) {
+      try {
+        const recipesSnap = await adminDb.collection("recipes")
+          .where("isPublic", "==", true)
+          .where("status", "==", "approved")
+          .limit(1000)
+          .get();
+
+        if (!recipesSnap.empty) {
+          recipesSnap.forEach((doc: any) => {
+            const recipeId = doc.id;
+            const data = doc.data();
+            const updatedAt = data.updatedAt?.toDate 
+              ? data.updatedAt.toDate().toISOString().split('T')[0] 
+              : new Date().toISOString().split('T')[0];
+
+            xml += `  <url>\n`;
+            xml += `    <loc>https://dailymealrecipe.online/recipe/${recipeId}</loc>\n`;
+            xml += `    <lastmod>${updatedAt}</lastmod>\n`;
+            xml += `    <changefreq>weekly</changefreq>\n`;
+            xml += `    <priority>0.7</priority>\n`;
+            xml += `  </url>\n`;
+          });
+        }
+      } catch (err) {
+        console.warn("Failed to fetch recipes for sitemap.xml:", err);
+      }
+    }
+
+    xml += `</urlset>`;
+
+    res.header("Content-Type", "application/xml");
+    res.status(200).send(xml);
+  } catch (error) {
+    console.error("Error generating sitemap:", error);
+    res.status(500).send("Error generating sitemap");
+  }
+});
+
 /**
  * Cross-Account Protection (RFC 8935 / RFC 8936 Sec Events)
  * Seamlessly tracks user security updates (such as token revocation, hijacking alerts) 
