@@ -662,7 +662,10 @@ app.get("/sitemap.xml", async (req, res) => {
 
     xml += `</urlset>`;
 
-    res.header("Content-Type", "application/xml");
+    res.set("Content-Type", "text/xml; charset=utf-8");
+    res.set("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.set("Pragma", "no-cache");
+    res.set("Expires", "0");
     res.status(200).send(xml);
   } catch (error) {
     console.error("Error generating sitemap:", error);
