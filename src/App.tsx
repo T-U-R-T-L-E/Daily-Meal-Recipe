@@ -209,6 +209,8 @@ function AppContent() {
     location.pathname === '/privacy' || 
     location.pathname === '/terms' || 
     location.pathname === '/refund-policy' ||
+    location.pathname === '/sitemap.xml' ||
+    location.pathname === '/robots.txt' ||
     location.pathname === '/auth';
 
   if (!user && !isPublicPath) {

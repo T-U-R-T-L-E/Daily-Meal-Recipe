@@ -15,6 +15,13 @@
         }
       },
       {
+        "source": "/sitemap.xml",
+        "run": {
+          "serviceId": "daily-meal-recipe",
+          "region": "europe-west2"
+        }
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
