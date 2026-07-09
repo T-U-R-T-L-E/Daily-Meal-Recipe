@@ -264,6 +264,16 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["email", "amount", "reference", "createdAt"]
+    },
+    "Subscriber": {
+      "title": "Newsletter Subscriber",
+      "description": "User email subscribed to marketing newsletter",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "createdAt"]
     }
   },
   "firestore": {
@@ -281,6 +291,7 @@
     "/files/{fileId}/chunks/{chunkId}": { "schema": "FileChunk", "description": "A portion of file binary represented as base64 in Firestore" },
     "/nutritionLogs/{logId}": { "schema": "NutritionLog", "description": "Daily food, hydration, and energy journal" },
     "/search_suggestions/{suggestionId}": { "schema": "SearchSuggestion", "description": "Global list of searched queries and counts" },
-    "/unmatched_payments/{paymentId}": { "schema": "UnmatchedPayment", "description": "Billing transactions with unregistered user emails" }
+    "/unmatched_payments/{paymentId}": { "schema": "UnmatchedPayment", "description": "Billing transactions with unregistered user emails" },
+    "/subscribers/{subscriberId}": { "schema": "Subscriber", "description": "Newsletter subscribers" }
   }
 }

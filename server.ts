@@ -10,6 +10,10 @@ import admin from "firebase-admin";
 import { initializeApp, getApps, getApp } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import crypto from "crypto";
+import { NotFoundError } from "./src/utils/apiError";
+import { ErrorHandler } from "./src/middlewares/errorHandler";
+import { connection } from "./src/utils/database";
+import apiRouter from "./src/routes/index";
 
 dotenv.config();
 
@@ -1045,7 +1049,7 @@ app.post("/api/paystack/initialize", async (req, res) => {
     console.log(`[Paystack Init] Initiating payment request for ${email}. Amount: ${amount}, Currency: ${finalCurrency}`);
 
     // Call Paystack API to initialize transaction
-    const response = await fetch("https://api.paystack.co/transaction/initialize", {
+    const { response, data } = await fetchPaystackApi("https://api.paystack.co/transaction/initialize", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${paystackSecretKey}`,
@@ -1060,20 +1064,6 @@ app.post("/api/paystack/initialize", async (req, res) => {
       })
     });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error(`[Paystack Init FAIL] Status: ${response.status} ${response.statusText}. Response body:`, errText);
-      let parsedErr: any = null;
-      try {
-        parsedErr = JSON.parse(errText);
-      } catch (e) {
-        // Not JSON
-      }
-      const errorMsg = parsedErr?.message || `Paystack error (HTTP ${response.status}): ${response.statusText || 'Unknown Error'}`;
-      throw new Error(errorMsg);
-    }
-
-    const data = await response.json();
     if (!data.status || !data.data) {
       throw new Error(data.message || "Paystack failed to initialize valid transaction payload.");
     }
@@ -1178,20 +1168,36 @@ async function upgradeUserSubscriptionInFirestore(
   return false;
 }
 
-// Reusable helper to safely parse JSON from Paystack and provide descriptive errors on failure
-async function fetchPaystackApi(url: string, options: any) {
-  const response = await fetch(url, options);
-  const responseText = await response.text();
+// Reusable helper to safely parse JSON from Paystack and provide descriptive errors on failure with a robust 20s connection timeout
+async function fetchPaystackApi(url: string, options: any, timeoutMs = 20000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
   
-  let data: any = null;
   try {
-    data = JSON.parse(responseText);
-  } catch (err) {
-    console.error(`[Paystack API JSON Parse Error] URL: ${url}, Status: ${response.status}, Raw Response:`, responseText);
-    throw new Error(`Paystack Gateway returned an invalid response (HTTP ${response.status}). Let's verify our secret key is set correctly and the transaction is supported. Message: ${responseText.substring(0, 160)}`);
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    
+    const responseText = await response.text();
+    clearTimeout(id);
+    
+    let data: any = null;
+    try {
+      data = JSON.parse(responseText);
+    } catch (err) {
+      console.error(`[Paystack API JSON Parse Error] URL: ${url}, Status: ${response.status}, Raw Response:`, responseText);
+      throw new Error(`Paystack Gateway returned an invalid response (HTTP ${response.status}). Let's verify our secret key is set correctly and the transaction is supported. Message: ${responseText.substring(0, 160)}`);
+    }
+    
+    return { response, data };
+  } catch (err: any) {
+    clearTimeout(id);
+    if (err.name === 'AbortError') {
+      throw new Error(`Paystack Gateway connection timed out after ${timeoutMs / 1000} seconds. Please verify your network connection and try again.`);
+    }
+    throw err;
   }
-  
-  return { response, data };
 }
 
 app.post("/api/paystack/charge", async (req, res) => {
@@ -1258,7 +1264,7 @@ app.post("/api/paystack/charge", async (req, res) => {
       status: txData.status,
       reference: txData.reference,
       message: txData.displayText || txData.message || `Status: ${txData.status}`,
-      redirect_url: txData.redirect_url || txData.ot_url || null
+      redirect_url: txData.url || txData.redirect_url || txData.ot_url || null
     });
 
   } catch (error) {
@@ -1303,7 +1309,8 @@ app.post("/api/paystack/charge/submit-pin", async (req, res) => {
     return res.json({
       status: txData.status,
       reference: txData.reference,
-      message: txData.displayText || txData.message || `Status: ${txData.status}`
+      message: txData.displayText || txData.message || `Status: ${txData.status}`,
+      redirect_url: txData.url || txData.redirect_url || txData.ot_url || null
     });
   } catch (error) {
     console.error("Paystack Submit PIN Endpoint Error:", error);
@@ -1347,7 +1354,8 @@ app.post("/api/paystack/charge/submit-otp", async (req, res) => {
     return res.json({
       status: txData.status,
       reference: txData.reference,
-      message: txData.displayText || txData.message || `Status: ${txData.status}`
+      message: txData.displayText || txData.message || `Status: ${txData.status}`,
+      redirect_url: txData.url || txData.redirect_url || txData.ot_url || null
     });
   } catch (error) {
     console.error("Paystack Submit OTP Endpoint Error:", error);
@@ -1389,7 +1397,8 @@ app.post("/api/paystack/charge/submit-birthday", async (req, res) => {
     return res.json({
       status: txData.status,
       reference: txData.reference,
-      message: txData.displayText || txData.message || `Status: ${txData.status}`
+      message: txData.displayText || txData.message || `Status: ${txData.status}`,
+      redirect_url: txData.url || txData.redirect_url || txData.ot_url || null
     });
   } catch (error) {
     console.error("Paystack Submit Birthday Endpoint Error:", error);
@@ -1431,7 +1440,8 @@ app.post("/api/paystack/charge/submit-phone", async (req, res) => {
     return res.json({
       status: txData.status,
       reference: txData.reference,
-      message: txData.displayText || txData.message || `Status: ${txData.status}`
+      message: txData.displayText || txData.message || `Status: ${txData.status}`,
+      redirect_url: txData.url || txData.redirect_url || txData.ot_url || null
     });
   } catch (error) {
     console.error("Paystack Submit Phone Endpoint Error:", error);
@@ -4083,6 +4093,19 @@ app.delete("/api/files/delete", (req, res) => {
   return res.json({ success: true, message: "File already purged/not found." });
 });
 
+// Register modular paystack and other database-linked routes
+app.use("/api", apiRouter);
+
+// Fallback route handler for unmatched API routes
+app.use("/api/*", (req, res, next) => {
+  next(new NotFoundError(req.baseUrl || req.originalUrl));
+});
+
+// Global API error handler middleware
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  ErrorHandler.handle(err, req, res, next);
+});
+
 // Vite middleware setup
 async function setupVite() {
   try {
@@ -4155,6 +4178,16 @@ async function setupVite() {
       app.get('*', (req, res) => {
         res.sendFile(path.join(distPath, 'index.html'));
       });
+    }
+
+    // Sync Sequelize models with Postgres database
+    try {
+      console.log("Synchronizing database with Sequelize...");
+      await connection.authenticate();
+      await connection.sync({ force: false });
+      console.log("Database synchronized successfully!");
+    } catch (dbErr: any) {
+      console.warn("[Database Warning] Could not connect to PostgreSQL database or sync models. Skipping database sync to remain operational:", dbErr instanceof Error ? dbErr.message : dbErr);
     }
 
     const server = app.listen(PORT, "0.0.0.0", () => {

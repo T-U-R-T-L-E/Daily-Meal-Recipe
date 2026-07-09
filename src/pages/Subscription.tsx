@@ -33,6 +33,33 @@ import { useErrorUX, InlineErrorHelper } from '../lib/ErrorUXContext';
 import { initiatePaystackTransaction, verifyPaystackTransaction } from '../lib/paystack';
 import { faultTolerantFetch } from '../lib/api';
 
+async function safeFetchJson(url: string, init?: RequestInit): Promise<any> {
+  const response = await fetch(url, init);
+  const text = await response.text();
+  
+  if (text.trim().startsWith('<')) {
+    console.error("[HTML Response Detected] Status:", response.status, "Snippet:", text.substring(0, 300));
+    throw new Error(`The payment gateway server returned an unexpected document (HTTP ${response.status}). This usually indicates a temporary server routing issue. Please check the server logs or try again shortly.`);
+  }
+  
+  if (!response.ok) {
+    let parsedErr: any = null;
+    try {
+      parsedErr = JSON.parse(text);
+    } catch (e) {
+      // Not JSON
+    }
+    throw new Error(parsedErr?.error || parsedErr?.message || `HTTP ${response.status}: Failed to complete secure payment handshake.`);
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    console.error("[JSON Parse Error] Raw text:", text);
+    throw new Error("Failed to parse payment gateway response. Please try again.");
+  }
+}
+
 export default function Subscription() {
   const { user } = useAuth();
   const { handleError } = useErrorUX();
@@ -376,7 +403,7 @@ export default function Subscription() {
 
       setCustomLoadingStep("Initiating secure card handshake...");
 
-      const response = await fetch('/api/paystack/charge', {
+      const data = await safeFetchJson('/api/paystack/charge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -392,11 +419,6 @@ export default function Subscription() {
           pin
         })
       });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to process card transaction.");
-      }
 
       setChargeReference(data.reference || '');
       setChargeStatus(data.status);
@@ -440,7 +462,7 @@ export default function Subscription() {
     setCustomLoadingStep("Verifying secure card PIN...");
 
     try {
-      const response = await fetch('/api/paystack/charge/submit-pin', {
+      const data = await safeFetchJson('/api/paystack/charge/submit-pin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -449,14 +471,14 @@ export default function Subscription() {
           email: user?.email || ''
         })
       });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to submit PIN.");
-      }
 
       setChargeStatus(data.status);
       setChargeMessage(data.message || '');
       
+      if (data.status === 'open_iframe' && data.redirect_url) {
+        setRedirectUrl3ds(data.redirect_url);
+      }
+
       if (data.status === 'success') {
         const config = currencyConfigs[selectedCurrency];
         const selectedAmount = paymentModalType === 'subscribe' ? config.subscribeAmount : config.linkAmount;
@@ -492,7 +514,7 @@ export default function Subscription() {
     setCustomLoadingStep("Verifying secure transaction OTP...");
 
     try {
-      const response = await fetch('/api/paystack/charge/submit-otp', {
+      const data = await safeFetchJson('/api/paystack/charge/submit-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -501,13 +523,13 @@ export default function Subscription() {
           email: user?.email || ''
         })
       });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to submit OTP.");
-      }
 
       setChargeStatus(data.status);
       setChargeMessage(data.message || '');
+
+      if (data.status === 'open_iframe' && data.redirect_url) {
+        setRedirectUrl3ds(data.redirect_url);
+      }
 
       if (data.status === 'success') {
         const config = currencyConfigs[selectedCurrency];
@@ -544,7 +566,7 @@ export default function Subscription() {
     setCustomLoadingStep("Verifying cardholder birth date...");
 
     try {
-      const response = await fetch('/api/paystack/charge/submit-birthday', {
+      const data = await safeFetchJson('/api/paystack/charge/submit-birthday', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -553,13 +575,13 @@ export default function Subscription() {
           email: user?.email || ''
         })
       });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to submit birthday.");
-      }
 
       setChargeStatus(data.status);
       setChargeMessage(data.message || '');
+
+      if (data.status === 'open_iframe' && data.redirect_url) {
+        setRedirectUrl3ds(data.redirect_url);
+      }
 
       if (data.status === 'success') {
         const config = currencyConfigs[selectedCurrency];
@@ -596,7 +618,7 @@ export default function Subscription() {
     setCustomLoadingStep("Verifying phone credentials...");
 
     try {
-      const response = await fetch('/api/paystack/charge/submit-phone', {
+      const data = await safeFetchJson('/api/paystack/charge/submit-phone', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -605,13 +627,13 @@ export default function Subscription() {
           email: user?.email || ''
         })
       });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to submit phone number.");
-      }
 
       setChargeStatus(data.status);
       setChargeMessage(data.message || '');
+
+      if (data.status === 'open_iframe' && data.redirect_url) {
+        setRedirectUrl3ds(data.redirect_url);
+      }
 
       if (data.status === 'success') {
         const config = currencyConfigs[selectedCurrency];
@@ -1956,9 +1978,9 @@ export default function Subscription() {
                                       style={{
                                         backgroundColor: isModalLight ? '#f8fafc' : 'rgba(255,255,255,0.02)',
                                         color: isModalLight ? '#0f172a' : '#ffffff',
-                                        borderColor: cardNumber.length >= 19 && isCardNumberValid === false
+                                        borderColor: cardNumber.replace(/\D/g, '').length >= (getCardBrand(cardNumber) === 'amex' ? 15 : 16) && isCardNumberValid === false
                                           ? '#ef4444'
-                                          : (cardNumber.length >= 19 && isCardNumberValid === true ? '#10b981' : (isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.08)'))
+                                          : (isModalLight ? '#cbd5e1' : 'rgba(255,255,255,0.08)')
                                       }}
                                       className="w-full rounded-xl pl-3.5 pr-10 py-2.5 text-xs font-mono font-bold border focus:outline-none focus:ring-1 focus:ring-amber-500 tracking-[0.1em]"
                                     />
@@ -1966,14 +1988,9 @@ export default function Subscription() {
                                       <CreditCard className="w-4 h-4" />
                                     </div>
                                   </div>
-                                  {cardNumber.length >= 19 && isCardNumberValid === false && (
+                                  {cardNumber.replace(/\D/g, '').length >= (getCardBrand(cardNumber) === 'amex' ? 15 : 16) && isCardNumberValid === false && (
                                     <p className="text-[10px] text-rose-500 font-bold mt-1">
                                       ⚠️ Invalid card checksum (failed Luhn algorithm validation). Please check for typos.
-                                    </p>
-                                  )}
-                                  {cardNumber.length >= 19 && isCardNumberValid === true && (
-                                    <p className="text-[10px] text-emerald-500 font-bold mt-1">
-                                      ✓ Valid credit card checksum detected.
                                     </p>
                                   )}
                                 </div>
@@ -2051,7 +2068,7 @@ export default function Subscription() {
                               <div className="space-y-3 pt-2">
                                 <button
                                   type="submit"
-                                  disabled={processing || isCardNumberValid === false}
+                                  disabled={processing || (cardNumber.replace(/\D/g, '').length >= (getCardBrand(cardNumber) === 'amex' ? 15 : 16) && isCardNumberValid === false)}
                                   style={{
                                     backgroundColor: '#f59e0b',
                                     color: '#000000'

@@ -22,6 +22,7 @@ const app = initializeApp(firebaseConfig);
 let dbInstance;
 try {
   dbInstance = initializeFirestore(app, {
+    experimentalForceLongPolling: true,
     localCache: persistentLocalCache({
       tabManager: persistentMultipleTabManager()
     })
@@ -38,6 +39,7 @@ try {
     console.error("Could not delete corrupted Firestore database:", err);
   }
   dbInstance = initializeFirestore(app, {
+    experimentalForceLongPolling: true,
     localCache: memoryLocalCache()
   }, appletConfig.firestoreDatabaseId);
 }

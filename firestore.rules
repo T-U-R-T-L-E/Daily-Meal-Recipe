@@ -300,6 +300,18 @@ service cloud.firestore {
                     (incoming().count == existing().count + 1 || incoming().count == existing().count);
     }
 
+    // Subscribers Rules (Allows public creations for news list, and restricts reading to administrators)
+    match /subscribers/{subscriberId} {
+      function isValidSubscriber(data) {
+        return data.keys().hasAll(['email', 'createdAt']) &&
+               data.keys().size() == 2 &&
+               data.email is string && data.email.size() <= 200 &&
+               data.createdAt is string && data.createdAt.size() <= 100;
+      }
+      allow get, list: if isAdmin();
+      allow create: if isValidId(subscriberId) && isValidSubscriber(incoming());
+    }
+
     // Support collectionGroup and top-level reviews queries safely
     match /{path=**}/reviews/{reviewId} {
       allow read: if isSignedIn() && (
